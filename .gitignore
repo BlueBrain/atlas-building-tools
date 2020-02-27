@@ -1,0 +1,15 @@
+logs
+data
+*.pyc
+*__pycache__
+*~
+\#*\#
+venv/
+old/
+*.png
+*.egg-info
+**/.vscode
+.tox
+.coverage
+coverage.xml
+doc/build
