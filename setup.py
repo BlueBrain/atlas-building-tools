@@ -18,7 +18,9 @@ setup(
     python_requires='>=3.6.0',
     install_requires=[
         'click>=7.0',
+        'dataclasses>=0.7',
         'numpy>=1.16.3',
+        'scipy>=1.4.1',
         'voxcell>=2.6.3.dev1',
     ],
     tests_require=[

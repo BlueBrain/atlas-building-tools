@@ -17,19 +17,19 @@ from atlas_building_tools.app.utils import REQUIRED_PATH
     '--brain-annotation-ccfv2',
     type=REQUIRED_PATH,
     required=True,
-    help=('This the brain annotation file ' 'containing the most complete annotation.'),
+    help=('This brain annotation file contains the most complete annotation.'),
 )
 @click.option(
     '--fiber-annotation-ccfv2',
     type=REQUIRED_PATH,
     required=True,
-    help='Fiber annotation is not included in the CCF-v2 2011 annotation files',
+    help='Fiber annotation is not included in the CCF-v2 2011 annotation files.',
 )
 @click.option(
     '--brain-annotation-ccfv3',
     type=REQUIRED_PATH,
     required=True,
-    help=('More recent brain annotation file containing with missing leaf regions'),
+    help=('More recent brain annotation file with missing leaf regions.'),
 )
 @click.option('--output-path', required=True, help='path of file to write')
 def cmd(
@@ -40,7 +40,8 @@ def cmd(
     output_path,
 ):
     '''Generate and save the combined annotation file'''
-    # The annotation file is the annotation file containing the least complete annotation.
+    # The annotation file `brain_annotation_ccfv3` is the annotation file containing
+    # the least complete annotation.
 
     # There are so far only two use cases, on for each resolution (10 um or 25 um).
     # For a resolution of 10 um, the path arguments should be the following:
