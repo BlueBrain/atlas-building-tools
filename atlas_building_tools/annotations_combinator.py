@@ -1,4 +1,4 @@
-"""
+'''
 Module responsible for the combination of different annotation files.
 
 An annotation file is a volumetric nrrd file (voxellized 3D image) whose
@@ -14,18 +14,61 @@ in the more recent file.
 Annotations combination was introduced when AIBS released their CCF v3 Mouse Atlas in 2017,
 whose annotation file has missing regions with respect to the CCF v2 Mouse Atlas of 2011.
 So far, annotations combination handles only to this use case.
-"""
+'''
+import itertools
 import logging
-import numpy as np
+from typing import TYPE_CHECKING
+
+import numpy as np  # type: ignore
+from nptyping import NDArray  # type: ignore
+
+if TYPE_CHECKING:
+    import voxcell  # type: ignore
+
 
 logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
 
 
+def is_ancestor(
+    region_map: 'voxcell.RegionMap',
+    annotation_1: NDArray[np.int],
+    annotation_2: NDArray[np.int],
+) -> NDArray[np.bool]:
+    '''
+    Returns a binary mask encoding the is-ancestor relationship between two annotated arrays.
+
+    Args:
+        region_map: RegionMap of the full brain hierarchy.
+        annotation_1: array of region identifiers.
+        annotation_2: array of region identifiers.
+
+    Returns:
+      A boolean array of the same shape as `annotation_1`
+      and `annotation_2` encoding the is-ancestor relationship.
+
+    '''
+    ids = region_map.find('root', 'acronym', with_descendants=True)
+    ancestors = {id_: region_map.get(id_, 'id', with_ascendants=True) for id_ in ids}
+    is_ancestor_set = set(
+        (id_1, id_2)
+        for id_1, id_2 in itertools.product(ids, ids)
+        if id_1 in ancestors[id_2]
+    )
+
+    def is_ancestor_(id_1: int, id_2: int) -> bool:
+        return (id_1, id_2) in is_ancestor_set
+
+    return np.vectorize(is_ancestor_, otypes=[np.bool])(annotation_1, annotation_2)
+
+
 def combine_annotations(
-    region_map, brain_annotation_ccfv2, fiber_annotation_ccfv2, brain_annotation_ccfv3
+    region_map: 'voxcell.RegionMap',
+    brain_annotation_ccfv2: 'voxcell.VoxelData',
+    fiber_annotation_ccfv2: 'voxcell.VoxelData',
+    brain_annotation_ccfv3: 'voxcell.VoxelData',
 ):
-    """Combine `brain_annotation_ccfv2` with `brain_annotation_ccfv3` to reinstate missing regions.
+    '''Combine `brain_annotation_ccfv2` with `brain_annotation_ccfv3` to reinstate missing regions.
 
     The ccfv2 brain annotation file contains the most complete set
     of brain regions while the ccfv3 brain annotation file is a more recent version
@@ -42,32 +85,25 @@ def combine_annotations(
     The input files and the output file should all have the same resolution.
 
     Args:
-        region_map(voxcell.RegionMap): region map corresponding to the ccfv2/v3 annotations
-        brain_annotation_ccfv2(voxcell.VoxelData): reference annotation file.
-        fiber_annotation_ccfv2(voxcell.VoxelData): fiber annotation.
-        brain_annotation_ccfv3(voxcell.VoxelData): new annotation.
+        region_map: region map corresponding to the ccfv2/v3 annotations
+        brain_annotation_ccfv2: reference annotation file.
+        fiber_annotation_ccfv2: fiber annotation.
+        brain_annotation_ccfv3: new annotation.
 
     Returns:
         VoxelData object holding the combined annotation 3D array.
-    """
+    '''
     fiber_mask = fiber_annotation_ccfv2.raw > 0
     brain_annotation_ccfv2.raw[fiber_mask] = fiber_annotation_ccfv2.raw[fiber_mask]
-
-    def leaf_nodes(region_map, ids):
-        return [id_ for id_ in ids if region_map.is_leaf_id(id_)]
-
-    brain_annotation_ccfv3_non_zero_mask = brain_annotation_ccfv3.raw > 0
-    new_unique_ids = np.unique(
-        brain_annotation_ccfv3.raw[brain_annotation_ccfv3_non_zero_mask]
+    brain_annotation_ccfv3_mask = brain_annotation_ccfv3.raw > 0
+    ccfv3_ids = np.unique(brain_annotation_ccfv3.raw[brain_annotation_ccfv3_mask])
+    missing_ids = np.isin(brain_annotation_ccfv2.raw, ccfv3_ids, invert=True)
+    diff = (brain_annotation_ccfv2.raw != brain_annotation_ccfv3.raw) & missing_ids
+    v3_is_ancestor_of_v2 = brain_annotation_ccfv3_mask.copy()
+    v3_is_ancestor_of_v2[diff] = is_ancestor(
+        region_map, brain_annotation_ccfv3.raw[diff], brain_annotation_ccfv2.raw[diff],
     )
-    new_unique_ids = new_unique_ids[np.nonzero(new_unique_ids)]  # removes the zero id
-    leaves = leaf_nodes(region_map, new_unique_ids)
-    missing_ids = np.isin(brain_annotation_ccfv2.raw, new_unique_ids, invert=True)
-    combination_mask = (
-        brain_annotation_ccfv3_non_zero_mask
-        & np.isin(brain_annotation_ccfv3.raw, leaves, invert=True)
-        & missing_ids
-    )
+    combination_mask = missing_ids & v3_is_ancestor_of_v2
     raw = brain_annotation_ccfv3.raw.copy()
     raw[combination_mask] = brain_annotation_ccfv2.raw[combination_mask]
     return brain_annotation_ccfv2.with_data(raw)

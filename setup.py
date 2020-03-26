@@ -18,9 +18,14 @@ setup(
     python_requires='>=3.6.0',
     install_requires=[
         'click>=7.0',
-        'dataclasses>=0.7',
+        'dataclasses>=0.6',
+        'nptyping>=0.3.1',
+        'numba>=0.48.0',
         'numpy>=1.16.3',
+        'numpy-quaternion>=2019.10.3.10.26.21',
+        'pathlib>=1.0.1',
         'scipy>=1.4.1',
+        'typing>=3.7.4.1',
         'voxcell>=2.6.3.dev1',
     ],
     tests_require=[
