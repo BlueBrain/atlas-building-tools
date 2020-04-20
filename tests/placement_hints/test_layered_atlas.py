@@ -46,9 +46,9 @@ class Test_Layered_Atlas(unittest.TestCase):
         expected[expected == 507] = 0
         npt.assert_array_equal(volume, expected)
 
-    def test_create_layers_meshes(self):
+    def test_create_layer_meshes(self):
         volume = self.layered_atlas.volume
-        meshes = self.layered_atlas.create_layers_meshes(volume)
+        meshes = self.layered_atlas.create_layer_meshes(volume)
         for i, mesh in enumerate(meshes[:-1]):
             vertices = mesh.vertices
             assert np.all(vertices[:, 1] >= 0.8 * self.isocortex_mock.padding)
@@ -57,7 +57,6 @@ class Test_Layered_Atlas(unittest.TestCase):
                 <= 1.2 * self.isocortex_mock.padding
                 + (6 - i) * self.isocortex_mock.thickness
             )
-        npt.assert_array_equal(meshes[0].face_normals, -meshes[-1].face_normals)
 
     def test_compute_distances_to_layer_meshes(self):
         direction_vectors = np.zeros(

@@ -204,7 +204,7 @@ def compute_direction_vectors(
     '''
     if np.count_nonzero(bottom) == 0 or np.count_nonzero(top) == 0:
         raise AtlasBuildingToolsError(
-            'The bottom or the bottom part of the region is missing.\n'
+            'The bottom or the top part of the region is missing.\n'
             'Regiodesics cannot handle this incomplete input.'
         )
 

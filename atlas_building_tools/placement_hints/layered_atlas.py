@@ -102,7 +102,7 @@ class LayeredAtlas:
             region=self.region.raw,
         )
 
-    def create_layers_meshes(
+    def create_layer_meshes(
         self, layered_volume: NDArray[np.int]
     ) -> List['trimesh.Trimesh']:
         '''
@@ -149,19 +149,21 @@ class LayeredAtlas:
             len(meshes),
             self.acronym,
         )
+        full_mesh_bottom = meshes[0].copy()
+        # Inverting normals as we select the complement of the layered atlas
+        full_mesh_bottom.invert()
+        meshes.append(full_mesh_bottom)
         for i, mesh in tqdm(enumerate(meshes)):
             newmesh = centroid_outfacing_mesh(mesh)
             # This sometimes results in isolated faces which
             # cause ray intersection to fail.
             # So we trim them off by taking only the largest submesh.
             submeshes = newmesh.split(only_watertight=False)
-            big_mesh = np.argmax([len(submesh.vertices) for submesh in submeshes])
-            meshes[i] = submeshes[big_mesh]
-
-        full_mesh_bottom = meshes[0].copy()
-        # Inverting normals as we select the complement of the layered atlas
-        full_mesh_bottom.invert()
-        meshes.append(full_mesh_bottom)
+            if len(submeshes) > 0:
+                big_mesh = np.argmax([len(submesh.vertices) for submesh in submeshes])
+                meshes[i] = submeshes[big_mesh]
+            else:
+                meshes[i] = mesh
 
         return meshes
 
@@ -197,12 +199,12 @@ def save_problematic_volume(
 
 
 def _compute_dists_and_obtuse_angles(volume, layered_atlas, direction_vectors):
-    layers_meshes = layered_atlas.create_layers_meshes(volume)
+    layer_meshes = layered_atlas.create_layer_meshes(volume)
     # pylint: disable=fixme
     # TODO: compute max_smooth_error and use it as the value of rollback_distance
     # in the call of distances_from_voxels_to_meshes_wrt_dir()
     return distances_from_voxels_to_meshes_wrt_dir(
-        volume, layers_meshes, direction_vectors
+        volume, layer_meshes, direction_vectors
     )
 
 
@@ -224,10 +226,10 @@ def _dists_and_obtuse_angles(
             hemisphere,
             acronym,
         )
-        dists_to_layers_meshes, obtuse = _compute_dists_and_obtuse_angles(
+        dists_to_layer_meshes, obtuse = _compute_dists_and_obtuse_angles(
             hemisphere_volumes[hemisphere], layered_atlas, direction_vectors
         )
-        hemisphere_distances.append(dists_to_layers_meshes)
+        hemisphere_distances.append(dists_to_layer_meshes)
         hemisphere_obtuse_angles.append(obtuse)
     obtuse_angles = np.logical_or(
         hemisphere_obtuse_angles[LEFT], hemisphere_obtuse_angles[RIGHT]

@@ -81,8 +81,9 @@ def distances_to_mesh_wrt_dir(
         )
         # pylint: disable=logging-unsupported-format
         L.info(
-            'Proportion of intersecting rays: {:.5%}',
-            ray_ids.shape[0] / number_of_voxels,
+            'Proportion of intersecting rays: {:.3%}'.format(
+                ray_ids.shape[0] / number_of_voxels
+            )
         )
     return dist, wrong_side
 
@@ -193,7 +194,7 @@ def _compute_distances_to_mesh(
 
 def distances_from_voxels_to_meshes_wrt_dir(
     layers_volume: NDArray[int],
-    layers_meshes: List[trimesh.Trimesh],
+    layer_meshes: List[trimesh.Trimesh],
     directions: NDArray[float],
 ) -> Tuple[NDArray[float], NDArray[bool]]:
     '''
@@ -205,7 +206,7 @@ def distances_from_voxels_to_meshes_wrt_dir(
             Each voxel is labelled by an integer representing a layer.
             The higher is the label, the deeper is the layer.
             The value 0 represents a voxel that lies outside this volume.
-        layers_meshes: list of meshes representing the upper boundaries of the layers.
+        layer_meshes: list of meshes representing the upper boundaries of the layers.
         directions: array of shape (N, 3).
             The direction vectors of the voxels. Should be finite (not nan)
             wherever `layers_volume` > 0.
@@ -221,7 +222,7 @@ def distances_from_voxels_to_meshes_wrt_dir(
     directions = normalized(directions)
 
     # dists is a list of 3D numpy arrays, one for each layer
-    dists = np.full((len(layers_meshes),) + layers_volume.shape, np.nan)
+    dists = np.full((len(layer_meshes),) + layers_volume.shape, np.nan)
     any_obtuse_intersection = np.zeros(layers_volume.shape, dtype=np.bool)
 
     invalid_direction_vectors_mask = np.logical_and(
@@ -236,8 +237,8 @@ def distances_from_voxels_to_meshes_wrt_dir(
             UserWarning,
         )
     valid_mask = ~invalid_direction_vectors_mask
-    L.info('Computing distances for each of the %d meshes', len(layers_meshes))
-    for mesh_index, mesh in enumerate(layers_meshes):
+    L.info('Computing distances for each of the %d meshes', len(layer_meshes))
+    for mesh_index, mesh in enumerate(layer_meshes):
         below_indices, above_indices = _split_indices_along_layer(
             layers_volume, mesh_index + 1, valid_mask
         )

@@ -10,6 +10,7 @@ from atlas_building_tools.app import (
     direction_vectors,
     orientation_field,
     placement_hints,
+    region_splitter
 )
 
 
@@ -23,6 +24,7 @@ def main():
             'direction-vectors': direction_vectors.app,
             'orientation-field': orientation_field.cmd,
             'placement-hints': placement_hints.app,
+            'region-splitter': region_splitter.app
         },
     )
     app = click.version_option(VERSION)(app)
