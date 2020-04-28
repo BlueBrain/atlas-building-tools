@@ -6,11 +6,11 @@ import click
 from atlas_building_tools.version import VERSION
 
 from atlas_building_tools.app import (
-    combine_annotations,
+    combination,
     direction_vectors,
     orientation_field,
     placement_hints,
-    region_splitter
+    region_splitter,
 )
 
 
@@ -20,11 +20,11 @@ def main():
     app = click.Group(
         'atlas_building_tools',
         {
-            'annotations-combinator': combine_annotations.cmd,
+            'combination': combination.app,
             'direction-vectors': direction_vectors.app,
             'orientation-field': orientation_field.cmd,
             'placement-hints': placement_hints.app,
-            'region-splitter': region_splitter.app
+            'region-splitter': region_splitter.app,
         },
     )
     app = click.version_option(VERSION)(app)

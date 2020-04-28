@@ -4,7 +4,8 @@ import numpy.testing as npt
 
 import voxcell
 
-import atlas_building_tools.annotations_combinator as tested
+import atlas_building_tools.combination.annotations_combinator as tested
+
 
 def test_is_ancestor():
     hierachy = {
