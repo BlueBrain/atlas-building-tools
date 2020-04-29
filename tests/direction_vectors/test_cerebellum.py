@@ -2,9 +2,7 @@ import numpy as np
 import numpy.testing as npt
 
 from voxcell import VoxelData
-from atlas_building_tools.direction_vectors.cerebellum import (
-    compute_cerebellum_direction_vectors,
-)
+from atlas_building_tools.direction_vectors import cerebellum as tested
 
 
 def test_compute_cerebellum_direction_vectors():
@@ -18,7 +16,7 @@ def test_compute_cerebellum_direction_vectors():
     )  # Add 2-voxel void margin around the positive annotations
 
     cerebellum = VoxelData(cerebellum_raw, (25.0, 25.0, 25.0), offset=(1.0, 2.0, 3.0))
-    direction_vectors = compute_cerebellum_direction_vectors(cerebellum)
+    direction_vectors = tested.compute_direction_vectors(cerebellum)
     npt.assert_array_almost_equal(
         direction_vectors.voxel_dimensions, (25.0, 25.0, 25.0)
     )

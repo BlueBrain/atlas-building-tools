@@ -59,20 +59,20 @@ def test_mark_with_regiodesics_labels():
     expected = np.zeros((9, 9, 9), dtype=np.int)
     expected[:, :, 4] = RegiodesicsLabels.INTERIOR
     expected[:, :, 3] = RegiodesicsLabels.BOTTOM
+    expected[0, :, 4] = RegiodesicsLabels.SHELL
+    expected[8, :, 4] = RegiodesicsLabels.SHELL
+    expected[:, 0, 4] = RegiodesicsLabels.SHELL
+    expected[:, 8, 4] = RegiodesicsLabels.SHELL
     expected[:, :, 5] = RegiodesicsLabels.TOP
     npt.assert_array_equal(marked, expected)
 
 
 def test_compute_direction_vectors():
-    regiodesics_paths = {
-        'layer_segmenter': tested.find_regiodesics_exec_or_raise('layer_segmenter'),
-        'geodesics': tested.find_regiodesics_exec_or_raise('geodesics'),
-    }
     raw = np.zeros((8, 8, 8), dtype=np.int)
     raw[:, :, :2] = 1  # bottom
     raw[:, :, 2:6] = 2  # interior
     raw[:, :, 6:8] = 3  # top
-    direction_vectors = tested.compute_direction_vectors(raw == 1, raw == 2, raw == 3, regiodesics_paths)
+    direction_vectors = tested.compute_direction_vectors(raw == 1, raw == 2, raw == 3)
     expected = np.zeros(raw.shape + (3,))
     expected[:, :, :] = np.array([0.0, 0.0, 1.0])
     nan_mask = np.isnan(direction_vectors)

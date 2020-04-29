@@ -139,7 +139,7 @@ def test_compute_initial_field_with_shadings():
         333: -1,
         444: 1,
         555: 6,
-        666: 6
+        666: 6,
     }
     shadings = [
         # Inverted ids selection

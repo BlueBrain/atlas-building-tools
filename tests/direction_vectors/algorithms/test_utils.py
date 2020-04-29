@@ -99,38 +99,6 @@ class Test_quaternion_to_vector:
 
 
 class Test_vector_to_quaternion:
-    def test_single_vector(self):
-        quaternions = tested.vector_to_quaternion(np.array([0.0, 1.0, 0.0]))
-        npt.assert_almost_equal(quaternions, [1.0, 0.0, 0.0, 0.0])
-        quaternions = tested.vector_to_quaternion(np.array([1.0, 0.0, 0.0]))
-        npt.assert_almost_equal(quaternions, [1.0, 0.0, 0.0, -1.0] / np.sqrt(2.0))
-        quaternions = tested.vector_to_quaternion(np.array([0.0, 0.0, 1.0]))
-        npt.assert_almost_equal(quaternions, [1.0, 1.0, 0.0, 0.0] / np.sqrt(2.0))
-
-    def test_multiple_vectors(self):
-        field = np.array([[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
-        quaternions = tested.vector_to_quaternion(field)
-        npt.assert_almost_equal(
-            quaternions,
-            [
-                [1.0, 0.0, 0.0, 0.0],
-                [1.0, 0.0, 0.0, -1.0] / np.sqrt(2.0),
-                [1.0, 1.0, 0.0, 0.0] / np.sqrt(2.0),
-            ],
-        )
-
-    def test_y_gives_identity_quaternion(self):
-        quaternions = tested.vector_to_quaternion(np.array([[[0.0, 1.0, 0.0]]]))
-        npt.assert_almost_equal(quaternions, [[[1.0, 0.0, 0.0, 0]]])
-
-    def test_negative_y_gives_pi_rotation(self):
-        quaternions = tested.vector_to_quaternion(np.array([[[0, -1, 0]]]))
-        npt.assert_almost_equal(quaternions, [[[0.0, 1.0, 0.0, 0]]])
-        # check that this also works for non-unit quaternions
-        quaternions = tested.vector_to_quaternion(np.array([[[0.0, -1232.0, 0.0]]]))
-        npt.assert_almost_equal(quaternions, [[[0.0, 1.0, 0.0, 0]]])
-
-    # TODO: update vector_to_quaternion to handle non-unit vectors
     @pyt.mark.xfail
     def test_long_vector_gives_same_quat(self):
         npt.assert_almost_equal(
@@ -142,6 +110,13 @@ class Test_vector_to_quaternion:
 def test_quaternion_converters_consistency():
     vectors = tested.normalized(
         np.array([[1.0, 0.0, 0.0], [1.0, 2.0, 3.0], [3.0, 2.0, 3.0], [0.0, 2.0, 1.0]])
+    )
+    quaternions = tested.vector_to_quaternion(vectors)
+    npt.assert_almost_equal(
+        tested.quaternion_to_vector(quaternions), vectors, decimal=3
+    )
+    vectors = tested.normalized(
+        np.array([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]])
     )
     quaternions = tested.vector_to_quaternion(vectors)
     npt.assert_almost_equal(

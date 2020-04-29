@@ -1,15 +1,16 @@
-"""Function computing the direction vectors of the mouse cerebellum"""
-import numpy as np
-from voxcell import VoxelData
+'''Function computing the direction vectors of the mouse cerebellum'''
+import numpy as np  # type: ignore
+from voxcell import VoxelData  # type: ignore
 from atlas_building_tools.direction_vectors.algorithms.blur_gradient import (
     compute_initial_field,
-    compute_direction_vectors,
     RegionShading,
 )
 
+import atlas_building_tools.direction_vectors.algorithms.blur_gradient as blur_gradient
 
-def compute_cerebellum_direction_vectors(annotation):
-    """
+
+def compute_direction_vectors(annotation):
+    '''
     Computes cerebellum's direction vectors as the normalized gradient of a custom scalar field.
 
     The output direction vector field is computed as the normalized gradient
@@ -31,7 +32,7 @@ def compute_cerebellum_direction_vectors(annotation):
         VoxelData object whose numpy.ndarray is of shape (annotation.shape, 1),
         and holds a 3D unit vector field. The voxel dimensions and
         the offset coincide with those of the input.
-    """
+    '''
 
     # Flocculus
     flocculus_weights = {
@@ -49,7 +50,7 @@ def compute_cerebellum_direction_vectors(annotation):
     flocculus_field = compute_initial_field(
         annotation.raw, flocculus_weights, shading_on_flocculus_complement
     )
-    flocculus_direction_vectors = compute_direction_vectors(
+    flocculus_direction_vectors = blur_gradient.compute_direction_vectors(
         annotation.raw, flocculus_field, flocculus
     )
 
@@ -68,7 +69,7 @@ def compute_cerebellum_direction_vectors(annotation):
     lingula_field = compute_initial_field(
         annotation.raw, lingula_weights, shading_on_lingula_complement
     )
-    lingula_direction_vectors = compute_direction_vectors(
+    lingula_direction_vectors = blur_gradient.compute_direction_vectors(
         annotation.raw, lingula_field, lingula
     )
 
