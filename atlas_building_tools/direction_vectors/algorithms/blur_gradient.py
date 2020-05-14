@@ -21,7 +21,7 @@ the normalized gradient is returned.
 '''
 
 from dataclasses import dataclass
-import numpy as np
+import numpy as np  # type: ignore
 from atlas_building_tools.direction_vectors.algorithms.utils import (
     compute_blur_gradient,
 )

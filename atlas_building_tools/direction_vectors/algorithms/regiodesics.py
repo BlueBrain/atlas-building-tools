@@ -16,10 +16,12 @@ import logging
 from distutils.spawn import find_executable
 from tempfile import TemporaryDirectory
 from subprocess import check_call
-import numpy as np
-from scipy.signal import correlate
 
-from voxcell import VoxelData
+from nptyping import NDArray  # ignore: type
+import numpy as np  # ignore: type
+from scipy.signal import correlate  # ignore: type
+
+from voxcell import VoxelData  # ignore: type
 
 from atlas_building_tools.direction_vectors.algorithms.utils import zero_to_nan
 
@@ -40,15 +42,15 @@ class RegiodesicsLabels:  # pylint: disable=too-few-public-methods
     TOP = 4
 
 
-def find_regiodesics_exec_or_raise(executable_name):
+def find_regiodesics_exec_or_raise(executable_name: str) -> str:
     '''
     Find the specified Regiodesics executable. Raise if it wasn't found.
 
     Args:
-        executable_name(str): name of the Regiodesics executable,
+        executable_name: name of the Regiodesics executable,
             e.g., 'layer_segmenter' or 'geodesics'.
     Returns:
-        executable_path(str): a path to the quiered executable.
+        executable_path: a path to the quiered executable.
     Raises:
         FileExistsError if the executable cannot be found.
     '''
@@ -64,13 +66,13 @@ def find_regiodesics_exec_or_raise(executable_name):
     return executable_path
 
 
-def _popen_pipe_logging(tool, *args):
+def _popen_pipe_logging(tool: str, *args: str) -> None:
     '''
     Logging for the execution of a specified tool.
 
     Args:
-        tool(str): path to the executable to call.
-        args(dict): arguments specified for the execution
+        tool: path to the executable to call.
+        args: arguments specified for the execution
             of `tool`.
     '''
     L.info('Calling command: %s, \nwith args: %s', tool, args)
@@ -85,7 +87,7 @@ def compute_boundary(v_1, v_2):
     with a reference voxel. We apply a covolution of the filter with the labeled volume.
     In the resulting labeled volume, the `v_1`voxels with label > 8 are exactly those voxels
     that share a face with at least one voxel of `v_2`.
-    (The interior voxels of `v_1` have labels bounded by 7).
+    (The interior voxels of `v_1` have labels bounded above by 7).
 
     Args:
         v_1(numpy.ndarray): boolean 3D array holding the mask of the first volume.
@@ -108,30 +110,56 @@ def compute_boundary(v_1, v_2):
     return np.logical_and(v_1, full_volume > 8)
 
 
-def mark_with_regiodesics_labels(bottom, in_between, top):
+def _get_border_mask(region: NDArray[bool]) -> NDArray[bool]:
+    '''
+    Get the mask of the elements masked by `region` lying on the borders of the array.
+
+    Args:
+        region: 3D boolean array
+
+    Returns:
+        3D boolean array of the same shape as the input. It consists in a submask
+        for the elements masked by `region` whichlying on the borders of the input array.
+
+    '''
+    mask = np.zeros_like(region, dtype=bool)
+    shape = mask.shape
+    # pylint: disable=unsubscriptable-object
+    mask[[0, shape[0] - 1], :, :] = True
+    mask[:, [0, shape[1] - 1], :] = True
+    mask[:, :, [0, shape[2] - 1]] = True
+    return np.logical_and(mask, region)
+
+
+def mark_with_regiodesics_labels(
+    bottom: NDArray[bool], in_between: NDArray[bool], top: NDArray[bool]
+) -> NDArray[np.int8]:
     '''Given 3 volumes, find the boundaries between them.
 
     The volume of interest `in_between` is supposed to be surrounded by the `bottom` and the `top`
-     volumes, e.g, `bottom` is a lower layer and `bottom` is an upper layer.
+     volumes, e.g, `bottom` is a lower layer and `bottom` is an upper layer. It may have a
+     non-empty intersection with `bottom` and `top`.
 
     Args:
-        bottom(numpy.ndarray): boolean 3D mask of the bottom part.
-        in_between(numpy.ndarray): boolean 3D mask of the volume of interest.
-        top(numpy.ndarray): boolean 3D mask of the top part.
+        bottom: boolean 3D mask of the bottom part.
+        in_between: boolean 3D mask of the volume of interest.
+        top: boolean 3D mask of the top part.
 
     Returns:
         marked(numpy.ndarray), a 3D array of RegiodesicsLabels marking the interior of
             `in_between` and its boundaries shared with `bottom` and `top`.
     '''
+    shell = np.logical_or(
+        compute_boundary(in_between, np.logical_not(in_between)),
+        _get_border_mask(in_between),
+    )
 
-    shell = compute_boundary(in_between, np.logical_not(in_between))
-
-    def inner_boundary_with(mask):
+    def inner_boundary_with(mask: NDArray[bool]):
         '''
         Ensures that bottom and top boundaries lie in the computed shell.
 
         Args:
-            mask(numpy.ndarray): boolean 3D array holding the mask of the region whose boundary
+            mask: boolean 3D array holding the mask of the region whose boundary
                 intersects with `shell`.
         Returns:
             boolean 3D numpy.ndarray array.
@@ -147,7 +175,9 @@ def mark_with_regiodesics_labels(bottom, in_between, top):
     return marked
 
 
-def compute_direction_vectors(bottom, in_between, top, regiodesics_paths):
+def compute_direction_vectors(
+    bottom: NDArray[bool], in_between: NDArray[bool], top: NDArray[bool], **kwargs: str
+) -> NDArray[np.float32]:
     '''
     Generate direction vectors for the `in_between` volume.
 
@@ -158,13 +188,13 @@ def compute_direction_vectors(bottom, in_between, top, regiodesics_paths):
         bottom(numpy.ndarray): boolean 3D mask of the bottom part.
         in_between(numpy.ndarray): boolean 3D mask the volume of interest.
         top(numpy.ndarray): boolean 3D of the top part.
-        regiodesics_paths: paths to Regiodesics executable under the form of a dictionary.
-            whose keys are the strings 'layer_segmenter' and 'geodesics' and whose values
-            are the corresponding file paths (str).
-            Example: {
-                'layer_segmenter': Regiodesics/build/bin/layer_segmenter,
-                'geodesics': Regiodesics/build/bin/geodesics
-            }
+        kwargs: (optional) regiodesic_paths=`regiodesic_paths` where `regiodesics_paths`
+                is a dictionary whose keys are the strings 'layer_segmenter' and 'geodesics'
+                and whose values are the corresponding file paths (str).
+                Example: {
+                    'layer_segmenter': Regiodesics/build/bin/layer_segmenter,
+                    'geodesics': Regiodesics/build/bin/geodesics
+                }
 
     Returns:
         np.float32 numpy.ndarray of shape (W, L, D, 3) holding a field of unit
@@ -172,35 +202,20 @@ def compute_direction_vectors(bottom, in_between, top, regiodesics_paths):
         with np.nan coordinates.
     '''
     marked = mark_with_regiodesics_labels(bottom, in_between, top)
+    regiodesics_path = kwargs.get(
+        'regiodesics_path', find_regiodesics_exec_or_raise('direction_vectors')
+    )
     with TemporaryDirectory() as temp_dir:
         dummy_voxel_sizes = (1.0, 1.0, 1.0)
         VoxelData(marked.astype(np.int8), dummy_voxel_sizes).save_nrrd(
             str(Path(temp_dir, 'marked_int8.nrrd')), encoding='raw'
         )
-        VoxelData(marked.astype(np.uint16), dummy_voxel_sizes).save_nrrd(
-            str(Path(temp_dir, 'marked_uint16.nrrd')), encoding='raw'
-        )
         _popen_pipe_logging(
-            regiodesics_paths['layer_segmenter'],
-            '--segment',
+            regiodesics_path,
             '-s',
             str(Path(temp_dir, 'marked_int8.nrrd')),
-            str(Path(temp_dir, 'marked_uint16.nrrd')),
-            '-r',
-            str(Path(temp_dir, 'relativeDistance.nrrd')),
-            '-l',
-            str(Path(temp_dir, 'layer.nrrd')),
-        )
-        _popen_pipe_logging(
-            regiodesics_paths['geodesics'],
-            str(Path(temp_dir, 'marked_int8.nrrd')),
-            str(Path(temp_dir, 'relativeDistance.nrrd')),
-            '-u',
+            '-o',
             str(Path(temp_dir, 'direction_vectors.nrrd')),
-            '-d',
-            str(Path(temp_dir, 'distance.nrrd')),
-            '--output-height',
-            str(Path(temp_dir, 'height.nrrd')),
         )
         direction_vectors = VoxelData.load_nrrd(
             Path(temp_dir, 'direction_vectors.nrrd')
