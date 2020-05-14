@@ -9,6 +9,7 @@ from atlas_building_tools.app import (
     combine_annotations,
     direction_vectors,
     orientation_field,
+    placement_hints,
 )
 
 
@@ -21,6 +22,7 @@ def main():
             'annotations-combinator': combine_annotations.cmd,
             'direction-vectors': direction_vectors.app,
             'orientation-field': orientation_field.cmd,
+            'placement-hints': placement_hints.app,
         },
     )
     app = click.version_option(VERSION)(app)

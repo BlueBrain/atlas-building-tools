@@ -1,4 +1,4 @@
-'''Generate and save the direction vectors for different regions the mouse brain'''
+'''Generate and save the direction vectors for different regions of the mouse brain'''
 import logging
 import click  # type: ignore
 
@@ -31,9 +31,9 @@ def app(verbose):
 def cerebellum(annotation_path, output_path):
     '''Generate and save the direction vectors of the mouse Cerebellum'''
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
-    direction_vectors = cerebellum_.compute_direction_vectors(annotation)
+    dir_vectors = cerebellum_.compute_direction_vectors(annotation)
     voxcell.VoxelData(
-        direction_vectors, annotation.voxel_dimensions, offset=annotation.offset
+        dir_vectors, annotation.voxel_dimensions, offset=annotation.offset
     ).save_nrrd(output_path)
 
 
@@ -56,7 +56,9 @@ def isocortex(annotation_path, hierarchy_path, output_path):
     '''Generate and save the direction vectors of the mouse Isocortex'''
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
     region_map = voxcell.RegionMap.load_json(hierarchy_path)
-    direction_vectors = isocortex_.compute_direction_vectors(region_map, annotation)
+    dir_vectors = isocortex_.compute_direction_vectors(
+        region_map, annotation
+    )
     voxcell.VoxelData(
-        direction_vectors, annotation.voxel_dimensions, offset=annotation.offset
+        dir_vectors, annotation.voxel_dimensions, offset=annotation.offset
     ).save_nrrd(output_path)

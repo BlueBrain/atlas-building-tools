@@ -13,3 +13,4 @@ old/
 .coverage
 coverage.xml
 doc/build
+**/.mypy_cache

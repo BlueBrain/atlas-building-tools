@@ -19,19 +19,22 @@ setup(
     install_requires=[
         'click>=7.0',
         'dataclasses>=0.6',
-        'nptyping>=0.3.1',
+        'lazy>=1.4',
+        'networkx',
+        'nptyping==1.0.1',
         'numba>=0.48.0',
         'numpy>=1.16.3',
         'numpy-quaternion>=2019.10.3.10.26.21',
         'pathlib>=1.0.1',
+        'pynrrd>=0.4.0',
+        'rtree',
         'scipy>=1.4.1',
+        'tqdm>=4.44.1',
+        'trimesh>=3.6.18',
         'typing>=3.7.4.1',
         'voxcell>=2.6.3.dev1',
     ],
-    tests_require=[
-        'pytest>=4.4.0',
-        'mock>=2.0.0'
-    ],
+    tests_require=['pytest>=4.4.0', 'mock>=2.0.0'],
     packages=find_packages(),
     entry_points={
         'console_scripts': [
@@ -42,6 +45,6 @@ setup(
         'Development Status :: 2 - Pre-Alpha',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ],
 )

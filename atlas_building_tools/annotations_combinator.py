@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 import numpy as np  # type: ignore
 from nptyping import NDArray  # type: ignore
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     import voxcell  # type: ignore
 
 

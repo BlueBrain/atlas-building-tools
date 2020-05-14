@@ -1,5 +1,5 @@
 '''Low-level tools for the computation of direction vectors'''
-from typing import Tuple, Union
+from typing import Union
 from nptyping import NDArray  # type: ignore
 import numpy as np  # type: ignore
 from scipy.ndimage.filters import gaussian_filter  # type: ignore
@@ -7,11 +7,12 @@ import quaternion  # type: ignore
 
 import voxcell  # type: ignore
 
+from atlas_building_tools.utils import NumericArray
+
 # pylint: disable=invalid-name
 FloatArray = Union[
     NDArray[float], NDArray[np.float16], NDArray[np.float32], NDArray[np.float64]
 ]
-NumericArray = Union[NDArray[bool], NDArray[int], NDArray[float]]
 
 
 def zero_to_nan(field: FloatArray) -> None:
@@ -45,13 +46,15 @@ def normalize(vector_field: NumericArray):
 
     Zero vectors are turned into vectors with np.nan coordinates
     silently.
+    NaN vectors are unchanged and warnings are kept silent.
 
     Args:
         vector_field: vector field of floating point type and of shape (..., N)
          where N is the number of vector components.
     '''
     norm = np.linalg.norm(vector_field, axis=-1)
-    norm = np.where(norm > 0, norm, 1.0)
+    with np.errstate(invalid='ignore'):  # NaNs are expected
+        norm = np.where(norm > 0, norm, 1.0)
     vector_field /= norm[..., np.newaxis]
     zero_to_nan(vector_field)
 
@@ -70,9 +73,10 @@ def normalized(vector_field: NumericArray):
         normalized_:
             vector field of unit vectors of the same shape and the same type as `vector_field`.
     '''
-    normalized_ = voxcell.math_utils.normalize(vector_field)
-    zero_to_nan(normalized_)
-    return normalized_
+    with np.errstate(invalid='ignore'):
+        normalized_ = voxcell.math_utils.normalize(vector_field)
+        zero_to_nan(normalized_)
+        return normalized_
 
 
 def compute_blur_gradient(scalar_field: FloatArray, gaussian_stddev=3.0) -> FloatArray:
@@ -175,27 +179,3 @@ def vector_to_quaternion(vector_field: FloatArray) -> FloatArray:
         [0.0, 1.0, 0.0], vector_field[non_nan_mask]
     )
     return quaternions
-
-
-def split_into_halves(
-    volume: NumericArray, halfway_offset: int = 0,
-) -> Tuple[NumericArray, NumericArray]:
-    '''
-    Split input 3D volume into two halves along the z-axis.
-
-    Args:
-        volume: 3D numeric array.
-            halfway_offset: Optional offset used for the
-            splitting along the selected axis.
-    Returns:
-        tuple(left_volume, right_volume), the two halves of the
-        input volume. Each has the same shape as `volume`.
-        Voxels are zeroed for the `axis` values above, respectively
-        below, the half of the `axis` dimension.
-    '''
-    z_halfway = volume.shape[2] // 2 + halfway_offset
-    left_volume = volume.copy()
-    left_volume[..., z_halfway:] = 0
-    right_volume = volume.copy()
-    right_volume[..., :z_halfway] = 0
-    return left_volume, right_volume

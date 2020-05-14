@@ -15,21 +15,23 @@ shells, a.k.a lower and upper shells.
 
 This script is used to compute the mouse isocortex directions vectors.
 '''
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 from nptyping import NDArray  # type: ignore
 
 from voxcell import RegionMap, VoxelData  # type: ignore
 
-from atlas_building_tools.direction_vectors.algorithms.simple_blur_gradient import (
-    compute_direction_vectors as simple_blur_gradient,
+from atlas_building_tools.direction_vectors.algorithms import (
+    simple_blur_gradient,
+    regiodesics,
 )
-from atlas_building_tools.utils import load_region_map
-from atlas_building_tools.direction_vectors.algorithms.regiodesics import (
-    compute_direction_vectors as regiodesics,
-)
-from atlas_building_tools.direction_vectors.algorithms.utils import split_into_halves
+from atlas_building_tools.utils import load_region_map, split_into_halves
+
+ALGORITHMS: Dict[str, Callable] = {
+    'simple_blur_gradient': simple_blur_gradient.compute_direction_vectors,
+    'regiodesics': regiodesics.compute_direction_vectors,
+}
 
 
 def attributes_to_ids(
@@ -60,9 +62,6 @@ def attributes_to_ids(
     return list(ids)
 
 
-ALGORITHMS = ['simple_blur_gradient', 'regiodesics']
-
-
 def direction_vectors_for_hemispheres(
     landscape: Dict[str, NDArray[bool]],
     algorithm: str,
@@ -91,13 +90,15 @@ def direction_vectors_for_hemispheres(
             should be included as a source or a target for the former. The possible values are
             'source', 'target' or None. If the value is None, the opposite hemisphere is not used,
             neither as source, nor as target.
+        kwargs: (optional) Options specific to the underlying algorithm.
+            For regiodesics.compute_direction_vectors, the option regiodesics_path=str can be used
+             to indicate where the regiodesics executable is located. Otherwise this function will
+             attempt to find it by means of distutils.spawn.find_executable.
 
     Returns:
-        Array holding a vector field of unit vectors
-        defined on the `inside` 3D volume. The shape of this array
-        is (W, L, D, 3) if the shape of `inside` is (W, L, D).
-        Outside the `inside` volume, the returned direction vectors
-        have np.nan coordinates.
+        Array holding a vector field of unit vectors defined on the `inside` 3D volume. The shape
+        of this array is (W, L, D, 3) if the shape of `inside` is (W, L, D).
+        Outside the `inside` volume, the returned direction vectors have np.nan coordinates.
     '''
     set_opposite_hemisphere_as = (
         hemisphere_options['set_opposite_hemisphere_as']
@@ -120,12 +121,7 @@ def direction_vectors_for_hemispheres(
         )
 
     if algorithm not in ALGORITHMS:
-        raise ValueError('algorithm must be one of {}'.format(ALGORITHMS))
-
-    algo_functions = {
-        'simple_blur_gradient': simple_blur_gradient,
-        'regiodesics': regiodesics,
-    }
+        raise ValueError('algorithm must be one of {}'.format(ALGORITHMS.keys()))
 
     direction_vectors = np.full(
         landscape['inside'].shape + (3,), np.nan, dtype=np.float32
@@ -141,7 +137,7 @@ def direction_vectors_for_hemispheres(
             if set_opposite_hemisphere_as == 'target'
             else np.logical_and(landscape['target'], hemisphere)
         )
-        direction_vectors[hemisphere] = algo_functions[algorithm](
+        direction_vectors[hemisphere] = ALGORITHMS[algorithm](
             source, np.logical_and(landscape['inside'], hemisphere), target, **kwargs
         )[hemisphere]
     return direction_vectors

@@ -18,11 +18,17 @@ from atlas_building_tools.direction_vectors.algorithms.regiodesics import (
 )
 from atlas_building_tools.utils import load_region_map, get_region_mask
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from voxcell import VoxelData, RegionMap  # type: ignore
 
 L = logging.getLogger(__name__)
-LAYER_ENDINGS = '^(.*)[1|2|3|4|5|6].[/|a|b]?[3]?$'
+# The endings of names and acronyms in the 6 layers of the mouse isocortex are:
+#  * 1, 2, 3, 4, 5
+#  * 2/3
+#  * 6a, 6b
+# Reference: AIBS 1.json as of 2020/04.
+# We search for these endings with the following regular expression:
+LAYER_ENDINGS = '^([a-zA-Z]*-?[a-zA-Z]+)(?:[1-5]|2/3|6[ab])$'
 
 # pylint: disable=fixme
 # TODO: get layered subregions, excluding unrepresented
@@ -58,6 +64,7 @@ def get_isocortical_regions(
         if search is not None:
             acronym = search.group(1)
             acronyms |= {acronym}
+
     return sorted(list(acronyms))
 
 
