@@ -3,6 +3,7 @@ Function computing the direction vectors of the mouse isocortex
 '''
 import re
 import logging
+import warnings
 from typing import List, TYPE_CHECKING, Union
 
 import numpy as np  # type: ignore
@@ -17,11 +18,13 @@ from atlas_building_tools.direction_vectors.algorithms.regiodesics import (
     find_regiodesics_exec_or_raise,
 )
 from atlas_building_tools.utils import load_region_map, get_region_mask
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 if TYPE_CHECKING:  # pragma: no cover
     from voxcell import VoxelData, RegionMap  # type: ignore
 
 L = logging.getLogger(__name__)
+logging.captureWarnings(True)
 # The endings of names and acronyms in the 6 layers of the mouse isocortex are:
 #  * 1, 2, 3, 4, 5
 #  * 2/3
@@ -86,7 +89,7 @@ def compute_direction_vectors(
     direction_vectors = np.full(brain_regions.shape + (3,), np.nan)
     region_map = load_region_map(region_map)
     # Get the highest-level regions of the isocortex: ACAd, ACAv, AId, AIp, AIv, ...
-    # In the AIBS mouse ccfv3 annotation, there 43 isocortical regions.
+    # In the AIBS mouse ccfv3 annotation, there are 43 isocortical regions.
     regions = get_isocortical_regions(brain_regions.raw, region_map)
 
     for region in regions:
@@ -100,19 +103,32 @@ def compute_direction_vectors(
             ]
         )
         voxel_data = brain_regions.with_data(brain_regions.raw[aabb_slice])
-        region_direction_vectors = layer_based_direction_vectors(
-            region_map,
-            voxel_data,
-            {
-                'source': [('acronym', '@.*6[b]$')],
-                'inside': [('acronym', region)],
-                'target': [('acronym', '@.*1$')],
-            },
-            algorithm='regiodesics',
-            hemisphere_options={'set_opposite_hemisphere_as': 'target'},
-            regiodesics_path=find_regiodesics_exec_or_raise('direction_vectors'),
-        )
-        direction_vectors[aabb_slice] = region_direction_vectors
+        try:
+            region_direction_vectors = layer_based_direction_vectors(
+                region_map,
+                voxel_data,
+                {
+                    'source': [('acronym', '@.*6[ab]$')],
+                    'inside': [('acronym', region)],
+                    'target': [('acronym', '@.*1$')],
+                },
+                algorithm='regiodesics',
+                hemisphere_options={'set_opposite_hemisphere_as': 'target'},
+                regiodesics_path=find_regiodesics_exec_or_raise('direction_vectors'),
+            )
+        except AtlasBuildingToolsError as error:
+            L.warning(error)
+            L.warning(
+                'Direction vectors computation failed for region %s: direction vectors are '
+                'set to (NaN, NaN, NaN) in this region.',
+                region,
+            )
+            continue
+
+        region_mask = region_mask[aabb_slice]
+        direction_vectors[aabb_slice][region_mask] = region_direction_vectors[
+            region_mask
+        ]
         del region_direction_vectors
 
     # Warns about generated NaN vectors within Isocortex
@@ -124,6 +140,8 @@ def compute_direction_vectors(
         )
     )
     if nans > 0:
-        L.warning('NaN direction_vectors in {:.5%} of isocortical voxels'.format(nans))
+        warnings.warn(
+            'NaN direction vectors in {:.5%} of isocortical voxels'.format(nans)
+        )
 
     return direction_vectors

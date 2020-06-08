@@ -70,8 +70,8 @@ def split_into_halves(
     Returns:
         tuple(left_volume, right_volume), the two halves of the
         input volume. Each has the same shape as `volume`.
-        Voxels are zeroed for the `axis` values above, respectively
-        below, the half of the `axis` dimension.
+        Voxels are zeroed for the z-values above, respectively
+        below, the half of the z-dimension.
     '''
     z_halfway = volume.shape[2] // 2 + halfway_offset
     left_volume = volume.copy()

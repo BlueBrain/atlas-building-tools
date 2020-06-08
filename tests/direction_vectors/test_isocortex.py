@@ -1,6 +1,8 @@
 from pathlib import Path
+import warnings
 import numpy as np
 import numpy.testing as npt
+from unittest.mock import patch
 
 
 from voxcell import RegionMap, VoxelData
@@ -60,3 +62,33 @@ def test_compute_direction_vectors():
     check_direction_vectors(
         direction_vectors, raw > 0, {'opposite': 'target', 'strict': False}
     )
+
+
+def test_compute_direction_vectors_with_missing_bottom():
+    # Two high-level regions, namely ACAd and ACAv
+    # with layers 1, 2/3, 5
+    # Layer 6 is missing and troubles are expected!
+    raw = np.zeros((16, 16, 16), dtype=np.int)
+
+    # ACAd5
+    raw[3:8, 3:12, 4] = 1015
+    raw[3:8, 3:12, 11] = 1015
+    # ACAd2/3
+    raw[3:8, 3:12, 5:7] = 211
+    raw[3:8, 3:12, 9:11] = 211
+    # ACAd1
+    raw[3:8, 3:12, 7:9] = 935
+
+    # ACAv5
+    raw[8:12, 3:12, 4] = 772
+    raw[8:12, 3:12, 11] = 772
+    # ACAv2/3
+    raw[8:12, 3:12, 5:7] = 296
+    raw[8:12, 3:12, 9:11] = 296
+    # ACAv1
+    raw[8:12, 3:12, 7:9] = 588
+
+    voxel_data = VoxelData(raw, (1.0, 1.0, 1.0))
+    with warnings.catch_warnings(record=True) as w:
+        tested.compute_direction_vectors(HIERARCHY_PATH, voxel_data)
+        assert "NaN" in str(w[-1].message)

@@ -24,6 +24,7 @@ from scipy.signal import correlate  # ignore: type
 from voxcell import VoxelData  # ignore: type
 
 from atlas_building_tools.direction_vectors.algorithms.utils import zero_to_nan
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
@@ -201,6 +202,12 @@ def compute_direction_vectors(
         3D vectors over `in_between`. Voxels outside `in_between` are assigned a 3D vector
         with np.nan coordinates.
     '''
+    if np.count_nonzero(bottom) == 0 or np.count_nonzero(top) == 0:
+        raise AtlasBuildingToolsError(
+            'The bottom or the bottom part of the region is missing.\n'
+            'Regiodesics cannot handle this incomplete input.'
+        )
+
     marked = mark_with_regiodesics_labels(bottom, in_between, top)
     regiodesics_path = kwargs.get(
         'regiodesics_path', find_regiodesics_exec_or_raise('direction_vectors')

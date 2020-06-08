@@ -7,6 +7,7 @@ from atlas_building_tools.direction_vectors.algorithms import regiodesics as tes
 from atlas_building_tools.direction_vectors.algorithms.regiodesics import (
     RegiodesicsLabels,
 )
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 
 @patch(
@@ -77,3 +78,11 @@ def test_compute_direction_vectors():
     expected[:, :, :] = np.array([0.0, 0.0, 1.0])
     nan_mask = np.isnan(direction_vectors)
     npt.assert_array_almost_equal(direction_vectors[~nan_mask], expected[~nan_mask])
+
+
+def test_compute_direction_vectors_exception():
+    raw = np.zeros((8, 8, 8), dtype=np.int)
+    raw[:, :, 2:6] = 2  # interior
+    raw[:, :, 6:8] = 3  # top
+    with pytest.raises(AtlasBuildingToolsError):
+        tested.compute_direction_vectors(raw == 1, raw == 2, raw == 3)

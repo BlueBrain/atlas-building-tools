@@ -69,7 +69,7 @@ def _placement_hints(
         flip_direction_vectors=flip_direction_vectors,
         has_hemispheres=has_hemispheres,
     )
-    with open(Path(output_dir, 'distance_report.json'), mode='w') as file_:
+    with open(Path(output_dir, 'distance_report.json'), mode='w+') as file_:
         json.dump(distances_report, file_)
     save_placement_hints(
         distances_info['distance_to_layers_meshes'],
