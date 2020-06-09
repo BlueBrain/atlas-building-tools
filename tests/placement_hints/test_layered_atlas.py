@@ -59,12 +59,12 @@ class Test_Layered_Atlas(unittest.TestCase):
             )
         npt.assert_array_equal(meshes[0].face_normals, -meshes[-1].face_normals)
 
-    def test_compute_distances_to_layers_meshes(self):
+    def test_compute_distances_to_layer_meshes(self):
         direction_vectors = np.zeros(
             self.isocortex_mock.annotation.raw.shape + (3,), dtype=np.float
         )
         direction_vectors[self.isocortex_mock.annotation.raw > 0] = (0.0, 1.0, 0.0)
-        distances = tested.compute_distances_to_layers_meshes(
+        distances = tested.compute_distances_to_layer_meshes(
             'Isocortex',
             self.layered_atlas.annotation,
             self.layered_atlas.region_map,
@@ -76,7 +76,7 @@ class Test_Layered_Atlas(unittest.TestCase):
         assert atlas.layer_regexps == self.layered_atlas.layer_regexps
         assert atlas.annotation == self.layered_atlas.annotation
 
-        dist_info = distances['distances_to_layers_meshes'][:-1]
+        dist_info = distances['distances_to_layer_meshes'][:-1]
         for i, ids in enumerate(self.isocortex_mock.layer_ids):
             layer_mask = np.isin(atlas.annotation.raw, ids)
             layer_index = 6 - i

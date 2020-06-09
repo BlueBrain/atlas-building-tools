@@ -4,6 +4,7 @@ distances to boundary meshes with respect to voxels direction vectors.
 '''
 
 import logging
+import warnings
 
 from typing import Dict, List, Optional, TYPE_CHECKING, Tuple, Union
 from nptyping import NDArray  # type: ignore
@@ -26,6 +27,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 logging.basicConfig(level=logging.INFO)
+logging.captureWarnings(True)
 L = logging.getLogger(__name__)
 
 
@@ -34,7 +36,6 @@ def distances_to_mesh_wrt_dir(
     origins: NDArray[float],
     directions: NDArray[float],
     backward: bool = False,
-    chunk_length: int = None,
 ) -> Tuple[NDArray[float], NDArray[bool]]:
     '''
     Compute the distances from `origins` to the input mesh along `directions`.
@@ -53,10 +54,6 @@ def distances_to_mesh_wrt_dir(
                   still uses unnegated directions.
                   This option is intended to be used to check the locations
                   of deeper boundaries (e.g. L5, L6 for L4 voxels)
-        chunk_length: (optional) if specified, the computation will proceed
-                           by chunks of length chunk_length.
-                           Otherwise the chunk length defaults to the common length
-                           of the origins and directions arrays.
 
     Returns:
         float array(N, ) array holding the distance of each voxel
@@ -71,10 +68,8 @@ def distances_to_mesh_wrt_dir(
     intersector = ray.RayMeshIntersector(mesh)
     number_of_voxels = directions.shape[0]
     assert origins.shape[0] == number_of_voxels
-    if chunk_length is None:
-        chunk_length = number_of_voxels
     locations, ray_ids, triangle_ids = memory_efficient_intersection(
-        intersector, chunk_length, origins, directions * sign
+        intersector, origins, directions * sign
     )
     dist = np.full(number_of_voxels, np.nan)
     wrong_side = np.zeros(number_of_voxels, dtype=np.bool)
@@ -84,12 +79,18 @@ def distances_to_mesh_wrt_dir(
         wrong_side[ray_ids] = is_obtuse_angle(
             directions[ray_ids], mesh.face_normals[triangle_ids]
         )
-        L.info('Proportion intersecting: %f', ray_ids.shape[0] / number_of_voxels)
+        # pylint: disable=logging-unsupported-format
+        L.info(
+            'Proportion of intersecting rays: {:.5%}',
+            ray_ids.shape[0] / number_of_voxels,
+        )
     return dist, wrong_side
 
 
 def _split_indices_along_layer(
-    layers_volume: NDArray[int], layer: int
+    layers_volume: NDArray[int],
+    layer: int,
+    valid_direction_vectors_mask: NDArray[bool],
 ) -> Tuple[List[NDArray[int]], List[NDArray[int]]]:
     '''
     Separate in two groups the voxels in `layers_volume` according to
@@ -104,73 +105,44 @@ def _split_indices_along_layer(
             Each voxel is labelled by an integer representing a layer.
             The higher is the label, the deeper is the layer.
             The value 0 represents a voxel that lies outside this volume.
+        layer: the layer label identifying which layer to use for splitting.
+        valid_direction_vectors_mask: 3D boolean mask for the voxels with valid direction vectors.
+            Voxels whose direction vectors are invalid, i.e., of the form (NaN, NaN, NaN) are
+            skipped.
+
     Returns:
         (below_indices, above_indices): a pair of lists. Each list has length 3. An item
             in a list is a one-dimensional numpy array holding the
             indices of the coordinate corresponding to the item index.
 
     '''
-    below_indices = np.nonzero(layers_volume >= layer)
-    above_indices = np.nonzero(np.logical_and(layers_volume < layer, layers_volume > 0))
+    below_indices = np.nonzero(
+        np.logical_and(layers_volume >= layer, valid_direction_vectors_mask)
+    )
+    above_mask = np.logical_and(layers_volume < layer, layers_volume > 0)
+    above_indices = np.nonzero(np.logical_and(above_mask, valid_direction_vectors_mask))
     return below_indices, above_indices
 
 
-def _distances_from_voxels_to_meshes_wrt_dir(
-    layers_volume: NDArray[int],
-    layers_meshes: List[trimesh.Trimesh],
+# pylint: disable=too-many-arguments
+def _compute_distances_to_mesh(
     directions: NDArray[float],
+    dists: NDArray[float],
+    any_obtuse_intersection: NDArray[bool],
+    voxel_indices: List[NDArray[int]],
+    mesh: 'trimesh.Trimesh',
+    index: int,
+    backward: bool = False,
     rollback_distance: int = 4,
-) -> Tuple[NDArray[float], NDArray[bool]]:
-    # pylint: disable=too-many-locals
+) -> None:
     '''
-    For each voxel of the layers volume, compute the distance to each layer mesh along the
-    the voxel direction vector.
+        Compute distances from voxels to `mesh` along direction vectors.
 
-    Args:
-        layers_volume: volume enclosed by the union of all layers.
-            Each voxel is labelled by an integer representing a layer.
-            The higher is the label, the deeper is the layer.
-            The value 0 represents a voxel that lies outside this volume.
-        layers_meshes: list of meshes representing the upper boundaries of the layers.
-        directions: array of shape (N, 3).
-            The direction vectors of the voxels. Should be finite (not nan)
-            wherever `layers_volume` > 0.
-        rollback_distance: how far to step back along the directions before
-            computing distances. Should be >= the max Hausdorff distance of the meshes from the
-            voxelized layers it represents. This offset for the ray origins allows to obtain
-            more valid intersections for voxels close to the mesh. The default value 4 was found by
-            trials and errors.
+        Computations are based on ray-mesh intersections.
+        This funcion fill the `dists` array with the outcome.
 
-    Returns:
-        Tuple (dists, any_obtuse_intersection).
-        dists: 4D numpy array interpreted as a 1D array of 3D distances arrays, one for each layer.
-            A distances array is float 3D numpy array which holds the distance
-            of every voxel in `layers_volume` (wrt to its direction vector) to a fixed layer mesh.
-        any_obtuse_intersection: mask of voxels where the intersection with
-            a mesh resulted in an obtuse angle between the face and the direction vector.
-    '''
-    directions = normalized(directions)
-
-    # dists is a list of 3D numpy arrays, one for each layer
-    dists = np.full((len(layers_meshes),) + layers_volume.shape, np.nan)
-    any_obtuse_intersection = np.zeros(layers_volume.shape, dtype=np.bool)
-
-    # pylint: disable=too-many-arguments
-    def compute_distances_to_mesh(
-        dists: NDArray[float],
-        any_obtuse_intersection: NDArray[bool],
-        voxel_indices: List[NDArray[int]],
-        mesh: 'trimesh.Trimesh',
-        index: int,
-        backward: bool = False,
-    ) -> None:
-        '''
-         Compute distances from voxels to `mesh` along direction vectors.
-
-         Computations are based on ray-mesh intersections.
-         This funcion fill the `dists` array with the outcome.
-
-         Args:
+        Args:
+            directions(array(N, 3)): direction vectors to compute along.
             dists: dists: 3D distances array corresponding to layer `mesh_index` + 1.
                 A distances array is float 3D numpy array which holds the distance
                 of every voxel in the underlying volume (wrt to its direction vector) to a fixed
@@ -186,43 +158,92 @@ def _distances_from_voxels_to_meshes_wrt_dir(
             index: index of the mesh or its corresponding layer.
             backward: (Optional) If True, the direction vectors are used as is to cast rays.
                 Otherwise, direction vectors are negated.
+            rollback_distance: (Optional) how far to step back along the directions before
+                computing distances. Should be >= the max Hausdorff distance of the meshes from the
+                voxelized layers it represents. This offset for the ray origins allows to obtain
+                more valid intersections for voxels close to the mesh. The default value 4 was found
+                by trials and errors.
 
-        '''
-        if len(voxel_indices[0]) == 0:
-            return
-
-        direction_vectors = directions[voxel_indices]
-        # Adjusted ray origin: voxel position  -  an added buffer along direction
-        sign = -1 if backward else 1
-        origins = (
-            np.transpose(voxel_indices)
-            + 0.5
-            - direction_vectors * (sign * rollback_distance)
-        )
-        L.info(
-            'Computing distances for the %s mesh with index %d ...',
-            'lower' if backward is False else 'upper',
-            index,
-        )
-        dist, wrong = distances_to_mesh_wrt_dir(
-            mesh, origins, direction_vectors, backward=backward, chunk_length=15000
-        )
-        dist -= sign * rollback_distance
-        with np.errstate(invalid='ignore'):
-            dist[(dist * sign) < 0] = 0
-
-        # Set distances
-        dists[voxel_indices] = dist
-        any_obtuse_intersection[voxel_indices] += wrong
+    '''
+    if len(voxel_indices[0]) == 0:
         return
 
+    # Adjusted ray origin: voxel position  -  an added buffer along direction
+    sign = -1 if backward else 1
+    origins = (
+        np.transpose(voxel_indices) + 0.5 - directions * (sign * rollback_distance)
+    )
+    L.info(
+        'Computing distances for the %s mesh with index %d ...',
+        'lower' if backward is False else 'upper',
+        index,
+    )
+    dist, wrong = distances_to_mesh_wrt_dir(
+        mesh, origins, directions, backward=backward
+    )
+    dist -= sign * rollback_distance
+    with np.errstate(invalid='ignore'):
+        dist[(dist * sign) < 0] = 0
+
+    # Set distances
+    dists[voxel_indices] = dist
+    any_obtuse_intersection[voxel_indices] += wrong
+    return
+
+
+def distances_from_voxels_to_meshes_wrt_dir(
+    layers_volume: NDArray[int],
+    layers_meshes: List[trimesh.Trimesh],
+    directions: NDArray[float],
+) -> Tuple[NDArray[float], NDArray[bool]]:
+    '''
+    For each voxel of the layers volume, compute the distance to each layer mesh along the
+    the voxel direction vector.
+
+    Args:
+        layers_volume: volume enclosed by the union of all layers.
+            Each voxel is labelled by an integer representing a layer.
+            The higher is the label, the deeper is the layer.
+            The value 0 represents a voxel that lies outside this volume.
+        layers_meshes: list of meshes representing the upper boundaries of the layers.
+        directions: array of shape (N, 3).
+            The direction vectors of the voxels. Should be finite (not nan)
+            wherever `layers_volume` > 0.
+
+    Returns:
+        Tuple (dists, any_obtuse_intersection).
+        dists: 4D numpy array interpreted as a 1D array of 3D distances arrays, one for each layer.
+            A distances array is float 3D numpy array which holds the distance
+            of every voxel in `layers_volume` (wrt to its direction vector) to a fixed layer mesh.
+        any_obtuse_intersection: mask of voxels where the intersection with
+            a mesh resulted in an obtuse angle between the face and the direction vector.
+    '''
+    directions = normalized(directions)
+
+    # dists is a list of 3D numpy arrays, one for each layer
+    dists = np.full((len(layers_meshes),) + layers_volume.shape, np.nan)
+    any_obtuse_intersection = np.zeros(layers_volume.shape, dtype=np.bool)
+
+    invalid_direction_vectors_mask = np.logical_and(
+        np.isnan(np.linalg.norm(directions, axis=-1)), (layers_volume > 0)
+    )
+    if np.any(invalid_direction_vectors_mask):
+        warnings.warn(
+            'NaN direction vectors assigned to {:.5%} of the voxels.'
+            ' Consider interpolating invalid vectors beforehand.'.format(
+                np.mean(invalid_direction_vectors_mask[layers_volume > 0])
+            ),
+            UserWarning,
+        )
+    valid_mask = ~invalid_direction_vectors_mask
     L.info('Computing distances for each of the %d meshes', len(layers_meshes))
     for mesh_index, mesh in enumerate(layers_meshes):
         below_indices, above_indices = _split_indices_along_layer(
-            layers_volume, mesh_index + 1
+            layers_volume, mesh_index + 1, valid_mask
         )
         for part, backward in [(below_indices, False), (above_indices, True)]:
-            compute_distances_to_mesh(
+            _compute_distances_to_mesh(
+                directions[part],
                 dists[mesh_index],
                 any_obtuse_intersection,
                 part,
@@ -297,15 +318,15 @@ def report_problems(
     '''
     report = {}
     mask = voxel_data.raw > 0
-    not_intersect_bottom = np.logical_and(np.isnan(distances[0]), mask)
-    not_intersect_top = np.logical_and(np.isnan(distances[-1]), mask)
+    do_not_intersect_bottom = np.logical_and(np.isnan(distances[-1]), mask)
+    do_not_intersect_top = np.logical_and(np.isnan(distances[0]), mask)
     tolerance = voxel_data.voxel_dimensions[0] * 2
     report[
         'Proportion of voxels whose rays do not intersect with the bottom mesh'
-    ] = np.mean(not_intersect_bottom[mask])
+    ] = np.mean(do_not_intersect_bottom[mask])
     report[
         'Proportion of voxels whose rays do not intersect with the top mesh'
-    ] = np.mean(not_intersect_top[mask])
+    ] = np.mean(do_not_intersect_top[mask])
     report[
         'Proportion of voxels whose rays make an obtuse angle '
         'with the mesh normal at the intersection point'
@@ -325,8 +346,8 @@ def report_problems(
     problematic_volume = np.full(mask.shape, False)
     for problem in [
         obtuse_intersection,
-        not_intersect_bottom,
-        not_intersect_top,
+        do_not_intersect_bottom,
+        do_not_intersect_top,
         too_thick,
     ]:
         problematic_volume = np.logical_or(problematic_volume, problem)

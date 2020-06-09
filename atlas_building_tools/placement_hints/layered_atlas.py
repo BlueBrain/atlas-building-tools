@@ -15,7 +15,7 @@ import numpy as np  # type: ignore
 from lazy import lazy  # type: ignore
 
 from atlas_building_tools.distances.distances_to_meshes import (
-    _distances_from_voxels_to_meshes_wrt_dir,
+    distances_from_voxels_to_meshes_wrt_dir,
     fix_disordered_distances,
 )
 from atlas_building_tools.placement_hints.utils import layers_volume
@@ -200,8 +200,8 @@ def _compute_dists_and_obtuse_angles(volume, layered_atlas, direction_vectors):
     layers_meshes = layered_atlas.create_layers_meshes(volume)
     # pylint: disable=fixme
     # TODO: compute max_smooth_error and use it as the value of rollback_distance
-    # in the call of _distances_from_voxels_to_meshes_wrt_dir()
-    return _distances_from_voxels_to_meshes_wrt_dir(
+    # in the call of distances_from_voxels_to_meshes_wrt_dir()
+    return distances_from_voxels_to_meshes_wrt_dir(
         volume, layers_meshes, direction_vectors
     )
 
@@ -233,15 +233,15 @@ def _dists_and_obtuse_angles(
         hemisphere_obtuse_angles[LEFT], hemisphere_obtuse_angles[RIGHT]
     )
     # Merging the distances arrays of the two hemispheres
-    distances_to_layers_meshes = hemisphere_distances[LEFT]
+    distances_to_layer_meshes = hemisphere_distances[LEFT]
     right_hemisphere_mask = hemisphere_volumes[RIGHT] > 0
-    distances_to_layers_meshes[:, right_hemisphere_mask] = hemisphere_distances[RIGHT][
+    distances_to_layer_meshes[:, right_hemisphere_mask] = hemisphere_distances[RIGHT][
         :, right_hemisphere_mask
     ]
-    return distances_to_layers_meshes, obtuse_angles
+    return distances_to_layer_meshes, obtuse_angles
 
 
-def compute_distances_to_layers_meshes(  # pylint: disable=too-many-arguments
+def compute_distances_to_layer_meshes(  # pylint: disable=too-many-arguments
     acronym: str,
     annotation: 'VoxelData',
     region_map: 'RegionMap',
@@ -280,7 +280,7 @@ def compute_distances_to_layers_meshes(  # pylint: disable=too-many-arguments
             obtuse_angles: 3D boolean array indicating which voxels have rays
                 intersecting a layer boundary with an obtuse angle. The direction vectors
                 of such voxels are considered as problematic.
-            distances_to_layers_meshes(numpy.ndarray): 4D float array of shape
+            distances_to_layer_meshes(numpy.ndarray): 4D float array of shape
                 (number of layers + 1, W, H, D) holding the distances from
                 voxel centers to the upper boundaries of layers wrt to voxel direction vectors.
 
@@ -289,14 +289,14 @@ def compute_distances_to_layers_meshes(  # pylint: disable=too-many-arguments
         direction_vectors = -direction_vectors
 
     layered_atlas = LayeredAtlas(acronym, annotation, region_map, layer_regexps)
-    distances_to_layers_meshes, obtuse_angles = _dists_and_obtuse_angles(
+    distances_to_layer_meshes, obtuse_angles = _dists_and_obtuse_angles(
         acronym, layered_atlas, direction_vectors, has_hemispheres
     )
     L.info('Fixing disordered distances ...')
-    fix_disordered_distances(distances_to_layers_meshes)
+    fix_disordered_distances(distances_to_layer_meshes)
 
     return {
         'layered_atlas': layered_atlas,
-        'distances_to_layers_meshes': distances_to_layers_meshes,
+        'distances_to_layer_meshes': distances_to_layer_meshes,
         'obtuse_angles': obtuse_angles,
     }

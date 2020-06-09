@@ -1,3 +1,4 @@
+import warnings
 import trimesh
 import numpy as np
 import pytest as pyt
@@ -112,7 +113,7 @@ class Test_distances_to_mesh_wrt_dir:
         assert not wrong_side[0]
 
 
-class Test__distances_from_voxels_to_meshes_wrt_dir:
+class Test_distances_from_voxels_to_meshes_wrt_dir:
     def test_one_layer(self):
         test_layervol = np.array([[[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0]]])
         bot_mesh = trimesh.Trimesh(
@@ -135,7 +136,7 @@ class Test__distances_from_voxels_to_meshes_wrt_dir:
             ]
         )
 
-        distances, wrong_side = tested._distances_from_voxels_to_meshes_wrt_dir(
+        distances, wrong_side = tested.distances_from_voxels_to_meshes_wrt_dir(
             test_layervol, [top_mesh, bot_mesh], principal_axes
         )
 
@@ -192,7 +193,13 @@ class Test__distances_from_voxels_to_meshes_wrt_dir:
             ]
         )
         with pyt.warns(RuntimeWarning):
-            tested._distances_from_voxels_to_meshes_wrt_dir(
+            tested.distances_from_voxels_to_meshes_wrt_dir(
+                test_layervol, [top_mesh, bot_mesh], principal_axes
+            )
+
+        with pyt.warns(UserWarning, match='NaN direction vectors'):
+            principal_axes[0, 1, 0] = nanvec
+            tested.distances_from_voxels_to_meshes_wrt_dir(
                 test_layervol, [top_mesh, bot_mesh], principal_axes
             )
 
@@ -270,7 +277,7 @@ class Test__distances_from_voxels_to_meshes_wrt_dir:
             ]
         )
 
-        distances, something_wrong = tested._distances_from_voxels_to_meshes_wrt_dir(
+        distances, something_wrong = tested.distances_from_voxels_to_meshes_wrt_dir(
             layervol, [top_mesh, bot_mesh], vectors
         )
         rt2 = np.sqrt(2)
@@ -337,7 +344,7 @@ class Test_report_problems:
         obtuse[0][3][1] = True
         voxel_data = voxcell.VoxelData(raw, voxel_dimensions=(1.0, 1.0, 1.0))
         rt2 = np.sqrt(2)
-        dist_to_bottom_mesh = np.array(
+        dist_to_top_mesh = np.array(
             [
                 [
                     [np.nan, np.nan, np.nan, np.nan, np.nan],
@@ -348,7 +355,7 @@ class Test_report_problems:
                 ]
             ]
         )
-        dist_to_top_mesh = np.array(
+        dist_to_bottom_mesh = np.array(
             [
                 [
                     [0.0, np.nan, np.nan, np.nan, np.nan],
@@ -359,7 +366,7 @@ class Test_report_problems:
                 ]
             ]
         )
-        distances = np.array([dist_to_bottom_mesh, dist_to_top_mesh])
+        distances = np.array([dist_to_top_mesh, dist_to_bottom_mesh])
         report, problematic_volume = tested.report_problems(
             distances, obtuse, voxel_data, max_thicknesses=[0.5]
         )
@@ -367,11 +374,11 @@ class Test_report_problems:
             report[
                 'Proportion of voxels whose rays do not intersect with the bottom mesh'
             ]
-            == 0.2
+            == 0.1
         )
         assert (
             report['Proportion of voxels whose rays do not intersect with the top mesh']
-            == 0.1
+            == 0.2
         )
         assert (
             report[

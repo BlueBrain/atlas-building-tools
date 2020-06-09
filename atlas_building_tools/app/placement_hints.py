@@ -3,6 +3,7 @@
 See https://bbpteam.epfl.ch/documentation/projects/placement-algorithm/latest/index.html
 for the specifications of the placement hints.
 '''
+import os
 from pathlib import Path
 import json
 import logging
@@ -69,10 +70,13 @@ def _placement_hints(
         flip_direction_vectors=flip_direction_vectors,
         has_hemispheres=has_hemispheres,
     )
+    if not Path(output_dir).exists():
+        os.makedirs(output_dir)
+
     with open(Path(output_dir, 'distance_report.json'), mode='w+') as file_:
         json.dump(distances_report, file_)
     save_placement_hints(
-        distances_info['distance_to_layers_meshes'],
+        distances_info['distances_to_layer_meshes'],
         output_dir,
         distances_info['layered_atlas'].region,
         placement_hint_names,
@@ -155,7 +159,11 @@ def ca1(annotation_path, hierarchy_path, direction_vectors_path, output_dir):
         'Path to the isocortex direction vectors file, e.g., direction_vectors.nrrd.'
     ),
 )
-@click.option('--output-dir', required=True, help='Path of the directory to write.')
+@click.option(
+    '--output-dir',
+    required=True,
+    help='path of the directory to write.' ' It will be created if it doesn\'t exist',
+)
 @log_args(L)
 def isocortex(annotation_path, hierarchy_path, direction_vectors_path, output_dir):
     '''Generate and save the placement hints of the mouse isocortex'''

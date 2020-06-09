@@ -8,7 +8,7 @@ from nptyping import NDArray  # type: ignore
 import numpy as np  # type: ignore
 
 from atlas_building_tools.placement_hints.layered_atlas import (
-    compute_distances_to_layers_meshes,
+    compute_distances_to_layer_meshes,
 )
 
 from atlas_building_tools.distances.distances_to_meshes import (
@@ -63,7 +63,7 @@ def compute_placement_hints(
             obtuse_angles: 3D binary mask indicating which voxels have rays
                 intersecting a layer boundary with an obtuse angle. The direction vectors
                 of such voxels are considered as problematic.
-            distances_to_layers_meshes(numpy.ndarray): 4D float array of shape
+            distances_to_layer_meshes(numpy.ndarray): 4D float array of shape
                 (number of layers + 1, W, H, D) holding the distances from
                 voxel centers to the upper boundaries of layers wrt to voxel direction vectors.
         distances_report:
@@ -74,7 +74,7 @@ def compute_placement_hints(
             distance-related problem. See distances.distance_to_meshes.report_problems
                 doc.
     '''
-    distances_info = compute_distances_to_layers_meshes(
+    distances_info = compute_distances_to_layer_meshes(
         region_acronym,
         annotation,
         region_map,
@@ -84,7 +84,7 @@ def compute_placement_hints(
         has_hemispheres=has_hemispheres,
     )
     atlas = distances_info['layered_atlas']
-    distances_to_meshes = distances_info['distances_to_layers_meshes']
+    distances_to_meshes = distances_info['distances_to_layer_meshes']
     distances_report, problematic_volume = report_problems(
         distances_to_meshes,
         distances_info['obtuse_angles'],

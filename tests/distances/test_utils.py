@@ -49,7 +49,7 @@ def test_memory_efficient_interesection():
     )
     chunk_length = 5
     locations, ray_ids, triangle_ids = tested.memory_efficient_intersection(
-        intersector, chunk_length, origins, direction_vectors
+        intersector, origins, direction_vectors, chunk_length
     )
     npt.assert_array_equal(locations, expected_locations[ray_ids])
 
