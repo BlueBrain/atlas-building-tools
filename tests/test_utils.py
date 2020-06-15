@@ -102,3 +102,18 @@ def test_is_obtuse_angle():
     npt.assert_array_equal(
         tested.is_obtuse_angle(vector_field_1, vector_field_2), expected
     )
+
+
+def test_copy_array():
+    array = np.array([1, 2])
+    copied_array = tested.copy_array(array)
+    array[0] = 0
+    npt.assert_array_equal(copied_array, [1, 2])
+
+    copied_array = tested.copy_array(array, copy=True)
+    array[0] = 1
+    npt.assert_array_equal(copied_array, [0, 2])
+
+    copied_array = tested.copy_array(array, copy=False)
+    array[0] = 0
+    npt.assert_array_equal(copied_array, [0, 2])

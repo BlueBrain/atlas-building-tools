@@ -6,6 +6,7 @@ import click
 from atlas_building_tools.version import VERSION
 
 from atlas_building_tools.app import (
+    cell_densities,
     cell_detection,
     combination,
     direction_vectors,
@@ -21,6 +22,7 @@ def main():
     app = click.Group(
         'atlas_building_tools',
         {
+            'cell-densities': cell_densities.app,
             'cell-detection': cell_detection.app,
             'combination': combination.app,
             'direction-vectors': direction_vectors.app,

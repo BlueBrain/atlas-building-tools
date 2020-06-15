@@ -97,3 +97,17 @@ def is_obtuse_angle(
         form an obtuse angle.
     '''
     return np.sum(vector_field_1 * vector_field_2, axis=-1) < 0
+
+
+def copy_array(array: NDArray, copy=True) -> NDArray:
+    '''
+    Returns either `array` or a deep copy of `array` depending on `copy`.
+
+    Args:
+        array: a numpy ndarray
+        copy: Optional boolean. If True, returns a hard copy of `array`, otherwise
+            returns `array` itself.
+    Returns:
+        a copy of `array` or `array` itself if `copy` is False.
+    '''
+    return array.copy() if copy else array

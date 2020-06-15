@@ -42,9 +42,7 @@ setup(
     tests_require=['pytest>=4.4.0', 'mock>=2.0.0'],
     packages=find_packages(),
     entry_points={
-        'console_scripts': [
-            'atlas-building-tools=atlas_building_tools.app.__main__:main'
-        ]
+        'console_scripts': ['atlas-building-tools=atlas_building_tools.app.cli.py:main']
     },
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
