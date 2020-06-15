@@ -1,0 +1,5 @@
+<svg height="256" width="256">
+  <path d="M15 0 L2 20 L22 20 Z" style="stroke:black;fill:#bfdae3" structure_id="1"/>
+  <path d="M30 50 L75 200 L225 200 Z" style="stroke:black;fill:#ffeae0" structure_id="2"/>
+  <path d="M150 0 L66 100 L100 20 Z" style="stroke:black;fill:#b22aea" structure_id="3"/>
+</svg>

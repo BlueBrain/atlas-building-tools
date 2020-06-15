@@ -6,6 +6,7 @@ import click
 from atlas_building_tools.version import VERSION
 
 from atlas_building_tools.app import (
+    cell_detection,
     combination,
     direction_vectors,
     orientation_field,
@@ -20,6 +21,7 @@ def main():
     app = click.Group(
         'atlas_building_tools',
         {
+            'cell-detection': cell_detection.app,
             'combination': combination.app,
             'direction-vectors': direction_vectors.app,
             'orientation-field': orientation_field.cmd,

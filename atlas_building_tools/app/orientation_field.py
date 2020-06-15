@@ -20,13 +20,13 @@ import click
 
 import voxcell  # type: ignore
 from atlas_building_tools.direction_vectors.algorithms.utils import vector_to_quaternion
-from atlas_building_tools.app.utils import REQUIRED_PATH
+from atlas_building_tools.app.utils import EXISTING_FILE_PATH
 
 
 @click.command()
 @click.option(
     '--direction-vectors-path',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=(
         'Path to an nrrd file containing a field of 3D unit vectors defined over a 3D volume.'

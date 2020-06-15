@@ -8,8 +8,11 @@ from functools import wraps
 import click
 
 
-REQUIRED_PATH = click.Path(
+EXISTING_FILE_PATH = click.Path(
     exists=True, readable=True, dir_okay=False, resolve_path=True
+)
+EXISTING_DIR_PATH = click.Path(
+    exists=True, readable=True, dir_okay=True, resolve_path=True
 )
 LOG_DIRECTORY = '.'
 

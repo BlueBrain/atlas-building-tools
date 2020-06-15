@@ -7,7 +7,7 @@ import voxcell  # type: ignore
 
 from atlas_building_tools.region_splitter import isocortex_layer_23
 
-from atlas_building_tools.app.utils import log_args, REQUIRED_PATH, set_verbose
+from atlas_building_tools.app.utils import log_args, EXISTING_FILE_PATH, set_verbose
 
 L = logging.getLogger('Direction vectors')
 
@@ -22,19 +22,19 @@ def app(verbose):
 @app.command()
 @click.option(
     '--hierarchy-path',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=('Path to the whole mouse brain hierarchy file.'),
 )
 @click.option(
     '--annotation-path',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=('Path to the whole mouse brain annotation nrrd file.'),
 )
 @click.option(
     '--direction-vectors-path',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=('Path to the mouse isocortex direction vectors nrrd file.'),
 )

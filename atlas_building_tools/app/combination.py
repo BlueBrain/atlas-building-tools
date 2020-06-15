@@ -11,7 +11,7 @@ import click
 import voxcell  # type: ignore
 
 from atlas_building_tools.combination import annotations_combinator, markers_combinator
-from atlas_building_tools.app.utils import log_args, REQUIRED_PATH, set_verbose
+from atlas_building_tools.app.utils import log_args, EXISTING_FILE_PATH, set_verbose
 
 L = logging.getLogger('Volumetric combinations')
 
@@ -28,25 +28,25 @@ def app(verbose):
 @app.command()
 @click.option(
     '--hierarchy',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help='Path to hierarchy.json or 1.json',
 )
 @click.option(
     '--brain-annotation-ccfv2',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=('This brain annotation file contains the most complete annotation.'),
 )
 @click.option(
     '--fiber-annotation-ccfv2',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help='Fiber annotation is not included in the CCF-v2 2011 annotation files.',
 )
 @click.option(
     '--brain-annotation-ccfv3',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=('More recent brain annotation file with missing leaf regions.'),
 )
@@ -96,19 +96,19 @@ def combine_annotations(
 @app.command()
 @click.option(
     '--hierarchy',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help='Path to hierarchy.json or 1.json',
 )
 @click.option(
     '--brain-annotation',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=('Path to the whole mouse rain annotation file.'),
 )
 @click.option(
     '--config',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=(
         'Path to the gene markers configuration file.'

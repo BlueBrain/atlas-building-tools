@@ -17,7 +17,7 @@ from atlas_building_tools.placement_hints.compute_placement_hints import (
 )
 from atlas_building_tools.placement_hints.utils import save_placement_hints
 from atlas_building_tools.placement_hints.layered_atlas import save_problematic_volume
-from atlas_building_tools.app.utils import log_args, REQUIRED_PATH, set_verbose  # type: ignore
+from atlas_building_tools.app.utils import log_args, EXISTING_FILE_PATH, set_verbose  # type: ignore
 
 L = logging.getLogger('Placement hints')
 
@@ -99,19 +99,19 @@ def app(verbose):
 @app.command()
 @click.option(
     '--annotation-path',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=('Path to the whole mouse brain annotation nrrd file.'),
 )
 @click.option(
     '--hierarchy-path',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=('Path to hierarchy.json.'),
 )
 @click.option(
     '--direction-vectors-path',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=('Path to the CA1 direction vectors file, e.g., direction_vectors.nrrd.'),
 )
@@ -141,19 +141,19 @@ def ca1(annotation_path, hierarchy_path, direction_vectors_path, output_dir):
 @app.command()
 @click.option(
     '--annotation-path',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=('Path to the whole mouse brain annotation nrrd file.'),
 )
 @click.option(
     '--hierarchy-path',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=('Path to hierarchy.json.'),
 )
 @click.option(
     '--direction-vectors-path',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=(
         'Path to the isocortex direction vectors file, e.g., direction_vectors.nrrd.'

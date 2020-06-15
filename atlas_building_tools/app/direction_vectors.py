@@ -6,7 +6,7 @@ import voxcell  # type: ignore
 
 from atlas_building_tools.direction_vectors import cerebellum as cerebellum_  # type: ignore
 from atlas_building_tools.direction_vectors import isocortex as isocortex_  # type: ignore
-from atlas_building_tools.app.utils import log_args, REQUIRED_PATH, set_verbose  # type: ignore
+from atlas_building_tools.app.utils import log_args, EXISTING_FILE_PATH, set_verbose  # type: ignore
 
 
 L = logging.getLogger('Direction vectors')
@@ -22,7 +22,7 @@ def app(verbose):
 @app.command()
 @click.option(
     '--annotation-path',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=('Path to the whole mouse brain annotation nrrd file.'),
 )
@@ -38,13 +38,13 @@ def cerebellum(annotation_path, output_path):
 @app.command()
 @click.option(
     '--annotation-path',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=('Path to the Isocortex annotation nrrd file.'),
 )
 @click.option(
     '--hierarchy-path',
-    type=REQUIRED_PATH,
+    type=EXISTING_FILE_PATH,
     required=True,
     help=('Path to hierarchy.json or AIBS 1.json.'),
 )
