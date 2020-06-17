@@ -86,7 +86,7 @@ def compute_direction_vectors(
         Vector field of 3D unit vectors over the isocortex volume with the same shape
         as the input one. Voxels outside the Isocortex have np.nan coordinates.
     '''
-    direction_vectors = np.full(brain_regions.shape + (3,), np.nan)
+    direction_vectors = np.full(brain_regions.shape + (3,), np.nan, dtype=np.float32)
     region_map = load_region_map(region_map)
     # Get the highest-level regions of the isocortex: ACAd, ACAv, AId, AIp, AIv, ...
     # In the AIBS mouse ccfv3 annotation, there are 43 isocortical regions.

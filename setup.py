@@ -23,7 +23,7 @@ setup(
         'networkx',
         'nptyping==1.0.1',
         'numba>=0.48.0',
-        'numpy>=1.16.3',
+        'numpy>=1.19',
         'numpy-quaternion>=2019.10.3.10.26.21',
         'pathlib>=1.0.1',
         'pynrrd>=0.4.0',

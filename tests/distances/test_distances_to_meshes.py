@@ -1,4 +1,3 @@
-import warnings
 import trimesh
 import numpy as np
 import pytest as pyt
@@ -192,10 +191,6 @@ class Test_distances_from_voxels_to_meshes_wrt_dir:
                 ]
             ]
         )
-        with pyt.warns(RuntimeWarning):
-            tested.distances_from_voxels_to_meshes_wrt_dir(
-                test_layervol, [top_mesh, bot_mesh], principal_axes
-            )
 
         with pyt.warns(UserWarning, match='NaN direction vectors'):
             principal_axes[0, 1, 0] = nanvec

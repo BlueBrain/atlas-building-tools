@@ -31,10 +31,8 @@ def app(verbose):
 def cerebellum(annotation_path, output_path):
     '''Generate and save the direction vectors of the mouse Cerebellum'''
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
-    dir_vectors = cerebellum_.compute_direction_vectors(annotation)
-    voxcell.VoxelData(
-        dir_vectors, annotation.voxel_dimensions, offset=annotation.offset
-    ).save_nrrd(output_path)
+    dir_vectors = cerebellum_.compute_direction_vectors(annotation.raw)
+    annotation.with_data(dir_vectors).save_nrrd(output_path)
 
 
 @app.command()
@@ -56,9 +54,5 @@ def isocortex(annotation_path, hierarchy_path, output_path):
     '''Generate and save the direction vectors of the mouse Isocortex'''
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
     region_map = voxcell.RegionMap.load_json(hierarchy_path)
-    dir_vectors = isocortex_.compute_direction_vectors(
-        region_map, annotation
-    )
-    voxcell.VoxelData(
-        dir_vectors, annotation.voxel_dimensions, offset=annotation.offset
-    ).save_nrrd(output_path)
+    dir_vectors = isocortex_.compute_direction_vectors(region_map, annotation)
+    annotation.with_data(dir_vectors).save_nrrd(output_path)

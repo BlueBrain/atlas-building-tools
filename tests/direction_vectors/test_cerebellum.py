@@ -17,17 +17,13 @@ def test_compute_cerebellum_direction_vectors():
 
     cerebellum = VoxelData(cerebellum_raw, (25.0, 25.0, 25.0), offset=(1.0, 2.0, 3.0))
     direction_vectors = tested.compute_direction_vectors(cerebellum)
-    npt.assert_array_almost_equal(
-        direction_vectors.voxel_dimensions, (25.0, 25.0, 25.0)
-    )
-    npt.assert_array_almost_equal(direction_vectors.offset, (1.0, 2.0, 3.0))
     # Outside the Flocculus and the Lingula, the direction vectors are not defined
     for region_id in [0, 728, 744]:
         region_mask = cerebellum_raw == region_id
-        np.all(np.isnan(direction_vectors.raw[region_mask]))
+        np.all(np.isnan(direction_vectors[region_mask]))
 
     # Check that the well-defined direction vectors have all norm 1.0
-    norm = np.linalg.norm(direction_vectors.raw, axis=3)
+    norm = np.linalg.norm(direction_vectors, axis=3)
     npt.assert_array_almost_equal(
         norm[~np.isnan(norm)], np.full((12, 12, 12), 1.0)[~np.isnan(norm)]
     )
