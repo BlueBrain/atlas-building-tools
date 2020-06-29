@@ -118,9 +118,9 @@ def compensate_cell_overlap(
 
 
 # pylint: disable=fixme
-# TODO: Re-assess and underline each density validation crtierion. Design an actual optimization
+# TODO: Re-assess and underline each density validation criterion. Design an actual optimization
 # strategy if appropriate.
-def optimize_distance_to_line(
+def optimize_distance_to_line(  # pylint: disable=too-many-arguments
     line_direction_vector: NDArray[float],
     upper_bounds: NDArray[float],
     sum_constraint: float,
@@ -175,7 +175,7 @@ def optimize_distance_to_line(
     return point
 
 
-def constrain_density(
+def constrain_density(  # pylint: disable=too-many-arguments
     target_sum: float,
     density: NDArray[float],
     density_upper_bound: NDArray[float],

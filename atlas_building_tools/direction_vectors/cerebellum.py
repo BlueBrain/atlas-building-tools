@@ -3,6 +3,10 @@
 The algorithm creates a scalar field with low values in surfaces where fiber tracts are incoming
 and high values where fiber tracts are outgoing. The direction vectors are given by the gradient
 of this scalar field.
+
+Note: At the moment, direction vectors are generated only for the following cerebellum subregions:
+    - the flocculus
+    - the lingula
 '''
 import numpy as np  # type: ignore
 from nptyping import NDArray  # type: ignore
@@ -20,6 +24,8 @@ def compute_direction_vectors(annotation_raw: NDArray[float]) -> NDArray[float]:
     '''
     Computes cerebellum's direction vectors as the normalized gradient of a custom scalar field.
 
+    The computations are restricted to the flocculus and the lingula subregions.
+
     The output direction vector field is computed as the normalized gradient
     of a custom scalar field. This scalar field resembles a distance field in
     the neighborhood of the molecular layer.
@@ -27,7 +33,7 @@ def compute_direction_vectors(annotation_raw: NDArray[float]) -> NDArray[float]:
     Afterwards, a Gaussian filter is applied and the normalized gradient of the
     blurred scalar field is returned.
 
-    Note: For now, direction vectors are only computed for the Flocculus and Lingula subregions.
+    Note: For now, direction vectors are only computed for the flocculus and lingula subregions.
         A voxel lying outside these two regions will be assigned a 3D vector
         with np.nan coordinates.
 
@@ -36,7 +42,7 @@ def compute_direction_vectors(annotation_raw: NDArray[float]) -> NDArray[float]:
          brain.
 
     Returns:
-        numpy.ndarray is of shape (annotation.shape, 1) holding a 3D unit vector field.
+        numpy.ndarray of shape (annotation.shape, 3) holding a 3D unit vector field.
     '''
 
     # Flocculus
@@ -47,7 +53,7 @@ def compute_direction_vectors(annotation_raw: NDArray[float]) -> NDArray[float]:
         10692: 1,  # Flocculus molecular layer
         0: 3,  # outside the brain
     }
-    # Shading applied from the molecular layer to the outside of Flocculus.
+    # Shading applied from the molecular layer to the outside of flocculus.
     shading_on_flocculus_complement = [
         RegionShading([728, 10691, 10690], 10692, 1, 4, invert=True)
     ]
@@ -70,7 +76,7 @@ def compute_direction_vectors(annotation_raw: NDArray[float]) -> NDArray[float]:
     shading_on_lingula_complement = [
         RegionShading([728, 744, 10705, 10706], 10707, 1, 4, invert=True)
     ]
-    lingula = [10690, 10691, 10692]
+    lingula = [10705, 10706, 10707]
     lingula_field = compute_initial_field(
         annotation_raw, lingula_weights, shading_on_lingula_complement
     )
@@ -78,7 +84,7 @@ def compute_direction_vectors(annotation_raw: NDArray[float]) -> NDArray[float]:
         annotation_raw, lingula_field, lingula
     )
 
-    # Assembles Flocculus and Lingula direction vectors.
+    # Assembles flocculus and lingula direction vectors.
     direction_vectors = flocculus_direction_vectors
     lingula_mask = np.logical_not(np.isnan(lingula_direction_vectors))
     direction_vectors[lingula_mask] = lingula_direction_vectors[lingula_mask]

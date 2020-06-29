@@ -23,12 +23,23 @@ def app(verbose):
     '--annotation-path',
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('Path to the whole mouse brain annotation nrrd file.'),
+    help=('Path to the whole AIBS mouse brain annotation nrrd file.'),
 )
-@click.option('--output-path', required=True, help='Path of file to write.')
+@click.option(
+    '--output-path',
+    required=True,
+    help='Path of file to write the direction vectors to.',
+)
 @log_args(L)
 def cerebellum(annotation_path, output_path):
-    '''Generate and save the direction vectors of the mouse Cerebellum'''
+    '''Generate and save the direction vectors of the AIBS mouse cerebellum
+
+    Note: At the moment, direction vectors are generated only for the following cerebellum
+    subregions:\n
+        - the flocculus\n
+        - the lingula\n
+
+    '''
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
     dir_vectors = cerebellum_.compute_direction_vectors(annotation.raw)
     annotation.with_data(dir_vectors).save_nrrd(output_path)

@@ -63,9 +63,14 @@ def distances_to_mesh_wrt_dir(
                          False otherwise.
     '''
     sign = -1 if backward else 1
-    ray = trimesh.ray.ray_triangle
+
+    # If available, embree provides a significant speedup
+    ray = (
+        trimesh.ray.ray_pyembree if trimesh.ray.has_embree else trimesh.ray.ray_triangle
+    )
 
     intersector = ray.RayMeshIntersector(mesh)
+
     number_of_voxels = directions.shape[0]
     assert origins.shape[0] == number_of_voxels
     locations, ray_ids, triangle_ids = memory_efficient_intersection(

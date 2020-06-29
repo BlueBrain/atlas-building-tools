@@ -13,7 +13,7 @@ def memory_efficient_intersection(
     intersector: 'trimesh.ray.ray_triangle.RayMeshIntersector',
     ray_origins: NDArray[int],
     ray_directions: NDArray[float],
-    chunk_length: int = 150000,
+    chunk_length: int = 100000,
 ) -> Tuple[NDArray[int], NDArray[int], NDArray[int]]:
     '''
     Split the computations of ray intersections using several chunks of a

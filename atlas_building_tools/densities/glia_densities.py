@@ -14,7 +14,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from voxcell import RegionMap  # type: ignore
 
 
-def compute_glia_density(
+def compute_glia_density(  # pylint: disable=too-many-arguments
     glia_cell_count: int,
     group_ids: Dict[str, Set[int]],
     annotation_raw: NDArray[float],
@@ -65,7 +65,7 @@ def compute_glia_density(
     )
 
 
-def compute_glia_densities(
+def compute_glia_densities(  # pylint: disable=too-many-arguments
     region_map: 'RegionMap',
     annotation_raw: NDArray[int],
     glia_cell_count: int,

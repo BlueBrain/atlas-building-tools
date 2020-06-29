@@ -5,9 +5,6 @@ from typing import Dict, Optional, TYPE_CHECKING, Tuple, Union
 import numpy as np
 from nptyping import NDArray  # type: ignore
 
-if TYPE_CHECKING:
-    from voxcell import RegionMap  # type: ignore
-
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 from atlas_building_tools.densities.utils import (
     constrain_density,
@@ -16,8 +13,11 @@ from atlas_building_tools.densities.utils import (
     get_region_masks,
 )
 
+if TYPE_CHECKING:
+    from voxcell import RegionMap  # type: ignore
 
-def _compute_inhibitory_neuron_density(
+
+def _compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
     gad1: NDArray[float],
     nrn1: NDArray[float],
     neuron_density: NDArray[float],
@@ -119,7 +119,7 @@ def _compute_inhibitory_neuron_density(
     return inhibitory_neuron_density, inhibitory_neuron_count
 
 
-def compute_inhibitory_neuron_density(
+def compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
     region_map: 'RegionMap',
     annotation_raw: NDArray[float],
     gad1: NDArray[float],

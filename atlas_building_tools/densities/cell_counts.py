@@ -8,7 +8,6 @@ from typing import Dict, TYPE_CHECKING, Union
 import numpy as np
 import pandas as pd
 
-from nptyping import NDArray  # type: ignore
 
 if TYPE_CHECKING:  # pragme: no cover
     from pathlib import Path

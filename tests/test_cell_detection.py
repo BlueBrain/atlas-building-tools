@@ -9,7 +9,6 @@ from PIL import Image  # type: ignore
 import itertools
 
 from mock import patch
-import voxcell  # type: ignore
 
 import atlas_building_tools.cell_detection as tested
 
