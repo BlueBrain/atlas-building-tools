@@ -20,7 +20,7 @@ from atlas_building_tools.app.utils import (
     set_verbose,
 )
 
-L = logging.getLogger('Cell detection')
+L = logging.getLogger(__name__)
 
 
 @click.group()

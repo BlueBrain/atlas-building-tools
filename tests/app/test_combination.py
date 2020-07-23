@@ -30,29 +30,41 @@ def test_combine_markers():
         'tmem119': np.array([[[0.0, 1.0, 0.0]], [[0.0, 0.0, 1.0]], [[1.0, 0.0, 0.0]],]),
     }
     expected_glia_intensities = {
-        'astrocyte': np.array([[[2.0, 6.0, 15.0]], [[7.0, 15.0, 23.0]], [[0.0, 4.0, 0.0]],])
+        'astrocyte': np.array(
+            [[[2.0, 6.0, 15.0]], [[7.0, 15.0, 23.0]], [[0.0, 4.0, 0.0]],]
+        )
         / 6.0,
-        'microglia': np.array([[[0.0, 3.0, 0.0]], [[0.0, 0.0, 3.0]], [[3.0, 0.0, 0.0]],])
+        'microglia': np.array(
+            [[[0.0, 3.0, 0.0]], [[0.0, 0.0, 3.0]], [[3.0, 0.0, 0.0]],]
+        )
         / 3.0,
-        'oligodendrocyte': np.array([[[0.0, 2.0, 0.0]], [[18.0, 3.0, 0.0]], [[0.0, 3.0, 0.0]],])
+        'oligodendrocyte': np.array(
+            [[[0.0, 2.0, 0.0]], [[18.0, 3.0, 0.0]], [[0.0, 3.0, 0.0]],]
+        )
         / 3.0,
     }
-    expected_glia_intensities['glia'] =\
-        np.average(list(expected_glia_intensities.values()), axis=0, weights=expected_proportions)
+    expected_glia_intensities['glia'] = np.average(
+        list(expected_glia_intensities.values()), axis=0, weights=expected_proportions
+    )
     voxel_dimensions = [25] * 3
     runner = CliRunner()
     with runner.isolated_filesystem():
         for name, array in input_.items():
-            VoxelData(array, voxel_dimensions=voxel_dimensions).save_nrrd(f'{name}.nrrd')
-        result = runner.invoke(tested.app, [
-            'combine-markers',
-            '--hierarchy',
-            str(Path(TEST_PATH, '1.json')),
-            '--brain-annotation',
-            'annotation.nrrd',
-            '--config',
-            str(Path(TEST_PATH, 'config.yaml')),
-        ])
+            VoxelData(array, voxel_dimensions=voxel_dimensions).save_nrrd(
+                f'{name}.nrrd'
+            )
+        result = runner.invoke(
+            tested.app,
+            [
+                'combine-markers',
+                '--hierarchy',
+                str(Path(TEST_PATH, '1.json')),
+                '--brain-annotation',
+                'annotation.nrrd',
+                '--config',
+                str(Path(TEST_PATH, 'markers_config.yaml')),
+            ],
+        )
         assert result.exit_code == 0
         with open('glia_proportions.json') as file_:
             glia_proportions = json.load(file_)

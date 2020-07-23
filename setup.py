@@ -20,6 +20,7 @@ setup(
         'cairosvg>=2.4.2',
         'click>=7.0',
         'dataclasses>=0.6',
+        'h5py>=2.10.0',
         'lazy>=1.4',
         'networkx',
         'nptyping==1.0.1',
@@ -44,7 +45,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     entry_points={
-        'console_scripts': ['atlas-building-tools=atlas_building_tools.app.cli.py:main']
+        'console_scripts': ['atlas-building-tools=atlas_building_tools.app.cli:main']
     },
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',

@@ -13,7 +13,7 @@ import voxcell  # type: ignore
 from atlas_building_tools.combination import annotations_combinator, markers_combinator
 from atlas_building_tools.app.utils import log_args, EXISTING_FILE_PATH, set_verbose
 
-L = logging.getLogger('Volumetric combinations')
+L = logging.getLogger(__name__)
 
 
 @click.group()

@@ -46,8 +46,8 @@ def get_isocortex_hierarchy(allen_hierachy: HierarchyDict):
     try:
         while hierarchy['acronym'] != 'Isocortex':
             hierarchy = hierarchy['children'][0]
-    except KeyError:
-        raise AtlasBuildingToolsError(error_msg)
+    except KeyError as error:
+        raise AtlasBuildingToolsError(error_msg) from error
 
     return hierarchy
 

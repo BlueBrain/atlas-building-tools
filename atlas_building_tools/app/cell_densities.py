@@ -51,7 +51,7 @@ from atlas_building_tools.densities.cell_counts import (
 )
 
 
-L = logging.getLogger('Cell densities')
+L = logging.getLogger(__name__)
 
 
 @click.group()

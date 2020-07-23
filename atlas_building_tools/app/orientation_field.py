@@ -16,11 +16,15 @@ the y-axis of q is directed along e. The latter is a requirement of the morpholo
 convention.
 
 '''
+import logging
 import click
+
 
 import voxcell  # type: ignore
 from atlas_building_tools.direction_vectors.algorithms.utils import vector_to_quaternion
-from atlas_building_tools.app.utils import EXISTING_FILE_PATH
+from atlas_building_tools.app.utils import EXISTING_FILE_PATH, log_args
+
+L = logging.getLogger(__name__)
 
 
 @click.command()
@@ -42,6 +46,7 @@ from atlas_building_tools.app.utils import EXISTING_FILE_PATH
     'NaN vectors indicate out-of-domain voxels but also voxels for which an orientation could'
     ' not be derived.',
 )
+@log_args(L)
 def cmd(direction_vectors_path: str, output_path: str,) -> None:
     '''Turn direction vectors into quaternions interpreted as 3D orientations'''
 

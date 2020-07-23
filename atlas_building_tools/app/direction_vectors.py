@@ -8,8 +8,7 @@ from atlas_building_tools.direction_vectors import cerebellum as cerebellum_  # 
 from atlas_building_tools.direction_vectors import isocortex as isocortex_  # type: ignore
 from atlas_building_tools.app.utils import log_args, EXISTING_FILE_PATH, set_verbose  # type: ignore
 
-
-L = logging.getLogger('Direction vectors')
+L = logging.getLogger(__name__)
 
 
 @click.group()

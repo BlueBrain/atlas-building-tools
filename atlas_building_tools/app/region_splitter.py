@@ -9,7 +9,7 @@ from atlas_building_tools.region_splitter import isocortex_layer_23
 
 from atlas_building_tools.app.utils import log_args, EXISTING_FILE_PATH, set_verbose
 
-L = logging.getLogger('Direction vectors')
+L = logging.getLogger(__name__)
 
 
 @click.group()

@@ -19,7 +19,7 @@ from atlas_building_tools.placement_hints.utils import save_placement_hints
 from atlas_building_tools.placement_hints.layered_atlas import save_problematic_volume
 from atlas_building_tools.app.utils import log_args, EXISTING_FILE_PATH, set_verbose  # type: ignore
 
-L = logging.getLogger('Placement hints')
+L = logging.getLogger(__name__)
 
 
 # pylint: disable=too-many-arguments, too-many-locals
