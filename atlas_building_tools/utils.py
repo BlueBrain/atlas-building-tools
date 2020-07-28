@@ -5,6 +5,8 @@ from typing import Tuple, Union
 
 import numpy as np  # type: ignore
 from nptyping import NDArray  # type: ignore
+from scipy.signal import correlate  # ignore: type
+from scipy.ndimage.morphology import generate_binary_structure  # ignore: type
 
 from voxcell import RegionMap  # type: ignore
 
@@ -111,3 +113,31 @@ def copy_array(array: NDArray, copy=True) -> NDArray:
         a copy of `array` or `array` itself if `copy` is False.
     '''
     return array.copy() if copy else array
+
+
+def compute_boundary(v_1, v_2):
+    '''Compute the boundary shared by two volumes.
+
+    The voxels of `v_1` (resp. of `v_2`) are labeled with the value 1 (resp. 8).
+    We build the filter corresponding to the 6 neighbour voxels that share a face
+    with a reference voxel. We apply a covolution of the filter with the labeled volume.
+    In the resulting labeled volume, the `v_1`voxels with label > 8 are exactly those voxels
+    that share a face with at least one voxel of `v_2`.
+    (The interior voxels of `v_1` have labels bounded above by 7).
+
+    Check https://docs.scipy.org/doc/scipy/reference/ndimage.html for the doc
+    of the functions generate_binary_structure and correlate used below.
+
+    Args:
+        v_1(numpy.ndarray): boolean 3D array holding the mask of the first volume.
+        v_2(numpy.ndarray): boolean 3D array holding the mask of the second volume.
+
+    Returns:
+        shared_boundary(numpy.ndarray), 3D boolean array holding the mask of the boundary shared
+        by `v_1` and `v_2`. This corresponds to a subset of `v_1`.
+    '''
+
+    filter_ = generate_binary_structure(3, 1).astype(int)
+    full_volume = correlate(v_1 * 1 + v_2 * 8, filter_, mode='same')
+
+    return np.logical_and(v_1, full_volume > 8)

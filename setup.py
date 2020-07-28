@@ -17,16 +17,22 @@ setup(
     license="BBP-internal-confidential",
     python_requires='>=3.6.0',
     install_requires=[
+        'atlas-analysis>=0.0.3',
         'cairosvg>=2.4.2',
         'click>=7.0',
-        'dataclasses>=0.6',
+        'cgal_pybind>=0.0.2',
         'cached-property>=1.5.2',
         'networkx>=2.5',
         'nptyping==1.0.1',
         'numba>=0.48.0',
-        'numpy>=1.19',
-        'numpy-quaternion>=2019.10.3.10.26.21',
+        'numpy>=1.15.0',
+        # numpy-quaternion version is caped because of an issue similar to 
+        # https://stackoverflow.com/questions/20518632/importerror-numpy-core-multiarray-failed-to-import
+        'numpy-quaternion<=2019.12.11.22.25.52',
         'openpyxl>=3.0.5',
+        # open3d version is caped because of https://github.com/intel-isl/Open3D/issues/1898
+        # which occurs on BB5.
+        'open3d<0.10.0.0',
         'pandas>=1.0.3',
         'Pillow>=7.1.2',
         'pynrrd>=0.4.0',
@@ -36,7 +42,6 @@ setup(
         'scikit-image>=0.17.2',
         'tqdm>=4.44.1',
         'trimesh>=3.6.18',
-        'typing>=3.7.4.1',
         'voxcell>=3.0.0',
         'xlrd>=1.0.0',
     ],

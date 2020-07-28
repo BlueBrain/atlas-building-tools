@@ -19,11 +19,11 @@ from subprocess import check_call
 
 from nptyping import NDArray  # ignore: type
 import numpy as np  # ignore: type
-from scipy.signal import correlate  # ignore: type
 
 from voxcell import VoxelData  # ignore: type
 
 from atlas_building_tools.direction_vectors.algorithms.utils import zero_to_nan
+from atlas_building_tools.utils import compute_boundary
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 logging.basicConfig(level=logging.INFO)
@@ -78,37 +78,6 @@ def _popen_pipe_logging(tool: str, *args: str) -> None:
     '''
     L.info('Calling command: %s, \nwith args: %s', tool, args)
     check_call([tool, *args])
-
-
-def compute_boundary(v_1, v_2):
-    '''Compute the boundary shared by two volumes.
-
-    The voxels of `v_1` (resp. of `v_2`) are labeled with the value 1 (resp. 8).
-    We build the filter corresponding to the 6 neighbour voxels that share a face
-    with a reference voxel. We apply a covolution of the filter with the labeled volume.
-    In the resulting labeled volume, the `v_1`voxels with label > 8 are exactly those voxels
-    that share a face with at least one voxel of `v_2`.
-    (The interior voxels of `v_1` have labels bounded above by 7).
-
-    Args:
-        v_1(numpy.ndarray): boolean 3D array holding the mask of the first volume.
-        v_2(numpy.ndarray): boolean 3D array holding the mask of the second volume.
-
-    Returns:
-        shared_boundary(numpy.ndarray), 3D boolean array
-        holding the mask of the boundary shared by `v_1`
-        and `v_2`. This corresponds to a subset of `v_1`.
-    '''
-
-    filter_ = np.array(
-        [
-            [[0, 0, 0], [0, 1, 0], [0, 0, 0]],
-            [[0, 1, 0], [1, 1, 1], [0, 1, 0]],
-            [[0, 0, 0], [0, 1, 0], [0, 0, 0]],
-        ]
-    )
-    full_volume = correlate(v_1 * 1 + v_2 * 8, filter_, mode='same')
-    return np.logical_and(v_1, full_volume > 8)
 
 
 def _get_border_mask(region: NDArray[bool]) -> NDArray[bool]:

@@ -157,15 +157,6 @@ def test_intensity_curve_fitting_exceptions():
         assert "NaN radius is returned" in str(w[0].message)
         assert np.isnan(radius)
 
-    curve = np.arange(10)
-    delta = 5
-    with warnings.catch_warnings(record=True) as w:
-        radius = tested.intensity_curve_fitting(curve, delta)
-        assert "Covariance of the parameters could not be estimated" in str(
-            w[0].message
-        )
-        assert np.isnan(radius)
-
     x = np.arange(10)
     delta = 4
     curve = 200.0 * np.exp(-0.4 * (x - float(delta)) ** 2) + 10.0

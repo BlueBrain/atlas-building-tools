@@ -1,0 +1,7 @@
+{
+    "layers": {
+        "names": ["layer 1", "layer 2", "layer3", "layer 4", "layer 5", "layer 6"],
+        "queries": ["@.*;L1$", "@.*;L2$", "@.;L3*$", "@.*;L4$", "@.*;L5$", "@.*;L6$"],
+        "attribute": "acronym"
+    }
+}

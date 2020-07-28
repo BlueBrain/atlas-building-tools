@@ -30,25 +30,6 @@ def test_find_regiodesics_exec_or_raise_raises(_):
         tested.find_regiodesics_exec_or_raise('geodesics')
 
 
-def test_compute_boundary():
-    v_1 = np.zeros((5, 5, 5), dtype=bool)
-    v_1[1:4, 1:4, 1:4] = True
-    v_2 = ~v_1
-    boundary = tested.compute_boundary(v_1, v_2)
-    expected = np.copy(v_1)
-    expected[2, 2, 2] = False
-    npt.assert_array_equal(boundary, expected)
-
-    v_1 = np.zeros((5, 5, 5), dtype=bool)
-    v_1[0:2, :, 1:4] = True
-    v_2 = np.zeros_like(v_1)
-    v_2[2:, :, 1:4] = True
-    boundary = tested.compute_boundary(v_1, v_2)
-    expected = np.zeros_like(v_1)
-    expected[1, :, 1:4] = True
-    npt.assert_array_equal(boundary, expected)
-
-
 def test_mark_with_regiodesics_labels():
     full_volume = np.zeros((9, 9, 9), dtype=int)
     full_volume[:, :, :3] = 1  # bottom

@@ -117,3 +117,22 @@ def test_copy_array():
     copied_array = tested.copy_array(array, copy=False)
     array[0] = 0
     npt.assert_array_equal(copied_array, [0, 2])
+
+
+def test_compute_boundary():
+    v_1 = np.zeros((5, 5, 5), dtype=np.bool)
+    v_1[1:4, 1:4, 1:4] = True
+    v_2 = ~v_1
+    boundary = tested.compute_boundary(v_1, v_2)
+    expected = np.copy(v_1)
+    expected[2, 2, 2] = False
+    npt.assert_array_equal(boundary, expected)
+
+    v_1 = np.zeros((5, 5, 5), dtype=np.bool)
+    v_1[0:2, :, 1:4] = True
+    v_2 = np.zeros_like(v_1)
+    v_2[2:, :, 1:4] = True
+    boundary = tested.compute_boundary(v_1, v_2)
+    expected = np.zeros_like(v_1)
+    expected[1, :, 1:4] = True
+    npt.assert_array_equal(boundary, expected)
