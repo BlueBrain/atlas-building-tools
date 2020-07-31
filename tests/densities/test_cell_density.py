@@ -7,10 +7,10 @@ import numpy.testing as npt
 from mock import patch
 
 from voxcell import RegionMap, VoxelData  # type: ignore
+from atlas_building_tools.densities.cell_counts import cell_counts
 from atlas_building_tools.densities.utils import (
     get_group_ids,
     get_region_masks,
-    CELL_COUNTS,
 )
 import atlas_building_tools.densities.cell_density as tested
 
@@ -27,7 +27,7 @@ def test_compute_cell_density():
     group_ids = get_group_ids(region_map)
     region_masks = get_region_masks(group_ids, annotation_raw)
     for group, mask in region_masks.items():
-        npt.assert_array_almost_equal(np.sum(cell_density[mask]), CELL_COUNTS[group])
+        npt.assert_array_almost_equal(np.sum(cell_density[mask]), cell_counts()[group])
 
     # The voxels in the Cerebellum group which belong to the Purkinje layer
     # should all have the same cell density.
@@ -54,7 +54,7 @@ def test_cell_density_with_soma_correction():
     group_ids = get_group_ids(region_map)
     region_masks = get_region_masks(group_ids, annotation_raw)
     for group, mask in region_masks.items():
-        npt.assert_array_almost_equal(np.sum(cell_density[mask]), CELL_COUNTS[group])
+        npt.assert_array_almost_equal(np.sum(cell_density[mask]), cell_counts()[group])
 
     # The voxels in the Cerebellum group which belong to the Purkinje layer
     # should all have the same cell density.
@@ -79,10 +79,10 @@ def test_cell_density_options():
     ):
         actual = tested.compute_cell_density(region_map, voxel_data, nissl.copy())
         expected = tested.fix_purkinje_layer_density(
-            region_map, annotation_raw, nissl, CELL_COUNTS
+            region_map, annotation_raw, nissl, cell_counts()
         )
         for group, mask in region_masks.items():
-            expected[mask] = nissl[mask] * (CELL_COUNTS[group] / np.sum(nissl[mask]))
+            expected[mask] = nissl[mask] * (cell_counts()[group] / np.sum(nissl[mask]))
         npt.assert_array_equal(expected, actual)
 
     with patch(

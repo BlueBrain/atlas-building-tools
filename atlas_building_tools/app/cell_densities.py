@@ -12,8 +12,8 @@ This scripts compute and save the following cell densities under the form of den
     - oligodendrocyte density
     - microglia density
 * among neuron cells:
-    - inhibitory cell density
-    - excitatory cell density
+    - inhibitory neuron density
+    - excitatory neuron density
 
 Density estimates are based on datasets produced by in-situ hybridization experiments of the
  Allen Insitute for Brain Science (AIBS). We used in particular AIBS genetic marker datasets and
@@ -41,11 +41,15 @@ from atlas_building_tools.app.utils import (
 
 from atlas_building_tools.densities.cell_density import compute_cell_density
 from atlas_building_tools.densities.glia_densities import compute_glia_densities
-from atlas_building_tools.densities.utils import (
-    GLIA_RATIO,
-    TOTAL_CELL_COUNT,
-    INHIBITORY_DATA,
+from atlas_building_tools.densities.inhibitory_neuron_density import (
+    compute_inhibitory_neuron_density,
 )
+from atlas_building_tools.densities.cell_counts import (
+    extract_inhibitory_neurons_dataframe,
+    glia_cell_counts,
+    inhibitory_data,
+)
+
 
 L = logging.getLogger('Cell densities')
 
@@ -233,7 +237,7 @@ def glia_cell_densities(
         region_map,
         annotation.raw,
         overall_cell_density.raw,
-        int(GLIA_RATIO * TOTAL_CELL_COUNT),
+        sum(glia_cell_counts().values()),
         glia_densities,
         glia_proportions,
         copy=False,
@@ -284,6 +288,19 @@ def glia_cell_densities(
     help=('The path to the overall neuron cell density nrrd file.'),
 )
 @click.option(
+    '--inhibitory-cell-counts-path',
+    type=EXISTING_FILE_PATH,
+    required=False,
+    default=Path(Path(__file__).parent, 'data', 'mm1c.xlsx'),
+    help=(
+        'The path to the excel document mm1c.xlsx of the suplementary materials of '
+        '"Brain-wide Maps Reveal Stereotyped Cell-Type- Based Cortical Architecture '
+        'and Subcortical Sexual Dimorphism" by Kim et al., 2017. '
+        'https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc1.xlsx. '
+        'Defaults to atlas_building_tools/app/data/mm1c.xlsx.'
+    ),
+)
+@click.option(
     '--output-dir',
     type=str,
     required=True,
@@ -291,27 +308,28 @@ def glia_cell_densities(
     ' It will be created if it doesn\'t exist already.',
 )
 @log_args(L)
-def inhibitory_excitatory_cell_densities(
+def inhibitory_inhibitory_neuron_densities(
     annotation_path,
     hierarchy_path,
     gad1_path,
     nrn1_path,
     neuron_density_path,
+    inhibitory_neuron_counts_path,
     output_dir,
 ):  # pylint: disable=too-many-arguments
-    '''Compute and save the inhibitory and excitatory cell densities.\n
+    '''Compute and save the inhibitory and excitatory neuron densities.\n
 
     Density is expressed as a number of cells per voxel.
 
     The computation is based on:\n
-        * an estimate of the overall neuron cell density\n
-        * estimates of unconstrained inhibitory and excitatory densities provided by
+        * an estimate of the overall neuron density\n
+        * estimates of unconstrained inhibitory and excitatory neuron densities provided by
         the GAD1 and Nrn1 markers intensities respectively.
 
-    The overall neuron cell density and cells counts from the scientific literature are used to
-    constrain the inhibitory and excitatory cell densities so that:\n
+    The overall neuron density and region-specific neuron counts from the scientific literature are
+     used to constrain the inhibitory and excitatory neuron densities so that:\n
         * they do not exceed voxel-wise the overall neuron cell density\n
-        * the ratio (inhibitory cell count / excitatory cell count) matches a prescribed value
+        * the ratio (inhibitory neuron count / excitatory neuron count) matches a prescribed value
         wherever it is constrained.
 
     An optimization process is responsible for enforcing these constraints while keeping\n
@@ -319,29 +337,30 @@ def inhibitory_excitatory_cell_densities(
 
     The ouput densities are saved in the specified output directory under the following\n
     names:\n
-        * inhibitory_density.nrrd \n
-        * excitatory_density.nrrd \n
+        * inhibitory_neuron_density.nrrd \n
+        * inhibitory_neuron_density.nrrd \n
     '''
 
     annotation = VoxelData.load_nrrd(annotation_path)
     region_map = RegionMap.load_json(hierarchy_path)
     neuron_density = VoxelData.load_nrrd(neuron_density_path).raw
-    inhibitory_cell_density = compute_glia_densities(
+    inhibitory_df = extract_inhibitory_neurons_dataframe(inhibitory_neuron_counts_path)
+    inhibitory_neuron_density = compute_inhibitory_neuron_density(
         region_map,
         annotation.raw,
         VoxelData.load_nrrd(gad1_path),
         VoxelData.load_nrrd(nrn1_path),
         neuron_density,
-        INHIBITORY_DATA,
+        inhibitory_data(inhibitory_df),
     )
 
     if not Path(output_dir).exists():
         os.makedirs(output_dir)
 
-    annotation.with_data(inhibitory_cell_density).save_nrrd(
-        str(Path(output_dir, 'inhibitory_cell_density.nrrd'))
+    annotation.with_data(inhibitory_neuron_density).save_nrrd(
+        str(Path(output_dir, 'inhibitory_neuron_density.nrrd'))
     )
-    excitatory_density = neuron_density - inhibitory_cell_density
+    excitatory_density = neuron_density - inhibitory_neuron_density
     annotation.with_data(excitatory_density).save_nrrd(
-        str(Path(output_dir, 'excitatory_cell_density.nrrd'))
+        str(Path(output_dir, 'inhibitory_neuron_density.nrrd'))
     )

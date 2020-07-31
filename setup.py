@@ -38,9 +38,11 @@ setup(
         'trimesh>=3.6.18',
         'typing>=3.7.4.1',
         'voxcell>=2.6.3.dev1',
+        'xlrd >= 1.0.0',
     ],
     tests_require=['pytest>=4.4.0', 'mock>=2.0.0'],
     packages=find_packages(),
+    include_package_data=True,
     entry_points={
         'console_scripts': ['atlas-building-tools=atlas_building_tools.app.cli.py:main']
     },

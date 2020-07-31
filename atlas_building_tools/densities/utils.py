@@ -10,46 +10,7 @@ from atlas_building_tools.utils import copy_array
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 if TYPE_CHECKING:  # pragme: no cover
-    from voxcell import RegionMap, VoxelData  # type: ignore
-
-# Updated Neuronal Scaling Rules for the Brains of Glires
-# (Rodents/Lagomorphs), Herculano-Houzel 2011
-CELL_COUNTS = {
-    'Cerebellum group': 49170000,  # Cerebellum and arbor vitae
-    'Isocortex group': 23378142,  # Isocortex plus the Entorhinal and Piriform areas
-    'Rest': 38531858,
-}
-TOTAL_CELL_COUNT = sum(CELL_COUNTS.values())
-GLIA_RATIO = 0.3539791141519625
-
-CEREBELLUM_GROUP_INH_COUNT = (
-    (1843742.7 + 1765397.7) * 0.5 + (49159.5 + 54348) * 0.5 + (4179.9 + 6372.6) * 0.5
-)  # Cerebellum (+ Arbor vitae, but no inhibitory cells there)
-ISOCORTEX_GROUP_INH_COUNT = (
-    (543269.7 + 523462.2 + 14680.8 + 14636.1 + 8739.9 + 9374.1) * 0.5
-    + (588314.4 + 601225.2 + 70075.5 + 69720.9 + 55536.6 + 59896.2) * 0.5
-    + (280005.9 + 281542.2 + 15315 + 15513.6 + 11374.8 + 11428.2) * 0.5
-)
-REST_INH_COUNT = (
-    (
-        (2959233.3 + 2823564.0) * 0.5
-        + (2268931.5 + 2446630.5) * 0.5
-        + (442264.5 + 460858.5) * 0.5
-    )
-    - CEREBELLUM_GROUP_INH_COUNT
-    - ISOCORTEX_GROUP_INH_COUNT
-)
-
-INHIBITORY_CELL_COUNT = sum(
-    [CEREBELLUM_GROUP_INH_COUNT, ISOCORTEX_GROUP_INH_COUNT, REST_INH_COUNT]
-)
-UNIFORM_INHIBITORY_RATIO = 0.07944176630434784
-INHIBITORY_RATIOS = {
-    'Cerebellum group': CEREBELLUM_GROUP_INH_COUNT / 42220000.0,
-    'Isocortex group': ISOCORTEX_GROUP_INH_COUNT / 13690000.0,
-    'Rest': REST_INH_COUNT / (71760000.0 - 42220000.0 - 13690000.0),
-}  # combined with neuron numbers from Herculano-Houzel
-INHIBITORY_DATA = {'ratios': INHIBITORY_RATIOS, 'cell_count': INHIBITORY_CELL_COUNT}
+    from voxcell import RegionMap  # type: ignore
 
 
 def normalize_intensity(

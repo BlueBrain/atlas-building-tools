@@ -5,8 +5,8 @@ import numpy as np
 from nptyping import NDArray  # type: ignore
 
 from voxcell import RegionMap, VoxelData  # type: ignore
+from atlas_building_tools.densities.cell_counts import cell_counts
 from atlas_building_tools.densities.utils import (
-    CELL_COUNTS,
     compensate_cell_overlap,
     get_group_ids,
     get_region_masks,
@@ -58,7 +58,7 @@ def fix_purkinje_layer_density(
     purkinje_layer_count = np.count_nonzero(cerebellum_purkinje_layer_mask)
     cell_density[cerebellum_purkinje_layer_mask] = np.sum(
         cell_density[cerebellum_wo_purkinje_layer_mask]
-    ) / (CELL_COUNTS['Cerebellum group'] - purkinje_layer_count)
+    ) / (cell_counts()['Cerebellum group'] - purkinje_layer_count)
 
     return cell_density
 
@@ -120,6 +120,6 @@ def compute_cell_density(
         region_map, annotation.raw, nissl, region_masks
     )
     for group, mask in region_masks.items():
-        cell_density[mask] = nissl[mask] * (CELL_COUNTS[group] / np.sum(nissl[mask]))
+        cell_density[mask] = nissl[mask] * (cell_counts()[group] / np.sum(nissl[mask]))
 
     return cell_density
