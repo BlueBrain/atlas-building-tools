@@ -183,11 +183,11 @@ def inhibitory_data(
                 'Isocortex group': <value>,
                 'Rest': <value>
             }
-            'cell_count': <value>
+            'neuron_count': <value>
         }
         where the value corresponding to each group is a float in (0, 1) indicating the proportion
          of inhibitory cells among neurons in that group and the value corresponding to
-          'cell_count' is the number of inhibitory cells in the whole mouse brain.
+          'neuron_count' is the number of inhibitory cells in the whole mouse brain.
     '''
 
     return {
@@ -203,7 +203,7 @@ def inhibitory_data(
             'Rest': inhibitory_neuron_counts(inhibitory_neurons_dataframe)['Rest']
             / neuron_counts()['Rest'],
         },
-        'cell_count': sum(
+        'neuron_count': sum(
             inhibitory_neuron_counts(inhibitory_neurons_dataframe).values()
         ),
     }

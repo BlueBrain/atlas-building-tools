@@ -1,4 +1,4 @@
-'''Functions to compute inhibitory cell density.'''
+'''Functions to compute inhibitory neuron density.'''
 
 import warnings
 from typing import Dict, Optional, TYPE_CHECKING, Tuple, Union
@@ -26,11 +26,11 @@ def _compute_inhibitory_neuron_density(
     region_masks: Optional[Dict[str, NDArray[bool]]] = None,
 ) -> Tuple[NDArray[float], int]:
     '''
-    Compute a first approximation of the inhibitory cell density using a prescribed cell count.
+    Compute a first approximation of the inhibitory neuron density using a prescribed neuron count.
 
-    The input genetic marker datasets GAD1 and NRN1 are used to shape the density distribution
-    of the inhibitory and excitatory cells respectively. Gene marker stained intensities are
-    assumed to depend linearly on cell density (number of cells per voxel).
+    The input genetic marker datasets GAD1 and NRN1 are used to shape the spatial density
+    distribution of the inhibitory and excitatory neurons respectively. Gene marker stained
+    intensities are assumed to depend linearly on neuron density (number of cells per voxel).
 
     Note regarding these markers:
         Every Gabaergic neuron expresses GAD1 and every GAD1 reacting cell is a gabaergic neuron.
@@ -46,24 +46,24 @@ def _compute_inhibitory_neuron_density(
          marker density."
 
     Args:
-        gad1: float array of shape (W, H, D) with non-negative entries. The GAD1 (a.k.a GAD76)
+        gad1: float array of shape (W, H, D) with non-negative entries. The GAD1 (a.k.a GAD67)
             marker dataset.
         nrn1: float array of shape (W, H, D) with non-negative entries. The Nrn1 marker dataset.
         neuron_density: float array of shape (W, H, D) with non-negative entries. The input
             overall neuron density obtained.
-        inhibitory_proportion: (Optional) proportion of inhibitory cells among all neuron cells.
+        inhibitory_proportion: (Optional) proportion of inhibitory neurons among all neuron cells.
             If it is not provided, then `inhibitory_data` and `region_masks` must be specified.
         inhibitory_data: (Optional) a dictionary with two keys:
             'ratios': the corresponding value is a dictionary of type Dict[str, float] assigning
-            the proportion of ihnibitory cells to each group named by a key string.
-            'cell_count': the total inhibitory cell count for the whole mouse brain.
+            the proportion of inhibitory neurons to each group named by a key string.
+            'neuron_count': the total inhibitory neuron count for the whole mouse brain.
         region_masks: (Optional) dictionary whose keys are region group names and whose values are
             the boolean masks of these groups. Each boolean array is of shape (W, H, D) and
             encodes which voxels belong to the corresponding group.
 
     Returns:
-        tuple (innhibitory_cell_density, inhibitory_neuron_count)
-        `innhibitory_cell_density` is a float array of shape (W, H, D) with non-negative entries.
+        tuple (innhibitory_neuron_density, inhibitory_neuron_count)
+        `innhibitory_neuron_density` is a float array of shape (W, H, D) with non-negative entries.
         `inhibitory_neuron_count` is a self-explanatory integer cell count.
 
     Raises:
@@ -111,7 +111,7 @@ def _compute_inhibitory_neuron_density(
             marker_sum[mask] = inhibitory_neuron_density[mask] + excitatory_neuron_density[
                 mask
             ] * (1.0 - inhibitory_data['proportions'][group])
-        inhibitory_neuron_count = inhibitory_data['cell_count']
+        inhibitory_neuron_count = inhibitory_data['neuron_count']
 
     inhibitory_neuron_density[marker_sum > 0.0] /= marker_sum[marker_sum > 0.0]
     inhibitory_neuron_density /= np.max(inhibitory_neuron_density)
@@ -129,13 +129,13 @@ def compute_inhibitory_neuron_density(
     inhibitory_data: Optional[Dict[str, Union[int, Dict[str, float]]]] = None,
 ) -> NDArray[float]:
     '''
-    Compute the inhibitory cell density using a prescribed cell count and the overall neuron density
-    as an upper bound constraint.
+    Compute the inhibitory neuron density using a prescribed neuron count and the overall neuron
+     density as an upper bound constraint.
 
     Further constraints are imposed:
         * voxels of Purkinje layer are assigned the largest possible cell density
         * voxels sitting both in cerebellar cortex and the molecular layer are also assigned
-        the largest possible cell density.
+        the largest possible neuron density.
 
     Args:
         region_map: object to navigate the brain regions hierarchy.
@@ -145,17 +145,17 @@ def compute_inhibitory_neuron_density(
         nrn1: float array of shape (W, H, D) with non-negative entries. The Nrn1 marker dataset.
         neuron_density: float array of shape (W, H, D) with non-negative entries. The input
             overall neuron density.
-        inhibitory_proportion: (Optional) proportion of inhibitory cells among all neuron cells.
+        inhibitory_proportion: (Optional) proportion of inhibitory neurons among all neurons.
             If it is not provided, then `inhibitory_data` and `region_masks` must be specified.
         inhibitory_data: a dictionary with two keys:
             'ratios': the corresponding value is a dictionary of type Dict[str, float] assigning
-            the proportion of ihnibitory cells in each group named by a key string.
-            'cell_count': the total inhibitory cell count.
+            the proportion of ihnibitory neurons in each group named by a key string.
+            'neuron_count': the total inhibitory neuron count.
 
     Returns:
         float array of shape (W, H, D) with non-negative entries.
-        The overall inhibitory cell density, respecting the constraints imposed by the
-        `neuron_density` upper bound, the input cell count, as well as region hints
+        The overall inhibitory neuron density, respecting the constraints imposed by the
+        `neuron_density` upper bound, the input neuron count, as well as region hints
         (Purkinje layer and molecular layer).
 
     Raises:

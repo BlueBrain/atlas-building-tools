@@ -27,7 +27,7 @@ def test_compute_inhibitory_neuron_density_internal():
 
     inhibitory_data = {
         'proportions': {'Cerebellum group': 0.2, 'Isocortex group': 0.2, 'Rest': 0.6,},
-        'cell_count': 6,
+        'neuron_count': 6,
     }
     gad = np.array([[[0.0, 0.0, 0.5, 0.25, 0.25]]])
     nrn1 = np.array([[[0.0, 0.0, 0.4, 0.35, 0.25]]])
@@ -54,7 +54,7 @@ def test_compute_inhibitory_neuron_density_exceptions():
     neuron_density = np.array([[[0.0, 0.0, 4.0, 4.0, 2.0]]])
     inhibitory_data = {
         'proportions': {'Cerebellum group': 0.2, 'Isocortex group': 0.2, 'Rest': 0.6,},
-        'cell_count': 6,
+        'neuron_count': 6,
     }
     with pytest.raises(AtlasBuildingToolsError):
         tested._compute_inhibitory_neuron_density(
@@ -83,7 +83,7 @@ def test_compute_inhibitory_neuron_density():
     neuron_density = np.array([[[0.0, 0.0, 4.0, 4.0, 2.0]]])
     inhibitory_data = {
         'proportions': {'Cerebellum group': 0.2, 'Isocortex group': 0.2, 'Rest': 0.6,},
-        'cell_count': 6,
+        'neuron_count': 6,
     }
     region_masks = {
         'Cerebellum group': np.array([[[False, False, True, False, False]]]),
@@ -135,7 +135,7 @@ def test_compute_inhibitory_density_large_input():
             'Isocortex group': 0.35,
             'Rest': 0.25,
         },
-        'cell_count': 30000,
+        'neuron_count': 30000,
     }
     inhibitory_neuron_density = tested.compute_inhibitory_neuron_density(
         region_map,

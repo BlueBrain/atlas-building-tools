@@ -1,9 +1,9 @@
 '''Generate and save cell densities
 
-A density value is float number corresponding to the number of cells in a voxel.
+A density value is a float number corresponding to the number of cells in a voxel.
 A density field is a 3D volumetric array assigning to each voxel a density value.
 
-This scripts compute and save the following cell densities under the form of density fields.
+This script computes and saves the following cell densities under the form of density fields.
 
 * overall cell density
 * overall glia cell density and overall neuron density
@@ -16,10 +16,11 @@ This scripts compute and save the following cell densities under the form of den
     - excitatory neuron density
 
 Density estimates are based on datasets produced by in-situ hybridization experiments of the
- Allen Insitute for Brain Science (AIBS). We used in particular AIBS genetic marker datasets and
+ Allen Institute for Brain Science (AIBS). We used in particular AIBS genetic marker datasets and
   the Nissl volume of the Allen Mouse Brain Annotation Atlas.
 Genetic marker stained intensity and Nissl stained intensity are assumed to be a good indicator
-of soma density specific to the population of interest.
+of the soma density in a population of interest.
+
 It is assumed throughout that such intensities depend "almost" linearly
 on the cell density when restricted to a brain region, but we shall not give a precise meaning to
  the word "almost".
@@ -216,7 +217,7 @@ def glia_cell_densities(
         * microglia_density.nrrd \n
 
     In addition, the overall neuron cell density is inferred from the overall cell density and
-    the glia cell densityand saved in the same directory under the name:\n
+    the glia cell density and saved in the same directory under the name:\n
         * neuron_density.
     '''
 

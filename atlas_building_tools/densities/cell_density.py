@@ -1,4 +1,5 @@
-'''Functions to compute the overall mouse brain cell density.'''
+'''Functions to compute the overall mouse brain cell density.
+'''
 
 from typing import Dict, Optional
 import numpy as np
@@ -73,7 +74,7 @@ def compute_cell_density(
     Compute the overall cell density based on Nissl staining and cell counts from literature.
 
     The input Nissl stain intensity volume of AIBS is assumed to be depend linearly on the cell
-    density (number of cells per voxel) when restrictied to a mouse brain region.
+    density (number of cells per voxel) when restricted to a mouse brain region.
     It is turned into an actual density field complying with the cell counts of several
     regions.
 

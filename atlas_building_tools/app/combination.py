@@ -133,7 +133,7 @@ def combine_markers(hierarchy, brain_annotation, config):
      * A 3D volumetric file for each cell type (oligodendrocyte, astrocyte, microglia)
       representing the average density of each cell type, up to a uniform constant factor.\n
 
-     *  3D volumetric file representing the overall average density of the glia in the
+     * A 3D volumetric file representing the overall average density of the glia in the
       whole mouse brain up to the same uniform constant factor.\n
 
      * The global celltype scaling factors S_celltype of the 'Glia differentiation section in

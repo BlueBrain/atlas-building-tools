@@ -1,6 +1,9 @@
-'''Generate and save combined annotations or combined markers
+'''Detect cells and compute average cell radii for different regions of the
+AIBS Mouse brain.
 
-Combination operates on two or more volumetric files with nrrd format.
+The input image files are
+ * 2D images of brain slices coming from a Nissl staining experiment (png).
+ * annotated slices of the same brain (svg).
 
 Lexicon:
     * AIBS stands for 'Allen Institute for Brain Science'

@@ -35,7 +35,6 @@ def test_inhibitory_neuron_counts():
     dataframe = tested.extract_inhibitory_neurons_dataframe(
         Path(DATA_PATH, 'mmc1.xlsx')
     )
-    print(tested.inhibitory_neuron_counts(dataframe))
     assert tested.inhibitory_neuron_counts(dataframe) == {
         'Cerebellum group': 1861600.2000000002,
         'Isocortex group': 1587055.65,
@@ -53,5 +52,5 @@ def test_inhibitory_data():
             'Isocortex group': 0.15717041865285014,
             'Rest': 0.11583414967941594,
         },
-        'cell_count': 5700741.15,
+        'neuron_count': 5700741.15,
     }
