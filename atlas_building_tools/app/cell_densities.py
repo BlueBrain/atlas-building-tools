@@ -309,7 +309,7 @@ def glia_cell_densities(
     ' It will be created if it doesn\'t exist already.',
 )
 @log_args(L)
-def inhibitory_inhibitory_neuron_densities(
+def inhibitory_neuron_densities(
     annotation_path,
     hierarchy_path,
     gad1_path,
@@ -339,7 +339,7 @@ def inhibitory_inhibitory_neuron_densities(
     The ouput densities are saved in the specified output directory under the following\n
     names:\n
         * inhibitory_neuron_density.nrrd \n
-        * inhibitory_neuron_density.nrrd \n
+        * excitatory_neuron_density.nrrd \n
     '''
 
     annotation = VoxelData.load_nrrd(annotation_path)
@@ -363,5 +363,5 @@ def inhibitory_inhibitory_neuron_densities(
     )
     excitatory_density = neuron_density - inhibitory_neuron_density
     annotation.with_data(excitatory_density).save_nrrd(
-        str(Path(output_dir, 'inhibitory_neuron_density.nrrd'))
+        str(Path(output_dir, 'excitatory_neuron_density.nrrd'))
     )

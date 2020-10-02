@@ -2,6 +2,10 @@
 Cell detection module.
 
 Functions to detect cell somata and to estimate somata diameters by processing 2D images.
+Greyscale 2D images are provided as input. In these images, somata are represented by spots of high
+pixel intensity. Somata centers are identified as local maximal pixel intensity. Somata are
+incrementaly removed from an image by cutting a disk of constant radius around soma centers.
+This radius is determined experimentally.
 '''
 from xml.dom import minidom  # type: ignore
 import re

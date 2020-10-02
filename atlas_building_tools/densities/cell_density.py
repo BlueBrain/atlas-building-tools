@@ -29,8 +29,8 @@ def fix_purkinje_layer_density(
         region_map: object to navigate the mouse brain regions hierarchy.
         annotation_raw: integer array of shape (W, H, D) enclosing the AIBS annotation of
             the whole mouse brain.
-        cell_density: float array of shape (W, H, D) with non-negative entries. The input
-            overall cell density to be corrected.
+        cell_density: float array of shape (W, H, D) with non-negative entries. The overall cell
+            density to be corrected.
         cell_counts: a dictionary whose keys are region group names and whose values are
             integer cell counts.
         region_masks: A dictionary whose keys are region group names and whose values are

@@ -48,7 +48,8 @@ def split_isocortex_layer_23(
     output_hierarchy_path,
     output_annotation_path,
 ):
-    '''Split the layer 2/3 in the mouse isocortex and save modified hierarchy and annotations.'''
+    '''Split the layer 2/3 of the AIBS mouse isocortex and save modified hierarchy and
+        annotations.'''
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
     with open(hierarchy_path, 'r') as h_file:
         hierarchy = json.load(h_file)

@@ -1,4 +1,9 @@
-'''Function computing the direction vectors of the mouse cerebellum'''
+'''Function computing the direction vectors of the AIBS mouse cerebellum
+
+The algorithm creates a scalar field with low values in surfaces where fiber tracts are incoming
+and high values where fiber tracts are outgoing. The direction vectors are given by the gradient
+of this scalar field.
+'''
 import numpy as np  # type: ignore
 from nptyping import NDArray  # type: ignore
 

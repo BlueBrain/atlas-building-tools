@@ -117,7 +117,7 @@ def inhibitory_neuron_counts(
     '''Number of inhibitory neurons in the whole mouse brain.
 
     Inhibitory neuron counts have been extracted from the suplementary materials of
-        'Brain-wide Maps Reveal Stereotyped Cell-Type- Based Cortical Architecture '
+        'Brain-wide Maps Reveal Stereotyped Cell-Type-Based Cortical Architecture '
         'and Subcortical Sexual Dimorphism' by Kim et al., 2017.
         https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc1.xlsx
 
@@ -187,7 +187,7 @@ def inhibitory_data(
         }
         where the value corresponding to each group is a float in (0, 1) indicating the proportion
          of inhibitory cells among neurons in that group and the value corresponding to
-          'neuron_count' is the number of inhibitory cells in the whole mouse brain.
+          'neuron_count' is the number of inhibitory neurons in the whole mouse brain.
     '''
 
     return {

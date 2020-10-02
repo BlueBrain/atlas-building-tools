@@ -30,7 +30,7 @@ def _compute_inhibitory_neuron_density(
 
     The input genetic marker datasets GAD1 and NRN1 are used to shape the spatial density
     distribution of the inhibitory and excitatory neurons respectively. Gene marker stained
-    intensities are assumed to depend linearly on neuron density (number of cells per voxel).
+    intensities are assumed to depend linearly on neuron density (number of neurons per voxel).
 
     Note regarding these markers:
         Every Gabaergic neuron expresses GAD1 and every GAD1 reacting cell is a gabaergic neuron.
@@ -49,8 +49,8 @@ def _compute_inhibitory_neuron_density(
         gad1: float array of shape (W, H, D) with non-negative entries. The GAD1 (a.k.a GAD67)
             marker dataset.
         nrn1: float array of shape (W, H, D) with non-negative entries. The Nrn1 marker dataset.
-        neuron_density: float array of shape (W, H, D) with non-negative entries. The input
-            overall neuron density obtained.
+        neuron_density: float array of shape (W, H, D) with non-negative entries. The overall
+            neuron density.
         inhibitory_proportion: (Optional) proportion of inhibitory neurons among all neuron cells.
             If it is not provided, then `inhibitory_data` and `region_masks` must be specified.
         inhibitory_data: (Optional) a dictionary with two keys:
@@ -68,7 +68,7 @@ def _compute_inhibitory_neuron_density(
 
     Raises:
         AtlasBuildingToolsError if both `inhibitory_proportion` and `inhibitory_data` are None.
-        or if `inhibitory_proportion` is Nonw, `inhibitory_data` is not None but `region_masks`
+        or if `inhibitory_proportion` is None, `inhibitory_data` is not None but `region_masks`
         is None.
     '''
 
