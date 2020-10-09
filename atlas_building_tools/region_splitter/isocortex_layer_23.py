@@ -73,7 +73,7 @@ def edit_hierarchy(hierarchy: HierarchyDict, layer_3_new_ids: Dict[int, int]) ->
     Edit in place layer 2/3 into 2 and 3 within the hierarchy dict.
 
     Acronyms and names ending with 2/3 are changed.
-    A new identifier is used when a layer 2/3 id annotates voxels both in
+    A new identifier is used when a layer 2/3 identifier is used to annotate voxels both in
     layer 2 and layer 3.
 
     Note: The isocortex should not have any identifier whose acronym refers to

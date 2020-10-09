@@ -1,4 +1,4 @@
-'''Generate and save the placement hints of different regions of the mouse brain
+'''Generate and save the placement hints of different regions of the AIBS mouse brain
 
 See https://bbpteam.epfl.ch/documentation/projects/placement-algorithm/latest/index.html
 for the specifications of the placement hints.
@@ -45,14 +45,16 @@ def _placement_hints(
             direction_vectors.nrrd.
         output_dir: path to the output directory.
         region_acronym: acronym of the region for which the computation is requested.
-            Example: 'CA1', 'Isocortex'.
+            Examples: 'CA1', 'Isocortex'.
         layer_regexps: list of regular expressions defining the layers of `region_acronym`.
         placement_hint_names: list of names to be used when saving the layer placement hints.
         max_thicknesses: (optional) thicknesses of `region_acronym` layers.
-            Defaults to None, i.e., there will be no validity check with input from literature.
+            Defaults to None, i.e., there will be no validity check against desired thickness
+            bounds. Otherwise layer thicknesses inferred from distance computations are checked
+            against `max_thicknesses` (the latter values usually originate from experimental data).
         flip_direction_vectors: (optional) if True, the input direction vectors are negated before
             use. This is required if direction vectors flaw from the top layer (shallowest) to the
-            bottom layer (deepest). Otherwise, they are left unchanged. Defaults to false.
+            bottom layer (deepest). Otherwise, they are left unchanged. Defaults to False.
          has_hemispheres: (optional) If True, split the volume into halves along the z-axis and
             handle each of theses 'hemispheres' separately. Otherwise the whole volume is handled.
             Defaults to True.
@@ -101,7 +103,7 @@ def app(verbose):
     '--annotation-path',
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('Path to the whole mouse brain annotation nrrd file.'),
+    help=('Path to the whole AIBS mouse brain annotation nrrd file.'),
 )
 @click.option(
     '--hierarchy-path',

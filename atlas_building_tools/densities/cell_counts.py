@@ -226,8 +226,8 @@ def extract_inhibitory_neurons_dataframe(
           This assumption is supported in the Cortex and Hippocampus by transcriptomic studies.
 
     Args:
-        inhibitory_neuron_counts_path: path to the excel document mm1c.xls of the suplementary
-            materials of 'Brain-wide Maps Reveal Stereotyped Cell-Type- Based Cortical Architecture
+        inhibitory_neuron_counts_path: path to the excel document mm1c.xls of the supplementary
+            materials of 'Brain-wide Maps Reveal Stereotyped Cell-Type-Based Cortical Architecture
              and Subcortical Sexual Dimorphism' by Kim et al., 2017.
             https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc1.xlsx
 

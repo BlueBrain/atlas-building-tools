@@ -132,6 +132,8 @@ def compute_glia_densities(
             copy=copy,
         )
 
+    # pylint: disable=fixme
+    # FIXME(Luc): The microglia density can be negative.
     glia_densities['microglia'] = (
         glia_densities['glia']
         - glia_densities['astrocyte']

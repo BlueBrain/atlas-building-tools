@@ -13,7 +13,8 @@ q = e cross v + (e dot v + |e||v|) where
 In particular q maps e to v, i.e., q e q^{-1} = v.
 If q is interpreted as an orientation, i.e., a 3D orthonormal frame, this implies that
 the y-axis of q is directed along e. The latter is a requirement of the morphology orientation
-convention.
+convention used by the placement algorithm, see
+https://bbpteam.epfl.ch/documentation/projects/placement-algorithm/latest/index.html.
 
 '''
 import logging
@@ -40,9 +41,9 @@ L = logging.getLogger(__name__)
     '--output-path',
     type=str,
     required=True,
-    help='Path to the file where voxcell orientations will be saved as a field of 4D vectors'
+    help='Path to the file where voxel orientations will be saved as a field of 4D vectors'
     ' (w, x, y, z) over a 3D volume. A vector (w, x, y, z) represents a quaternion with '
-    'imaginary part (x, y, z) The nrrd data type is the same as the input type.'
+    'imaginary part (x, y, z). The nrrd data type is the same as the input type.'
     'NaN vectors indicate out-of-domain voxels but also voxels for which an orientation could'
     ' not be derived.',
 )

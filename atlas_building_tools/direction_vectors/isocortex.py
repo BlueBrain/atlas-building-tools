@@ -25,7 +25,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 L = logging.getLogger(__name__)
 logging.captureWarnings(True)
-# The endings of names and acronyms in the 6 layers of the mouse isocortex are:
+# The endings of names and acronyms in the 6 layers of the AIBS mouse isocortex are:
 #  * 1, 2, 3, 4, 5
 #  * 2/3
 #  * 6a, 6b
@@ -54,7 +54,7 @@ def get_isocortical_regions(
 
     Note: The output list may vary from one annotation file to the other.
     For the Mouse ccfv2 annotation with a resolution of 25um, 40 acronyms
-    are returned. For the Mouse ccfv2 annotation of the same resolution,
+    are returned. For the Mouse ccfv3 annotation of the same resolution,
     43 acronyms are returned.
     '''
     isocortex_mask = get_region_mask('Isocortex', brain_regions, region_map)
