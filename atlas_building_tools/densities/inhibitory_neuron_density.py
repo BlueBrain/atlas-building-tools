@@ -104,14 +104,14 @@ def _compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
         inhibitory_neuron_density *= inhibitory_proportion
         inhibitory_neuron_count = int(np.sum(neuron_density) * inhibitory_proportion)
     else:
-        for group, mask in region_masks.items():
+        for group, mask in region_masks.items():  # type: ignore
+            inhibitory_proportion = inhibitory_data['proportions'][group]  # type: ignore
             inhibitory_neuron_density[mask] = (
-                inhibitory_neuron_density[mask] * inhibitory_data['proportions'][group]
+                inhibitory_neuron_density[mask] * inhibitory_proportion
             )
-            marker_sum[mask] = inhibitory_neuron_density[mask] + excitatory_neuron_density[
-                mask
-            ] * (1.0 - inhibitory_data['proportions'][group])
-        inhibitory_neuron_count = inhibitory_data['neuron_count']
+            marker_sum[mask] = inhibitory_neuron_density[mask] + \
+                excitatory_neuron_density[mask] * (1.0 - inhibitory_proportion)
+        inhibitory_neuron_count = inhibitory_data['neuron_count']  # type: ignore
 
     inhibitory_neuron_density[marker_sum > 0.0] /= marker_sum[marker_sum > 0.0]
     inhibitory_neuron_density /= np.max(inhibitory_neuron_density)
@@ -172,7 +172,10 @@ def compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
             )
         region_masks = get_region_masks(group_ids, annotation_raw)
 
-    inhibitory_neuron_density, inhibitory_neuron_count = _compute_inhibitory_neuron_density(
+    (
+        inhibitory_neuron_density,
+        inhibitory_neuron_count,
+    ) = _compute_inhibitory_neuron_density(
         compensate_cell_overlap(gad1, annotation_raw, gaussian_filter_stdv=1.0),
         compensate_cell_overlap(nrn1, annotation_raw, gaussian_filter_stdv=1.0),
         neuron_density,
@@ -181,7 +184,9 @@ def compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
         region_masks,
     )
 
-    inhibitory_neurons_mask = np.isin(annotation_raw, list(group_ids['Purkinje layer']),)
+    inhibitory_neurons_mask = np.isin(
+        annotation_raw, list(group_ids['Purkinje layer']),
+    )
     inhibitory_neurons_mask = np.logical_or(
         inhibitory_neurons_mask,
         np.isin(

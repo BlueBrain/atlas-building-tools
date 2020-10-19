@@ -88,7 +88,7 @@ def apply_soma_area_correction(
         fiber_tracts_ids = list(
             region_map.find('fiber tracts', attr='acronym', with_descendants=True)
         )
-        radius = float(soma_radii[fiber_tracts_id])
-        weights[np.isin(annotation_raw, fiber_tracts_ids)] = np.pi * (radius ** 2)
+        radius_ = float(soma_radii[fiber_tracts_id])
+        weights[np.isin(annotation_raw, fiber_tracts_ids)] = np.pi * (radius_ ** 2)
 
     nissl /= weights

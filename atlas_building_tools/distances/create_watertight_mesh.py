@@ -11,7 +11,6 @@ import tempfile
 from distutils.spawn import find_executable
 import logging
 
-from typing import Dict, Union
 from nptyping import NDArray  # type: ignore
 
 
@@ -202,17 +201,9 @@ def create_watertight_trimesh(
     '''
     optimized_mesh = None  # The mesh to be returned.
     unoptimized_mesh = None
-    ultraliser_options: Dict[str, Union[int, str]] = {
-        'iso_value': 1,
-        'smooth_factor': 15,
-        'smooth_iterations': 15,
-    }
     with tempfile.TemporaryDirectory() as tempdir:
         # ultraVolume2Mesh requires a name without file extension.
         volume_path = str(Path(tempdir, 'binary_image'))
-        ultraliser_options.update(
-            {'volume_path': volume_path, 'output_directory': tempdir}
-        )
         # Write image to disk for later use by ultraliser.
         _write_numpy_array_to_img_file(binary_image, volume_path)
         # ultraVolume2Mesh writes the resulting meshes to two output files
@@ -220,15 +211,21 @@ def create_watertight_trimesh(
         # The output filenames follow these patterns:
         # <volume path>_<iso value>.obj (unoptimized).
         # <volume path>_<iso value>_optimized.obj (optimized).
-        ultra_volume_2_mesh(**ultraliser_options)
-        iso_value = ultraliser_options['iso_value']
+        iso_value = 1
+        ultra_volume_2_mesh(
+            volume_path=volume_path,
+            output_directory=tempdir,
+            smooth_factor=15,
+            iso_value=iso_value,
+            smooth_iterations=15,
+        )
         # The format of the following filepaths is imposed by Ultraliser.
         output_filepath_opt = volume_path + '_' + str(iso_value) + '_' + 'optimized.obj'
         output_filepath_unopt = output_filepath_opt.replace('_optimized', '')
         for filepath in [output_filepath_unopt, output_filepath_opt]:
             if not Path(filepath).exists():
                 raise AtlasBuildingToolsError(
-                    'Ultralizer failed to generate the mesh {}'.format(filepath)
+                    'Ultraliser failed to generate the mesh {}'.format(filepath)
                 )
         unoptimized_mesh = trimesh.load_mesh(output_filepath_unopt)
         optimized_mesh = trimesh.load_mesh(output_filepath_opt)
