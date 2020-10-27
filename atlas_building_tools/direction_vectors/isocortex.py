@@ -108,7 +108,9 @@ def compute_direction_vectors(
                 region_map,
                 voxel_data,
                 {
-                    'source': [('acronym', '@.*6[ab]$')],
+                    # Note: layer 6b matches with the bottom boundary of the isocortex.
+                    # Layer 6a doesn't.
+                    'source': [('acronym', '@.*6[b]$')],
                     'inside': [('acronym', region)],
                     'target': [('acronym', '@.*1$')],
                 },
