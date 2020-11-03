@@ -10,6 +10,7 @@ from atlas_building_tools.region_splitter import isocortex_layer_23
 from atlas_building_tools.app.utils import log_args, EXISTING_FILE_PATH, set_verbose
 
 L = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 @click.group()
@@ -50,12 +51,15 @@ def split_isocortex_layer_23(
 ):
     '''Split the layer 2/3 of the AIBS mouse isocortex and save modified hierarchy and
         annotations.'''
+    L.info('Loading files ...')
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
     with open(hierarchy_path, 'r') as h_file:
         hierarchy = json.load(h_file)
     direction_vectors = voxcell.VoxelData.load_nrrd(direction_vectors_path)
     # Splits and updates in place hierarchy and annotations
+    L.info('Splitting layer 2/3 in layer 2 and layer 3 ...')
     isocortex_layer_23.split(hierarchy, annotation, direction_vectors.raw)
+    L.info('Saving modified annotation and hierarchy files ...')
     annotation.save_nrrd(output_annotation_path)
     with open(output_hierarchy_path, 'w') as out:
         json.dump(hierarchy, out, indent=1, separators=(',', ': '))

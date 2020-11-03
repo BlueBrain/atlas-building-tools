@@ -1,9 +1,32 @@
 '''Detect cells and compute average cell radii for different regions of the
-AIBS Mouse brain.
+AIBS P56 Mouse brain.
 
 The input image files are
- * 2D images of brain slices coming from a Nissl staining experiment (png).
- * annotated slices of the same brain (svg).
+ * (png) 2D images of brain slices coming from a Nissl staining experiment.
+ * (svg) annotated slice images of the same brain.
+
+The image file list was originally obtained through the http request with url
+
+'http://api.brain-map.org/api/v2/data/query.xml?num_rows=all&&start_row=0&criteria=model::'
+'AtlasImage,rma::criteria,atlas_data_set(atlases[id$eq1]),graphic_objects(graphic_group_label'
+'[id$eq28])'
+
+followed by download requests with urls of the form
+
+http://api.brain-map.org/api/v2/section_image_download/{id_}.
+
+The output of the previous requests consists of 132 pairs of images with names of the form <id>.png
+and <id>.svg, e.g., 100960204.png and 100960204.svg. Files with the same id have the same
+dimensions. Overall max width: 11072 pixels, max height: 8528 pixels.
+
+These are the images corresponding to 132 coronal sections evenly spaced at 100 um intervals
+and annotated to detail numerous brain structures, see http://mouse.brain-map.org/static/atlas
+and the two technical AIBS white papers:
+
+- http://help.brain-map.org/download/attachments/2818169/AllenReferenceAtlas_v1_2008_102011.pdf'
+'?version=1&modificationDate=1319477213862&api=v2
+- http://help.brain-map.org/download/attachments/2818169/AllenReferenceAtlas_v2_2011.pdf?version'
+'=1&modificationDate=1319667383440&api=v2
 
 Lexicon:
     * AIBS stands for 'Allen Institute for Brain Science'
@@ -55,12 +78,14 @@ def app(verbose):
 )
 @log_args(L)
 def svg_to_png(
-    input_dir, remove_strokes, output_dir,
+    input_dir,
+    remove_strokes,
+    output_dir,
 ):
-    '''Convert svg files into png files.\n
+    """Convert svg files into png files.\n
 
     Strokes are optionally removed.
-    '''
+    """
     filepaths = [Path.resolve(f) for f in Path(input_dir).glob('*.svg')]
     output_dir = Path(output_dir)
     if not output_dir.exists():
@@ -91,22 +116,23 @@ def svg_to_png(
 )
 @log_args(L)
 def extract_color_map(
-    input_dir, output_path,
+    input_dir,
+    output_path,
 ):
-    '''Extract the mapping of colors to structure ids and save to file.\n
+    """Extract the mapping of colors to structure ids and save to file.\n
 
-     Extract the structure_id's and the corresponding pairs from each AIBS svg annotation file in
-     of input directory. These pairs are structured under the form of a dict
-     {hexdecimal_color_code: structure_id} and saved into a json file.
-     See http://help.brain-map.org/display/api/Downloading+and+Displaying+SVG
-     for information on AIBS svg files and how to fetch them.\n
-     Output example:\n
-        {\n
-            "#188064": 893,\n
-            "#11ad83": 849,\n
-            "#40a666": 810,\n
-        }
-    '''
+    Extract the structure_id's and the corresponding pairs from each AIBS svg annotation file in
+    of input directory. These pairs are structured under the form of a dict
+    {hexdecimal_color_code: structure_id} and saved into a json file.
+    See http://help.brain-map.org/display/api/Downloading+and+Displaying+SVG
+    for information on AIBS svg files and how to fetch them.\n
+    Output example:\n
+       {\n
+           "#188064": 893,\n
+           "#11ad83": 849,\n
+           "#40a666": 810,\n
+       }
+    """
     filepaths = [Path.resolve(f) for f in Path(input_dir).glob('*.svg')]
     color_map = {}
     for filepath in filepaths:
@@ -145,13 +171,15 @@ def extract_color_map(
 )
 @log_args(L)
 def compute_average_soma_radius(
-    input_dir, color_map_path, output_path,
+    input_dir,
+    color_map_path,
+    output_path,
 ):
-    '''Compute average soma radii for different regions and save to file.\n
+    """Compute average soma radii for different regions and save to file.\n
 
-     For each region where somas can been detected, the function estimates
-     the radii of somas and save the mean value over each region.
-    '''
+    For each region where somas can been detected, the function estimates
+    the radii of somas and save the mean value over each region.
+    """
     filepaths = [Path.resolve(f) for f in Path(input_dir).glob('*.jpg')]
     with open(color_map_path, 'r') as file_:
         color_map = json.load(file_)

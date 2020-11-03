@@ -2,10 +2,15 @@
 Cell detection module.
 
 Functions to detect cell somata and to estimate somata diameters by processing 2D images.
-Greyscale 2D images are provided as input. In these images, somata are represented by spots of high
-pixel intensity. Somata centers are identified as local maximal pixel intensity. Somata are
-incrementaly removed from an image by cutting a disk of constant radius around soma centers.
-This radius is determined experimentally.
+
+Greyscale 2D images are provided as input. (Greyscale images are obtained by inverting the Nissl
+stain intensity of the images provided by AIBS.) In these images, somata are represented by spots
+of high pixel intensity. Somata centers are identified as local maximal pixel intensity. Somata are
+incrementaly removed from an image by cutting a disk of constant radius around soma centers. This
+radius is determined experimentally.
+
+The mapping which assigns a soma center to an AIBS brain region is computed by means of companion
+svg files which annotate each greyscale image.
 '''
 from xml.dom import minidom  # type: ignore
 import re
@@ -30,7 +35,7 @@ if TYPE_CHECKING:  # pragma: no cover
 L = logging.getLogger(__name__)
 logging.captureWarnings(True)
 
-FITTING_PARAMETERS = [10.0, 200.0, 0.0, 0.4]
+FITTING_PARAMETERS = [10.0, 200.0, 0.0, 0.4]  # determined experimentally
 
 
 def remove_disk(coord: NDArray[int], radius: int, image: NDArray[float]) -> None:

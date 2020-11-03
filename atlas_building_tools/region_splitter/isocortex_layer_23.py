@@ -7,9 +7,11 @@ of voxel-to-(layer boundary mesh) distances wrt to direction vectors.
 '''
 
 import copy
+import logging
 from itertools import count, islice
 from typing import Any, Dict, Iterator, Set, TYPE_CHECKING
 from nptyping import NDArray  # type: ignore
+from tqdm import tqdm
 
 import numpy as np  # type: ignore
 
@@ -17,6 +19,8 @@ import numpy as np  # type: ignore
 from voxcell import RegionMap  # type: ignore
 
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
+
+L = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from voxcell import VoxelData  # type: ignore
@@ -214,7 +218,7 @@ def _get_deepest_layer_mask(
     layer_mask = np.zeros_like(volume_mask)
     voxels = np.array(np.where(volume_mask)).T
 
-    for voxel in voxels:  # pylint: disable=not-an-iterable
+    for voxel in tqdm(voxels):  # pylint: disable=not-an-iterable
         forward_distance = _compute_distance_to_boundary(
             voxel, volume_mask, direction_vectors, 1
         )
@@ -267,6 +271,7 @@ def split(
         '@.*2(/3)?$', attr='acronym', with_descendants=True
     )
 
+    L.info('Computing the mask of the voxels of thickness at least %f', thickness_ratio)
     layer_3_mask = _get_deepest_layer_mask(
         np.isin(annotation.raw, list(layers_2_and_3_ids)),
         thickness_ratio,
@@ -276,6 +281,7 @@ def split(
         '@.*2/3$', attr='acronym', with_descendants=True
     )
 
+    L.info('Editing annotation and hierarchy files ...')
     _edit_layer_23(
         hierarchy, region_map, annotation.raw, layer_23_ids, layer_3_mask,
     )
