@@ -2,7 +2,7 @@
 AIBS P56 Mouse brain.
 
 The input image files are
- * (png) 2D images of brain slices coming from a Nissl staining experiment.
+ * (jpg) 2D images of brain slices coming from a Nissl staining experiment.
  * (svg) annotated slice images of the same brain.
 
 The image file list was originally obtained through the http request with url
@@ -15,7 +15,7 @@ followed by download requests with urls of the form
 
 http://api.brain-map.org/api/v2/section_image_download/{id_}.
 
-The output of the previous requests consists of 132 pairs of images with names of the form <id>.png
+The output of the previous requests consists of 132 pairs of images with names of the form <id>.jpg
 and <id>.svg, e.g., 100960204.png and 100960204.svg. Files with the same id have the same
 dimensions. Overall max width: 11072 pixels, max height: 8528 pixels.
 
@@ -27,6 +27,11 @@ and the two technical AIBS white papers:
 '?version=1&modificationDate=1319477213862&api=v2
 - http://help.brain-map.org/download/attachments/2818169/AllenReferenceAtlas_v2_2011.pdf?version'
 '=1&modificationDate=1319667383440&api=v2
+
+
+Note: We first need to convert svg files to png files so as to handle the latter as 2D arrays for
+comparison with the input jpg files. Cells are identified as local maxima of the pixel intensity of
+the jpg nissl images.
 
 Lexicon:
     * AIBS stands for 'Allen Institute for Brain Science'
@@ -105,7 +110,7 @@ def svg_to_png(
     required=True,
     help=(
         'Path to the image directory. This directory contains a list of svg files to parse for '
-        'fill color and AIBS structure_id extractions.'
+        'extracting fill color and AIBS structure_id values.'
     ),
 )
 @click.option(
@@ -122,10 +127,13 @@ def extract_color_map(
     """Extract the mapping of colors to structure ids and save to file.\n
 
     Extract the structure_id's and the corresponding pairs from each AIBS svg annotation file in
-    of input directory. These pairs are structured under the form of a dict
-    {hexdecimal_color_code: structure_id} and saved into a json file.
+    the input directory.
+    These pairs are structured under the form of a dict {hexdecimal_color_code: structure_id} and
+    saved into a json file.
+
     See http://help.brain-map.org/display/api/Downloading+and+Displaying+SVG
     for information on AIBS svg files and how to fetch them.\n
+
     Output example:\n
        {\n
            "#188064": 893,\n
@@ -147,8 +155,8 @@ def extract_color_map(
     type=EXISTING_DIR_PATH,
     required=True,
     help=(
-        'Path to the image directoy. This directory contains a list of jpg and png files whose '
-        ' identical base names are brain section identifiers. The jpg files are nissle images. '
+        'Path to the image directory. This directory contains a list of jpg and png files whose '
+        ' identical base names are brain section identifiers. The jpg files are nissl images. '
         'The png files hold colored annotation.'
     ),
 )
@@ -180,7 +188,10 @@ def compute_average_soma_radius(
     For each region where somas can been detected, the function estimates
     the radii of somas and save the mean value over each region.
     """
+    # We take only .jpg file names since the .png files names are identical,
+    # apart from the extension.
     filepaths = [Path.resolve(f) for f in Path(input_dir).glob('*.jpg')]
+
     with open(color_map_path, 'r') as file_:
         color_map = json.load(file_)
         soma_radius_dict = cell_detection.compute_average_soma_radius(
