@@ -9,7 +9,7 @@ import numpy.testing as npt  # type: ignore
 import numpy as np  # type: ignore
 
 from voxcell import VoxelData  # type: ignore
-from atlas_building_tools.placement_hints.layered_atlas import LayeredAtlas  # type: ignore
+from atlas_building_tools.placement_hints.layered_atlas import LayeredAtlas, DistanceProblem  # type: ignore
 
 from tests.placement_hints.mocking_tools import IsocortexMock
 import atlas_building_tools.placement_hints.layered_atlas as tested
@@ -100,14 +100,23 @@ class Test_Layered_Atlas(unittest.TestCase):
                 )
                 npt.assert_allclose(valid, np.count_nonzero(mask), rtol=0.35)
 
-    def test_save_problematic_volume(self):
+    def test_save_problematic_voxel_mask(self):
         with tempfile.TemporaryDirectory() as tempdir:
-            problematic_volume = np.zeros((2, 2, 2), dtype=np.bool)
-            problematic_volume[0, 0, 0] = True
-            problematic_volume[0, 1, 0] = True
-            tested.save_problematic_volume(
-                self.layered_atlas, problematic_volume, tempdir
+            problematic_voxel_mask = np.zeros((2, 2, 2), dtype=np.bool)
+            problematic_voxel_mask[0, 0, 0] = True
+            problematic_voxel_mask[0, 1, 0] = True
+            problems = {
+                'before interpolation': { 'volume': problematic_voxel_mask.copy()},
+                'after interpolation': {'volume': problematic_voxel_mask}
+            }
+            problematic_voxel_mask[0, 1, 0] = False
+            expected_voxel_mask = np.full((2, 2, 2), np.uint8(DistanceProblem.NO_PROBLEM.value))
+            expected_voxel_mask[0, 0, 0] = np.uint8(DistanceProblem.AFTER_INTERPOLATION.value)
+            expected_voxel_mask[0, 1, 0] = np.uint8(DistanceProblem.BEFORE_INTERPOLATION.value)
+
+            tested.save_problematic_voxel_mask(
+                self.layered_atlas, problems, tempdir
             )
-            volume_path = Path(tempdir, 'Isocortex_problematic_volume.nrrd')
+            volume_path = Path(tempdir, 'Isocortex_problematic_voxel_mask.nrrd')
             voxel_data = VoxelData.load_nrrd(volume_path)
-            npt.assert_almost_equal(voxel_data.raw, problematic_volume)
+            npt.assert_almost_equal(voxel_data.raw, expected_voxel_mask)

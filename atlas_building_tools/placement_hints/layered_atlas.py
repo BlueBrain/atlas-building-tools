@@ -4,6 +4,7 @@ voxel-to-layer distances wrt to direction vectors in a laminar brain region.
 This module is used for the computation of placement hints in the mouse
 isocortex and in the mouse Hippocampus CA1 region.
 '''
+from enum import IntEnum
 import logging
 import os
 
@@ -40,11 +41,22 @@ LEFT = 0  # left hemisphere
 RIGHT = 1  # right hemisphere
 
 
-class LayeredAtlas:
+class DistanceProblem(IntEnum):
     '''
+    Enumerate distance-related problems detected after the computation of placement hints.
+    '''
+    NO_PROBLEM = 0
+    BEFORE_INTERPOLATION = 1  # NaN distance value or excessive layer thickness
+    AFTER_INTERPOLATION = 2  # Excessive layer thickness only
+    # NaN distance values are assumed to have been interpolated with valid distances of nearby
+    # voxels.
+
+
+class LayeredAtlas:
+    """
     Class holding the data of a layered atlas, i. e., an atlas with well-defined layers
     for which boundary meshes can be created.
-    '''
+    """
 
     def __init__(
         self,
@@ -53,14 +65,14 @@ class LayeredAtlas:
         region_map: 'RegionMap',
         layer_regexps: List[str],
     ):
-        '''
+        """
         acronym: acronym of the atlas as written in the
             hierarchy.json file.
             Example: 'isocortex' or 'CA1', but could be another layered brain structure.
         annotation: annotated volume enclosing the whole brain atlas.
         region_map: Object to navigate the brain regions hierarchy.
         layer_regexps: list of regular expressions defining the layers in the brain hierarchy.
-        '''
+        """
         self.acronym = acronym
         self.annotation = annotation
         self.region_map = region_map
@@ -68,12 +80,12 @@ class LayeredAtlas:
 
     @lazy
     def region(self) -> 'VoxelData':
-        '''
+        """
         Accessor of the layered atlas as a VoxelData object.
 
         Returns:
             VoxelData instance of the layered atlas.
-        '''
+        """
         region_mask = get_region_mask(
             self.acronym, self.annotation.raw, self.region_map
         )
@@ -81,13 +93,13 @@ class LayeredAtlas:
 
     @lazy
     def volume(self) -> NDArray[np.int]:
-        '''
+        """
         Get the volume enclosed by the specified layers.
 
         Returns:
             layers_volume: numpy 3D array whose voxels are labelled
                 by the indices of `self.layer_regexps` augmented by 1.
-        '''
+        """
         number_of_layers = len(self.layer_regexps)
         L.info(
             'Creating a volume for each of the %d layers of %s ...',
@@ -105,7 +117,7 @@ class LayeredAtlas:
     def create_layer_meshes(
         self, layered_volume: NDArray[np.int]
     ) -> List['trimesh.Trimesh']:
-        '''
+        """
         Create meshes representing the upper boundary of each layer
         in the laminar region volume, referred to as `layered_volume`.
 
@@ -125,7 +137,7 @@ class LayeredAtlas:
                     It has the vertices of the first mesh, but its normal are
                     inverted.
 
-        '''
+        """
 
         layers_values = np.unique(layered_volume)
         layers_values = layers_values[layers_values > 0]
@@ -168,31 +180,45 @@ class LayeredAtlas:
         return meshes
 
 
-def save_problematic_volume(
-    layered_atlas: LayeredAtlas, problematic_volume: NDArray[np.bool], output_dir: str
+def save_problematic_voxel_mask(
+    layered_atlas: LayeredAtlas, problems: dict, output_dir: str
 ):
-    '''
-    Save the problematic volume to file.
+    """
+    Save the problematic voxel mask to file.
+
+    The problematic volume is an array of the same shape as `layered_atlas.region`,
+    i.e., (W, H, D). Its dtype is uint8.
+    A voxel value equal to DistanceProblem.NO_PROBLEM indicates that no problem was detected.
+    The value DistanceProblem.BEFORE_INTERPOLATION indicates that a problem was detected before
+    interpolation of problematic distances by valid ones but not after.
+    The value DistanceProblem.AFTER_INTERPOLATION indicates that a problem persists after
+    interpolation.
 
     Args:
-        layered_atlas: atlas for which distances computations
-            have generated a problematic volume.
-        problematic_volume: 3D array  holding the
-            the problematic volume of the layered atlas.
-            The problematic volume is the mask of voxels with problematic
-            direction vectors with respect to the layer meshes.
+        layered_atlas: atlas for which distances computations have generated a problematic voxel
+            mask.
+        problems: dict returned by
+            atlas_building_tools.compute_placement_hints.compute_placement_hints.
+            This dictionary contains in particular 3D binary masks corresponding to voxels
+            with problematic placement hints.
         output_dir: directory in which to save the problematic volume as an nrrd file.
-    '''
+    """
     problematic_volume_path = os.path.join(
-        output_dir, layered_atlas.acronym + '_problematic_volume.nrrd'
+        output_dir, layered_atlas.acronym + '_problematic_voxel_mask.nrrd'
     )
     L.info(
         'Saving problematic volume of %s to file %s ...',
         layered_atlas.acronym,
         problematic_volume_path,
     )
-    voxel_type = layered_atlas.annotation.raw.dtype
-    problematic_volume = problematic_volume.astype(voxel_type)
+    voxel_mask = problems['before interpolation']['volume']
+    problematic_volume = np.full(
+        voxel_mask.shape, np.uint8(DistanceProblem.NO_PROBLEM.value)
+    )
+    problematic_volume[voxel_mask] = np.uint8(DistanceProblem.BEFORE_INTERPOLATION.value)
+    voxel_mask = problems['after interpolation']['volume']
+    problematic_volume[voxel_mask] = np.uint8(DistanceProblem.AFTER_INTERPOLATION.value)
+
     layered_atlas.annotation.with_data(problematic_volume).save_nrrd(
         problematic_volume_path
     )
@@ -219,7 +245,9 @@ def _dists_and_obtuse_angles(
     hemisphere_distances = []
     hemisphere_volumes = split_into_halves(layered_atlas.volume)
     hemisphere_obtuse_angles = []
-    L.info('Computing distances from voxels to layers meshes ...',)
+    L.info(
+        'Computing distances from voxels to layers meshes ...',
+    )
     for hemisphere in [LEFT, RIGHT]:
         L.info(
             'Computing distances for the hemisphere %d of the %s region ...',
@@ -252,7 +280,7 @@ def compute_distances_to_layer_meshes(  # pylint: disable=too-many-arguments
     has_hemispheres: bool = True,
     flip_direction_vectors: bool = False,
 ) -> Dict[str, Union[LayeredAtlas, NDArray[float], NDArray[bool]]]:
-    '''
+    """
     Compute distances from voxels to layers meshes wrt to direction vectors.
 
     Compute also the volume of voxels with problematic direction, i.e.,
@@ -286,7 +314,7 @@ def compute_distances_to_layer_meshes(  # pylint: disable=too-many-arguments
                 (number of layers + 1, W, H, D) holding the distances from
                 voxel centers to the upper boundaries of layers wrt to voxel direction vectors.
 
-    '''
+    """
     if flip_direction_vectors:
         direction_vectors = -direction_vectors
 

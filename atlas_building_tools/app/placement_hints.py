@@ -16,7 +16,7 @@ from atlas_building_tools.placement_hints.compute_placement_hints import (
     compute_placement_hints,
 )
 from atlas_building_tools.placement_hints.utils import save_placement_hints
-from atlas_building_tools.placement_hints.layered_atlas import save_problematic_volume
+from atlas_building_tools.placement_hints.layered_atlas import save_problematic_voxel_mask
 from atlas_building_tools.app.utils import log_args, EXISTING_FILE_PATH, set_verbose  # type: ignore
 
 L = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ def _placement_hints(
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
     region_map = voxcell.RegionMap.load_json(hierarchy_path)
     direction_vectors = voxcell.VoxelData.load_nrrd(direction_vectors_path)
-    (distances_info, distances_report, problematic_volume,) = compute_placement_hints(
+    distances_info, problems = compute_placement_hints(
         region_map,
         annotation,
         region_acronym,
@@ -75,19 +75,24 @@ def _placement_hints(
     if not Path(output_dir).exists():
         os.makedirs(output_dir)
 
+    distance_report = {
+        'before interpolation': problems['before interpolation']['report'],
+        'after interpolation': problems['after interpolation']['report']
+    }
     with open(Path(output_dir, 'distance_report.json'), mode='w+') as file_:
-        json.dump(distances_report, file_)
+        json.dump(distance_report, file_)
+
     save_placement_hints(
         distances_info['distances_to_layer_meshes'],
         output_dir,
         distances_info['layered_atlas'].region,
         placement_hint_names,
     )
-    # The problematic volume is a binary mask of the voxels for which distance computations failed.
-    # For such voxels, distance information is not reliable.
-    # See atlas_building_tools.distances.distances_to_meshes.report_problems.
-    save_problematic_volume(
-        distances_info['layered_atlas'], problematic_volume, output_dir
+    # The problematic voxel mask is a 3D uint8 mask of the voxels for which distances
+    # computation has been troublesome.
+    # See atlas_building_tools.distances.distances_to_meshes.report_distance_problems.
+    save_problematic_voxel_mask(
+        distances_info['layered_atlas'], problems, output_dir
     )
 
 

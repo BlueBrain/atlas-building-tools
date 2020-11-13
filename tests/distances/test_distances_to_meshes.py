@@ -264,7 +264,7 @@ class Test_distances_from_voxels_to_meshes_wrt_dir:
             [
                 [
                     [nanvec, nanvec, nanvec, nanvec, nanvec],
-                    [nanvec, nanvec, dup, up, up,],
+                    [nanvec, nanvec, dup, up, up],
                     [nanvec, dup, dup, nanvec, nanvec],
                     [nanvec, dup, up, up, nanvec],
                     [nanvec, nanvec, nanvec, nanvec, nanvec],
@@ -319,7 +319,7 @@ class Test_fix_disordered_distances:
         npt.assert_array_equal(distances, exp_distances)
 
 
-class Test_report_problems:
+class Test_report_distance_problems:
     """test the function that reports problems related to distances computations"""
 
     def test_report_output_format(self):
@@ -362,8 +362,8 @@ class Test_report_problems:
             ]
         )
         distances = np.array([dist_to_top_mesh, dist_to_bottom_mesh])
-        report, problematic_volume = tested.report_problems(
-            distances, obtuse, voxel_data, max_thicknesses=[0.5]
+        report, problematic_volume = tested.report_distance_problems(
+            distances, obtuse, voxel_data, max_thicknesses=[0.5], tolerance=2.0
         )
         assert (
             report[
@@ -383,7 +383,8 @@ class Test_report_problems:
         )
         assert (
             report[
-                'Proportion of voxels with a distance gap greater than the maximum thickness'
+                'Proportion of voxels with a distance gap greater than the maximum thickness '
+                '(NaN distances are ignored)'
             ]
             == 0.2
         )
@@ -407,13 +408,13 @@ class Test_interpolate_volume:
     def test_no_known_values(self):
         with pyt.raises(AtlasBuildingToolsError):
             tested.interpolate_volume(
-                [[[1, 2, 3, 4]]], [[[0, 0, 0, 0]]], [[[1, 0, 1, 1]]]
+                [[[1, 2, 3, 4]]], [[[1, 0, 1, 1]]], [[[0, 0, 0, 0]]]
             )
 
     def test_no_target_values(self):
         npt.assert_array_equal(
             tested.interpolate_volume(
-                [[[1, 2, 3, 4]]], [[[1, 1, 1, 0]]], [[[0, 0, 0, 0]]]
+                [[[1, 2, 3, 4]]], [[[0, 0, 0, 0]]], [[[1, 1, 1, 0]]]
             ),
             [],
         )
@@ -421,7 +422,7 @@ class Test_interpolate_volume:
     def test_known_and_target_uses_nearest(self):
         npt.assert_array_equal(
             tested.interpolate_volume(
-                [[[1, 2, 3, 4]]], [[[1, 0, 0, 1]]], [[[0, 1, 1, 0]]]
+                [[[1, 2, 3, 4]]], [[[0, 1, 1, 0]]], [[[1, 0, 0, 1]]]
             ),
             [1, 4],
         )
@@ -435,16 +436,31 @@ class Test_interpolate_volume:
         )
 
 
-class Test_interpolate_nans:
-    """test the function that corrects nan voxels by interpolateing"""
+class Test_interpolate_problematics_voxels:
+    """test the function that corrects problematic voxels by interpolateing"""
 
-    def test_no_nans_in_mask_no_effect(self):
+    def test_no_problematic_voxels_raise(self):
         distance = np.array([[[[np.nan, 0, 1, np.nan]]]])
-        unchanged_distance = distance.copy()
-        tested.interpolate_nan_voxels(distance, np.array([[[0, 1, 1, 0]]]))
-        npt.assert_array_equal(distance, unchanged_distance)
+        with pyt.raises(AtlasBuildingToolsError):
+            tested.interpolate_problematic_voxels(
+                distance,
+                np.array([[[0, 0, 0, 0]]]).astype(bool),
+            )
+
 
     def test_nans_in_mask_corrected_with_neighbors(self):
         distance = np.array([[[[10000, -1, np.nan, -1]]]])
-        tested.interpolate_nan_voxels(distance, np.array([[[0, 1, 1, 1]]]))
+        tested.interpolate_problematic_voxels(
+            distance,
+            np.array([[[0, 1, 1, 1]]]).astype(bool),
+        )
         npt.assert_array_equal(distance, np.array([[[[10000, -1, -1, -1]]]]))
+
+    def test_invalid_non_nan_in_mask_corrected_with_neighbors(self):
+        distance = np.array([[[[100, -1, 9000, -1]]], [[[100, -1, -9000, 1]]]])
+        tested.interpolate_problematic_voxels(
+            distance,
+            np.array([[[0, 1, 1, 1]]]).astype(bool),
+            max_thicknesses=[900]
+        )
+        npt.assert_array_equal(distance, np.array([[[[100, -1, -1, -1]]], [[[100, -1, -9000, 1]]]]))

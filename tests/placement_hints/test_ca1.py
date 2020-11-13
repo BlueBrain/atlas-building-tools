@@ -32,7 +32,7 @@ class Test_ca1(unittest.TestCase):
         )
 
     def test_distances_report(self):
-        distances_report = self.result[1]
+        distances_report = self.result[1]['before interpolation']['report']
 
         # Because of the simplified ca1 model used for the tests,
         # bad voxels due to obtuse intersection angle are numerous.
@@ -40,12 +40,14 @@ class Test_ca1(unittest.TestCase):
         # will issue rays that won't intersect with the target boundary meshes in the expected way.
         assert (
             distances_report[
-                'Proportion of voxels whose rays make an obtuse angle with the mesh normal at the intersection point'
+                'Proportion of voxels whose rays make an obtuse angle '
+                'with the mesh normal at the intersection point'
             ]
             <= 0.15
         )
         del distances_report[
-            'Proportion of voxels whose rays make an obtuse angle with the mesh normal at the intersection point'
+            'Proportion of voxels whose rays make an obtuse angle with the '
+            'mesh normal at the intersection point'
         ]
 
         assert (
@@ -62,5 +64,8 @@ class Test_ca1(unittest.TestCase):
             assert proportion <= 0.06
 
     def test_problematic_volume(self):
-        problematic_volume = self.result[1]
+        problematic_volume = self.result[1]['before interpolation']['volume']
+        assert np.count_nonzero(problematic_volume) / self.ca1_mock.volume <= 0.07
+
+        problematic_volume = self.result[1]['after interpolation']['volume']
         assert np.count_nonzero(problematic_volume) / self.ca1_mock.volume <= 0.05

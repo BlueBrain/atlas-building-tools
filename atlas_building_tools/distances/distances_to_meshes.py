@@ -37,7 +37,7 @@ def distances_to_mesh_wrt_dir(
     directions: NDArray[float],
     backward: bool = False,
 ) -> Tuple[NDArray[float], NDArray[bool]]:
-    '''
+    """
     Compute the distances from `origins` to the input mesh along `directions`.
 
     The computation of distances is based on ray-mesh intersections.
@@ -61,7 +61,7 @@ def distances_to_mesh_wrt_dir(
         bool array(N, ) True if the ray (origin, direction) intersects with the input mesh
                          such that its angle with the mesh normal is > pi/2.
                          False otherwise.
-    '''
+    """
     sign = -1 if backward else 1
 
     # If available, embree provides a significant speedup
@@ -98,7 +98,7 @@ def _split_indices_along_layer(
     layer: int,
     valid_direction_vectors_mask: NDArray[bool],
 ) -> Tuple[List[NDArray[int]], List[NDArray[int]]]:
-    '''
+    """
     Separate in two groups the voxels in `layers_volume` according to
     their position with respect to `layer`.
 
@@ -121,7 +121,7 @@ def _split_indices_along_layer(
             in a list is a one-dimensional numpy array holding the
             indices of the coordinate corresponding to the item index.
 
-    '''
+    """
     below_indices = np.nonzero(
         np.logical_and(layers_volume >= layer, valid_direction_vectors_mask)
     )
@@ -141,36 +141,36 @@ def _compute_distances_to_mesh(
     backward: bool = False,
     rollback_distance: int = 4,
 ) -> None:
-    '''
-        Compute distances from voxels to `mesh` along direction vectors.
+    """
+    Compute distances from voxels to `mesh` along direction vectors.
 
-        Computations are based on ray-mesh intersections.
-        This funcion fill the `dists` array with the outcome.
+    Computations are based on ray-mesh intersections.
+    This funcion fill the `dists` array with the outcome.
 
-        Args:
-            directions(array(N, 3)): direction vectors to compute along.
-            dists: dists: 3D distances array corresponding to layer `mesh_index` + 1.
-                A distances array is float 3D numpy array which holds the distance
-                of every voxel in the underlying volume (wrt to its direction vector) to a fixed
-                layer mesh.
-            any_obtuse_intersection: mask of voxels where the intersection with
-                a mesh resulted in an obtuse angle between the face and the direction vector.
-            voxel_indices: list of the form [X, Y, Z], where the items are 1D numpy arrays
-                of the same length. These are the indices of the voxels for which
-                the computation is requested.
-            mesh: mesh representing the upper boundary of the layer with index
-                `index`. The mesh is usually bigger than the upper boundary alone
-                and rays are assumed to hit this upper boundary only.
-            index: index of the mesh or its corresponding layer.
-            backward: (Optional) If True, the direction vectors are used as is to cast rays.
-                Otherwise, direction vectors are negated.
-            rollback_distance: (Optional) how far to step back along the directions before
-                computing distances. Should be >= the max Hausdorff distance of the meshes from the
-                voxelized layers it represents. This offset for the ray origins allows to obtain
-                more valid intersections for voxels close to the mesh. The default value 4 was found
-                by trials and errors.
+    Args:
+        directions(array(N, 3)): direction vectors to compute along.
+        dists: dists: 3D distances array corresponding to layer `mesh_index` + 1.
+            A distances array is float 3D numpy array which holds the distance
+            of every voxel in the underlying volume (wrt to its direction vector) to a fixed
+            layer mesh.
+        any_obtuse_intersection: mask of voxels where the intersection with
+            a mesh resulted in an obtuse angle between the face and the direction vector.
+        voxel_indices: list of the form [X, Y, Z], where the items are 1D numpy arrays
+            of the same length. These are the indices of the voxels for which
+            the computation is requested.
+        mesh: mesh representing the upper boundary of the layer with index
+            `index`. The mesh is usually bigger than the upper boundary alone
+            and rays are assumed to hit this upper boundary only.
+        index: index of the mesh or its corresponding layer.
+        backward: (Optional) If True, the direction vectors are used as is to cast rays.
+            Otherwise, direction vectors are negated.
+        rollback_distance: (Optional) how far to step back along the directions before
+            computing distances. Should be >= the max Hausdorff distance of the meshes from the
+            voxelized layers it represents. This offset for the ray origins allows to obtain
+            more valid intersections for voxels close to the mesh. The default value 4 was found
+            by trials and errors.
 
-    '''
+    """
     if len(voxel_indices[0]) == 0:
         return
 
@@ -202,7 +202,7 @@ def distances_from_voxels_to_meshes_wrt_dir(
     layer_meshes: List[trimesh.Trimesh],
     directions: NDArray[float],
 ) -> Tuple[NDArray[float], NDArray[bool]]:
-    '''
+    """
     For each voxel of the layers volume, compute the distance to each layer mesh along the
     the voxel direction vector.
 
@@ -223,7 +223,7 @@ def distances_from_voxels_to_meshes_wrt_dir(
             of every voxel in `layers_volume` (wrt to its direction vector) to a fixed layer mesh.
         any_obtuse_intersection: mask of voxels where the intersection with
             a mesh resulted in an obtuse angle between the face and the direction vector.
-    '''
+    """
     directions = normalized(directions)
 
     # dists is a list of 3D numpy arrays, one for each layer
@@ -262,7 +262,7 @@ def distances_from_voxels_to_meshes_wrt_dir(
 
 
 def fix_disordered_distances(distances: NDArray[float]) -> None:
-    '''
+    """
     Meshes close to one another may intersect one another, leading to distances which do not match
     the layer order.
     Boundaries must be in the correct order for thicknesses to be computed.
@@ -276,7 +276,7 @@ def fix_disordered_distances(distances: NDArray[float]) -> None:
             4D numpy array interpreted as a 1D array of 3D distances arrays, one for each layer.
             A distances array is a float 3D numpy array which holds the distance of every voxel
             (wrt to its direction vector) to a fixed layer mesh.
-    '''
+    """
     for layer, distance in enumerate(distances[1:], 1):
         with np.errstate(invalid='ignore'):
             previous_is_deeper = distances[layer - 1] < distance
@@ -291,13 +291,44 @@ def fix_disordered_distances(distances: NDArray[float]) -> None:
             distances[layer, previous_is_deeper] = means
 
 
-def report_problems(
+def get_thickness_excess_mask(
+    distances: NDArray[float], max_thicknesses: NDArray[float], tolerance: float
+) -> NDArray[bool]:
+    """
+    Retrieve the binary mask of the voxels which bear at least one invalid layer thickness hint
+
+        Args:
+            distances(numpy.ndarray): the distances of each voxel to each boundary,
+                array of shape (number of boundaries, length, width, height).
+            max_thicknesses: 1D float array, the maximum expected thickness for each
+                layer.
+            tolerance: tolerance of the error with respect to thickness.
+
+        Returns:
+            3D binary mask of the voxels with at least one invalid thickness hint.
+    """
+    too_thick = np.zeros(distances[0].shape, dtype=bool)
+    for i, max_thickness in enumerate(max_thicknesses):
+        with np.errstate(invalid='ignore'):
+            # distances[i] holds the non-negative distances wrt to direction vectors
+            # from voxels to the top of layer i.
+            # distances[i + 1] holds the non-positive distances wrt to direction vectors
+            # from voxels to the top of layer i.
+            excess = (distances[i] - distances[i + 1]) > (max_thickness + tolerance)
+        too_thick = np.logical_or(too_thick, excess)
+
+    return too_thick
+
+
+def report_distance_problems(
     distances: NDArray[float],
     obtuse_intersection: NDArray[bool],
     voxel_data: 'VoxelData',
     max_thicknesses: Optional[NDArray[float]] = None,
+    tolerance: float = 0.0
+
 ) -> Tuple[Dict[str, float], NDArray[bool]]:
-    '''
+    """
     Reports the proportions of voxels subject to some distance-related problem.
 
     These problems are:
@@ -305,7 +336,7 @@ def report_problems(
           with the normal to the boundary mesh.
         * no ray intersection with bottom boundary.
         * no ray intersecton with top boundary.
-        * some layer thickness is over the double of the expected amount.
+        * some layer thickness exceeds the expected amount.
 
     Args:
         distances(numpy.ndarray): the distances of each voxel to each boundary,
@@ -317,53 +348,65 @@ def report_problems(
             provided as a VoxelData object.
         max_thicknesses: (Optional) 1D float array, the maximum expected thickness for each layer.
             Defaults to None.
+        tolerance: (Optional) tolerance of the error with respect to thickness.
+            Defaults to 0.0.
 
-     Returns:
+     Returns: tuple of the form
         (dict containing the proportions of voxels of each problem,
         mask of all voxels displaying at least one problem)
-    '''
+    """
     report = {}
-    mask = voxel_data.raw > 0
-    do_not_intersect_bottom = np.logical_and(np.isnan(distances[-1]), mask)
-    do_not_intersect_top = np.logical_and(np.isnan(distances[0]), mask)
-    tolerance = voxel_data.voxel_dimensions[0] * 2
+    region_mask = voxel_data.raw > 0
+    do_not_intersect_bottom = np.logical_and(np.isnan(distances[-1]), region_mask)
+    do_not_intersect_top = np.logical_and(np.isnan(distances[0]), region_mask)
     report[
         'Proportion of voxels whose rays do not intersect with the bottom mesh'
-    ] = np.mean(do_not_intersect_bottom[mask])
+    ] = np.mean(do_not_intersect_bottom[region_mask])
     report[
         'Proportion of voxels whose rays do not intersect with the top mesh'
-    ] = np.mean(do_not_intersect_top[mask])
+    ] = np.mean(do_not_intersect_top[region_mask])
     report[
         'Proportion of voxels whose rays make an obtuse angle '
         'with the mesh normal at the intersection point'
-    ] = np.mean(obtuse_intersection[mask])
+    ] = np.mean(obtuse_intersection[region_mask])
 
-    # Thickness check
-    too_thick = np.full(mask.shape, False)
+    nan_distances_mask = np.full(region_mask.shape, False)
+    for distance in distances[1:-1]:
+        nan_distances_mask = np.logical_or(np.isnan(distance), nan_distances_mask)
+    nan_distances_mask = np.logical_and(nan_distances_mask, region_mask)
+    report[
+        'Proportion of voxels with a NaN distance with respect to at least one layer boundary'
+        'distinct from the top and the bottom boundaries of the region'
+    ] = np.mean(nan_distances_mask[region_mask])
+
+    too_thick = None
     if max_thicknesses is not None:
-        for i, max_thickness in enumerate(max_thicknesses):
-            with np.errstate(invalid='ignore'):
-                # distances[i] holds the non-negative distances wrt to direction vectors
-                # from voxels to the top of layer i.
-                # distances[i + 1] holds the non-positive distances wrt to direction vectors
-                # from voxels to the top of layer i.
-                excess = (distances[i] - distances[i + 1]) > (max_thickness + tolerance)
-            too_thick = np.logical_or(too_thick, excess)
+        too_thick = get_thickness_excess_mask(
+            distances, max_thicknesses, tolerance
+        )
         report[
-            'Proportion of voxels with a distance gap greater than the maximum thickness'
-        ] = np.mean(too_thick[mask])
+            'Proportion of voxels with a distance gap greater than the maximum thickness '
+            '(NaN distances are ignored)'
+        ] = np.mean(too_thick[region_mask])
 
-    problematic_volume = np.full(mask.shape, False)
-    for problem in [
-        obtuse_intersection,
+    problematic_volume = np.full(region_mask.shape, False)
+    problems = [
         do_not_intersect_bottom,
         do_not_intersect_top,
-        too_thick,
-    ]:
+        nan_distances_mask,
+        obtuse_intersection,
+    ]
+
+    if too_thick is not None:
+        problems.append(too_thick)
+
+    for problem in problems:
         problematic_volume = np.logical_or(problematic_volume, problem)
+
     report['Proportion of voxels with at least one distance-related problem'] = np.mean(
-        problematic_volume[mask]
+        problematic_volume[region_mask]
     )
+
     return report, problematic_volume
 
 
@@ -372,26 +415,26 @@ Interpolator = Union[NearestNDInterpolator, 'LinearNDInterpolator']
 
 def interpolate_volume(
     volume: NDArray[float],
-    known_values_mask: NDArray[bool],
     unknown_values_mask: NDArray[bool],
+    known_values_mask: NDArray[bool],
     interpolator: Interpolator = NearestNDInterpolator,
 ) -> NDArray[float]:
-    '''
+    """
     Interpolate `unknown_values_mask` based on `known_values_mask` using
     the `interpolator` algorithm.
 
     Args:
         volume: 3D float array.
-        known_values_mask: 3D binary masks of the voxels
-         which are assigned a known value.
-        unknown_values_mask: 3D binary masks of the voxels
-         which are not assigned a value yet.
+        unknown_values_mask: 3D binary mask of the voxels
+            which are not assigned a value yet.
+        known_values_mask: 3D binary mask of the voxels
+            which are assigned a known value.
         interpolator: the scipy interpolation algorithm.
 
     Returns:
         1D numpy array of interpolated values.
 
-    '''
+    """
     nonzero_known_values = np.nonzero(known_values_mask)
     known_positions = np.transpose(nonzero_known_values)
     if len(known_positions) == 0:
@@ -405,26 +448,37 @@ def interpolate_volume(
     return interpolated_values
 
 
-def interpolate_nan_voxels(distances: NDArray[float], mask: NDArray[bool]) -> None:
-    '''
+def interpolate_problematic_voxels(
+    distances: NDArray[float],
+    region_mask: NDArray[bool],
+    max_thicknesses: Optional[NDArray[float]] = None,
+    tolerance: float = 0.0,
+) -> None:
+    """
     Replace in-mask nans with weighted means of nearby in-mask non-nan values
     mutates 'distances' in-place
 
     Args:
         distances: array of shape (n, x, y, z), that is the volumetric distance data
             where n stands for the number of layers augmented by 1.
-        mask: array of shape (x, y, z), that is the voxels to be used
-            as known values for interpolation.
-            Voxels in this mask with a nan distance will be ignored.
+        region_mask: 3D binary mask of the region of interest of shape (x, y, z).
+        max_thicknesses: (Optional) 1D float array of shape n - 1,
+            the maximum expected thickness for each layer. Defaults to None.
+        tolerance: tolerance of the error with respect to thickness.
 
     Returns:
         None (mutates distances in place).
-    '''
+    """
 
-    for distance in distances:
+    for i, distance in enumerate(distances):
         nan_distance = np.isnan(distance)
-        voxels_to_include = np.logical_and(~nan_distance, mask)
-        voxels_to_change = np.logical_and(nan_distance, mask)
-        interpolated = interpolate_volume(distance, voxels_to_include, voxels_to_change)
-        distance[voxels_to_change] = interpolated
-        assert np.all(np.isfinite(distance[np.nonzero(mask)]))
+        valid = np.logical_and(region_mask, ~nan_distance)
+        if max_thicknesses is not None and i != len(distances) - 1:
+            excess = (distances[i] - distances[i + 1]) > (
+                max_thicknesses[i] + tolerance
+            )
+            valid = np.logical_and(valid, ~excess)
+        problematic = np.logical_and(region_mask, ~valid)
+        interpolated = interpolate_volume(distance, problematic, valid)
+        distance[problematic] = interpolated
+        assert np.all(~np.isnan(distance[problematic]))
