@@ -15,7 +15,7 @@ if TYPE_CHECKING:  # pragme: no cover
 
 
 def cell_counts() -> Dict[str, int]:
-    '''
+    """
     Cell counts of different region groups of the mouse brain.
 
 
@@ -35,7 +35,7 @@ def cell_counts() -> Dict[str, int]:
             * 'Isocortex group': Isocortex plus the Entorhinal (ENT) and Piriform areas (PIR)
             * 'Rest': rest of the mouse brain
         and whose values are the corresponding cell counts.
-    '''
+    """
     counts = {
         # Table 1 of Herculano-Houzel et al., 2011,
         'Cerebellum group': 42220000
@@ -53,7 +53,7 @@ def cell_counts() -> Dict[str, int]:
 
 
 def neuron_counts() -> Dict[str, int]:
-    '''
+    """
     Neuron counts of different region groups of the mouse brain.
 
 
@@ -73,7 +73,7 @@ def neuron_counts() -> Dict[str, int]:
             * 'Isocortex group': Isocortex plus the Entorhinal (ENT) and Piriform areas (PIR)
             * 'Rest': rest of the mouse brain
         and whose values are the corresponding neuron counts.
-    '''
+    """
     counts = {
         # Table 1 of Herculano-Houzel et al., 2011,
         'Cerebellum group': 42220000,  # 'Cerebellar neurons'
@@ -89,7 +89,7 @@ def neuron_counts() -> Dict[str, int]:
 
 
 def glia_cell_counts() -> Dict[str, int]:
-    '''Number of glial cells in the whole mouse brain.
+    """Number of glial cells in the whole mouse brain.
 
     Glia cell counts have been extracted from
         * Table 1 of "Updated Neuronal Scaling Rules for the Brains of Glires (Rodents/Lagomorphs)"
@@ -104,7 +104,7 @@ def glia_cell_counts() -> Dict[str, int]:
             * 'Isocortex group': Isocortex plus the Entorhinal (ENT) and Piriform areas (PIR)
             * 'Rest': rest of the mouse brain
         and whose values are the corresponding glia cell counts.
-    '''
+    """
     return {
         group: cell_counts()[group] - neuron_counts()[group] for group in cell_counts()
     }
@@ -113,7 +113,7 @@ def glia_cell_counts() -> Dict[str, int]:
 def inhibitory_neuron_counts(
     inhibitory_neurons_dataframe: 'pd.DataFrame',
 ) -> Dict[str, int]:
-    '''Number of inhibitory neurons in the whole mouse brain.
+    """Number of inhibitory neurons in the whole mouse brain.
 
     Inhibitory neuron counts have been extracted from the suplementary materials of
         'Brain-wide Maps Reveal Stereotyped Cell-Type-Based Cortical Architecture '
@@ -126,7 +126,7 @@ def inhibitory_neuron_counts(
             * 'Isocortex group': Isocortex plus the Entorhinal (ENT) and Piriform areas (PIR)
             * 'Rest': rest of the mouse brain
         and whose values are the corresponding inhibitory neuron cell counts.
-    '''
+    """
     cerebellum_group_count = np.sum(inhibitory_neurons_dataframe.loc['CB'][1:])
     isocortex_group_count = sum(
         [
@@ -149,7 +149,7 @@ def inhibitory_neuron_counts(
 def inhibitory_data(
     inhibitory_neurons_dataframe: 'pd.DataFrame',
 ) -> Dict[str, Union[int, Dict[str, float]]]:
-    '''
+    """
     Number of inhibitory cells for different region groups of the mouse brain.
 
     Groups are supposed not to overlap and to cover the entire brain.
@@ -187,7 +187,7 @@ def inhibitory_data(
         where the value corresponding to each group is a float in (0, 1) indicating the proportion
          of inhibitory cells among neurons in that group and the value corresponding to
           'neuron_count' is the number of inhibitory neurons in the whole mouse brain.
-    '''
+    """
 
     return {
         'proportions': {
@@ -211,7 +211,7 @@ def inhibitory_data(
 def extract_inhibitory_neurons_dataframe(
     inhibitory_neuron_counts_path: Union[str, 'Path']
 ) -> 'pd.DataFrame':
-    '''
+    """
     Extract from excel file a pandas.DataFrame containing the counts of the cells reacting to
     PV, SST and VIP in every AIBS region of the mouse brain.
 
@@ -242,7 +242,7 @@ def extract_inhibitory_neurons_dataframe(
         The columns of PV, SST and VIP contain the counts of the corresponding immunoreactive
          cells for each AIBS acronym listed in the DataFrame index.
 
-    '''
+    """
     return pd.read_excel(
         str(inhibitory_neuron_counts_path),
         sheet_name='count',

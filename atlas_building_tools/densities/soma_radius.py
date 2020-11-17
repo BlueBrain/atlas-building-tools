@@ -11,7 +11,7 @@ if TYPE_CHECKING:  # pragma: no cover
 def _compute_whole_brain_average_soma_radius(
     region_map: 'RegionMap', annotation_raw: NDArray[float], soma_radii: Dict[int, str]
 ) -> float:
-    '''
+    """
     Compute the whole-brain average soma radius weighted by region volumes
 
     Args:
@@ -25,7 +25,7 @@ def _compute_whole_brain_average_soma_radius(
     Returns:
         whole-brain average soma radius weighted by region volumes.
 
-    '''
+    """
     ids = (
         list(region_map.find(id_, attr='id', with_descendants=True))
         for id_ in soma_radii.keys()
@@ -43,7 +43,7 @@ def apply_soma_area_correction(
     nissl: NDArray[float],
     soma_radii: Dict[int, str],
 ) -> None:
-    '''
+    """
     Apply in-place an intensity correction based on soma area estimates.
 
     The image intensity of the 3D Nissl stained volume is re-scaled.
@@ -71,7 +71,7 @@ def apply_soma_area_correction(
              brain.
         dict whose keys are region identifiers (AIBS structure IDs) and whose values
             are the regions average soma radii.
-    '''
+    """
 
     mean_radius = _compute_whole_brain_average_soma_radius(
         region_map, annotation_raw, soma_radii

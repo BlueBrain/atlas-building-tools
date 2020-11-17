@@ -86,10 +86,9 @@ def save_placement_hints(
         output_dir: directory in which to save the placement hints nrrd files.
         layer_names: list of layer names used to compose the placement hints file names.
     '''
-    voxel_size = voxel_data.voxel_dimensions[
-        1
-    ]  # voxel dimensions are assumed to be equal.
-    # Distances from bottom of the atlas region to the voxel along its vectors.
+    voxel_size = voxel_data.voxel_dimensions[1]  # voxel dimensions are assumed to be equal.
+    # [PH]y holds, for each voxel, the distance from the bottom of the atlas region to the voxel
+    # along its direction vector (non-negative value).
     y = -distances[-1]  # pylint: disable=invalid-name
     L.info('Saving placement hints [PH]y to file ...')
     placement_hints_y_path = str(Path(output_dir, '[PH]y.nrrd'))
@@ -98,6 +97,12 @@ def save_placement_hints(
     for index, name in enumerate(layer_names):
         bottom = distances[index + 1]
         top = distances[index]
+        # A placement hint array is a 1D array of size `number of layers` of float arrays of
+        # shape (W, H, D, 2).
+        # [PH]_layer_i.raw[0] holds the distances wrt to direction vectors of all voxels
+        # to the bottom of layer i (non-positive values).
+        # [PH]_layer_i.raw[1] holds the distances wrt to direction vectors of all voxels
+        # to the top of layer i (non-negative values).
         placement_hints = np.stack((bottom, top), axis=-1) + y[..., np.newaxis]
         layer_placement_hints_path = str(Path(output_dir, '[PH]{}.nrrd'.format(name)))
         voxel_data.with_data(voxel_size * placement_hints).save_nrrd(

@@ -20,8 +20,8 @@ def test_compute_glia_density():
         2, group_ids, annotation_raw, glia_density, cell_density, copy=False
     )
     expected = np.array([[[0.0, 0.25, 0.75, 0.0, 1.0]]], dtype=float)
-    npt.assert_almost_equal(corrected_glia_density, expected, decimal=5)
-    npt.assert_almost_equal(corrected_glia_density, glia_density)
+    npt.assert_allclose(corrected_glia_density, expected, rtol=1e-2)
+    npt.assert_allclose(corrected_glia_density, glia_density, rtol=1e-2)
 
     # Same constraint, but a different input glia cell density
     # and copy is activated
@@ -31,8 +31,8 @@ def test_compute_glia_density():
         2, group_ids, annotation_raw, glia_density, cell_density
     )
     expected = np.array([[[0.0, 1.0 / 3.0, 2.0 / 3.0, 0.0, 1.0]]], dtype=float)
-    npt.assert_almost_equal(corrected_glia_density, expected, decimal=5)
-    npt.assert_almost_equal(glia_density_copy, glia_density)
+    npt.assert_allclose(corrected_glia_density, expected, rtol=1e-2)
+    npt.assert_allclose(glia_density_copy, glia_density, rtol=1e-2)
 
 
 def test_compute_glia_density_large_input():
@@ -55,8 +55,7 @@ def test_compute_glia_density_large_input():
         copy=False,
     )
     assert np.all(output_glia_density <= cell_density)
-    npt.assert_almost_equal(np.sum(output_glia_density), glia_cell_count)
-    print(np.sum(output_glia_density))
+    npt.assert_allclose(np.sum(output_glia_density), glia_cell_count, rtol=1e-3)
 
 
 def test_compute_glia_densities():
@@ -83,25 +82,29 @@ def test_compute_glia_densities():
         region_map,
         annotation_raw,
         glia_cell_count,
-        cell_density,
         glia_densities,
+        cell_density,
         glia_proportions,
         copy=True,
     )
-
+    assert output_glia_densities['glia'].dtype == np.float64
     assert np.all(output_glia_densities['glia'] <= cell_density)
 
     glia_proportions['glia'] = '1.0'
-    npt.assert_almost_equal(np.sum(output_glia_densities['glia']), glia_cell_count)
+    npt.assert_allclose(np.sum(output_glia_densities['glia']), glia_cell_count, rtol=1e-3)
     for glia_type, density in output_glia_densities.items():
         assert np.all(density <= output_glia_densities['glia'])
-        npt.assert_almost_equal(
-            np.sum(density), float(glia_proportions[glia_type]) * glia_cell_count
+        npt.assert_allclose(
+            np.sum(density), float(glia_proportions[glia_type]) * glia_cell_count,
+            rtol=1e-3
         )
 
-    npt.assert_almost_equal(
+    npt.assert_allclose(
         output_glia_densities['glia'],
         output_glia_densities['oligodendrocyte']
         + output_glia_densities['astrocyte']
         + output_glia_densities['microglia'],
+        rtol=1e-3
     )
+    for glia_type in ['astrocyte', 'oligodendrocyte', 'microglia']:
+        assert output_glia_densities[glia_type].dtype == np.float64

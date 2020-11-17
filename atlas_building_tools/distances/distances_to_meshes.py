@@ -343,6 +343,10 @@ def report_problems(
     if max_thicknesses is not None:
         for i, max_thickness in enumerate(max_thicknesses):
             with np.errstate(invalid='ignore'):
+                # distances[i] holds the non-negative distances wrt to direction vectors
+                # from voxels to the top of layer i.
+                # distances[i + 1] holds the non-positive distances wrt to direction vectors
+                # from voxels to the top of layer i.
                 excess = (distances[i] - distances[i + 1]) > (max_thickness + tolerance)
             too_thick = np.logical_or(too_thick, excess)
         report[

@@ -21,8 +21,7 @@ def test_compute_cell_density():
     region_map = RegionMap.load_json(Path(TESTS_PATH, '1.json'))
     annotation_raw = np.arange(8000).reshape(20, 20, 20)
     nissl = np.random.random_sample(annotation_raw.shape)
-    voxel_data = VoxelData(annotation_raw, (10.0, 10.0, 10.0))
-    cell_density = tested.compute_cell_density(region_map, voxel_data, nissl)
+    cell_density = tested.compute_cell_density(region_map, annotation_raw, nissl)
     # Each group has a prescribed cell count
     group_ids = get_group_ids(region_map)
     region_masks = get_region_masks(group_ids, annotation_raw)
@@ -43,10 +42,9 @@ def test_cell_density_with_soma_correction():
     region_map = RegionMap.load_json(Path(TESTS_PATH, '1.json'))
     annotation_raw = np.arange(8000).reshape(20, 20, 20)
     nissl = np.random.random_sample(annotation_raw.shape)
-    voxel_data = VoxelData(annotation_raw, (10.0, 10.0, 10.0))
     cell_density = tested.compute_cell_density(
         region_map,
-        voxel_data,
+        annotation_raw,
         nissl,
         {1: '0.1', 2: '0.2', 1000: '0.12', 6000: '0.7', 222: '0.9'},
     )
@@ -69,7 +67,6 @@ def test_cell_density_with_soma_correction():
 def test_cell_density_options():
     region_map = RegionMap.load_json(Path(TESTS_PATH, '1.json'))
     annotation_raw = np.arange(8000).reshape(20, 20, 20)
-    voxel_data = VoxelData(annotation_raw, (10.0, 10.0, 10.0))
     nissl = np.random.random_sample(annotation_raw.shape)
     group_ids = get_group_ids(region_map)
     region_masks = get_region_masks(group_ids, annotation_raw)
@@ -77,7 +74,7 @@ def test_cell_density_options():
         'atlas_building_tools.densities.cell_density.compensate_cell_overlap',
         return_value=nissl,
     ):
-        actual = tested.compute_cell_density(region_map, voxel_data, nissl.copy())
+        actual = tested.compute_cell_density(region_map, annotation_raw, nissl.copy())
         expected = tested.fix_purkinje_layer_density(
             region_map, annotation_raw, nissl, cell_counts()
         )
@@ -92,5 +89,5 @@ def test_cell_density_options():
         with patch(
             'atlas_building_tools.densities.cell_density.apply_soma_area_correction'
         ) as apply_correction_mock:
-            tested.compute_cell_density(region_map, voxel_data, nissl, {666: '0.1'})
+            tested.compute_cell_density(region_map, annotation_raw, nissl, {666: '0.1'})
             assert apply_correction_mock.called

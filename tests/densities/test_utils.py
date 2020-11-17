@@ -153,7 +153,7 @@ def test_constrain_density():
     zero_density_mask = np.array([[[True, True, False, False, False]]])
     max_density_mask = np.array([[[False, False, True, False, False]]])
     density = tested.constrain_density(
-        3.0, density, upper_bound, max_density_mask, zero_density_mask, copy=True
+        3.0, density, upper_bound, max_density_mask, zero_density_mask, epsilon=1e-7, copy=True
     )
     expected = np.array([[[0.0, 0.0, 2.0, 0.5, 0.5]]])
     npt.assert_almost_equal(density, expected, decimal=6)
@@ -163,7 +163,7 @@ def test_constrain_density():
     zero_density_mask = np.array([[[True, False, False, False, False, True]]])
     max_density_mask = np.array([[[False, True, False, False, True, False]]])
     density = tested.constrain_density(
-        3.4, density, upper_bound, max_density_mask, zero_density_mask, copy=False
+        3.4, density, upper_bound, max_density_mask, zero_density_mask, epsilon=1e-7, copy=False
     )
     expected = np.array([[[0.0, 0.9, 0.5, 0.5, 1.5, 0.0]]])
     npt.assert_almost_equal(density, expected, decimal=6)
@@ -172,7 +172,7 @@ def test_constrain_density():
     density = np.array([[[0.1, 0.8, 0.6, 0.2, 0.85, 0.1]]])
     expected = np.array([[[0.0, 0.9, 0.75, 0.25, 1.5, 0.0]]])
     density = tested.constrain_density(
-        3.4, density, upper_bound, max_density_mask, zero_density_mask, copy=True
+        3.4, density, upper_bound, max_density_mask, zero_density_mask, epsilon=1e-7, copy=True
     )
     npt.assert_almost_equal(density, expected, decimal=6)
 
@@ -186,7 +186,7 @@ def test_constrain_density_exceptions():
         zero_density_mask = np.array([[[True, True, False, False, False]]])
         max_density_mask = np.array([[[False, False, True, False, False]]])
         tested.constrain_density(
-            3.0, density, upper_bound, max_density_mask, zero_density_mask, copy=True
+            3.0, density, upper_bound, max_density_mask, zero_density_mask, epsilon=1e-7, copy=True
         )
 
     # Should raise because the maximum contribution of voxels
@@ -197,7 +197,7 @@ def test_constrain_density_exceptions():
         zero_density_mask = np.array([[[True, True, False, False, False]]])
         max_density_mask = np.array([[[False, False, True, False, False]]])
         tested.constrain_density(
-            3.0, density, upper_bound, max_density_mask, zero_density_mask, copy=True
+            3.0, density, upper_bound, max_density_mask, zero_density_mask, epsilon=1e-7, copy=True
         )
 
     # Should raise because the target sum is not reached

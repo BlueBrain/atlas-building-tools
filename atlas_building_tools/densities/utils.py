@@ -15,12 +15,12 @@ if TYPE_CHECKING:  # pragme: no cover
 
 def normalize_intensity(
     marker_intensity: NDArray[float],
-    annotation_raw: NDArray[int],
+    annotation: NDArray[int],
     threshold_scale_factor: float = 3.0,
     region_id: int = 0,
     copy: bool = True,
 ) -> NDArray[float]:
-    '''
+    """
     Subtract a positive constant from the marker intensity and constraint intensity in [0, 1].
 
     This function
@@ -37,7 +37,7 @@ def normalize_intensity(
 
     Args:
         marker_intensity: 3D float array holding the marker intensity.
-        annotation_raw: 3D integer array of region identifiers.
+        annotation: 3D integer array of region identifiers.
         threshold_scale_factor: Scale factor for the threshold.
         region_id: (Optional) identifier of the region over which an intensity average is computed.
             The latter constant is then subtracted from the `marker_intensity`.
@@ -48,11 +48,11 @@ def normalize_intensity(
 
     Returns:
         3D array, the normalized marker intensity array.
-    '''
+    """
 
     outside_mean = np.mean(
         marker_intensity[
-            np.logical_and((annotation_raw == region_id), (marker_intensity > 0.0))
+            np.logical_and((annotation == region_id), (marker_intensity > 0.0))
         ]
     )
     output_intensity = copy_array(marker_intensity, copy=copy)
@@ -65,11 +65,11 @@ def normalize_intensity(
 
 def compensate_cell_overlap(
     marker_intensity: NDArray[float],
-    annotation_raw: NDArray[float],
+    annotation: NDArray[float],
     copy: bool = True,
     gaussian_filter_stdv: float = 0.0,
 ) -> NDArray[float]:
-    '''
+    """
     Transform, in place, the marker intensity I into - A * log(1 - I) to compensate cell overlap.
 
     This function, referred to as 'transfer function', compensates the possible cell overlap, see
@@ -93,7 +93,7 @@ def compensate_cell_overlap(
     Arguments:
         marker: intensity scalar field. 3D float array holding the marker intensity over the
             annotated volume.
-        annotation_raw: 3D of region identifiers.
+        annotation: 3D of region identifiers.
         gaussian_filter_stdv: standard deviation value for the gaussian filter to apply on the
             intensity scalar field before transformation. Defaults to 0.0, i.e., no filtering.
         copy: If True, makes deep copy of the input. Otherwise, transform in place. Defaults
@@ -101,13 +101,13 @@ def compensate_cell_overlap(
 
     Returns:
         The transformed marker intensity array.
-    '''
+    """
     marker_intensity = marker_intensity.copy() if copy else marker_intensity
     if gaussian_filter_stdv > 0.0:
         marker_intensity = scipy.ndimage.filters.gaussian_filter(
             marker_intensity, sigma=gaussian_filter_stdv, output=marker_intensity
         )
-    marker_intensity[annotation_raw == 0] = 0.0
+    marker_intensity[annotation == 0] = 0.0
     marker_intensity /= np.max(marker_intensity)  # pre-normalize
     marker_intensity[marker_intensity < 0.0] = 0.0
     epsilon = 1e-4  # Used as a safety for intensity values too close to 1.0.
@@ -128,7 +128,7 @@ def optimize_distance_to_line(  # pylint: disable=too-many-arguments
     max_iter: int = 45,
     copy: bool = True,
 ) -> NDArray[float]:
-    '''
+    """
     Find inside a box the closest point to a line with prescribed coordinate sum.
 
     This function aims at solving the following (convex quadratic) optmization problem:
@@ -144,7 +144,7 @@ def optimize_distance_to_line(  # pylint: disable=too-many-arguments
     boundary. The algorithm iterates the two previous steps until we get sufficiently close to B.
 
     Note: The convergence to the optimal solution is obvious in 2D, but can already fail in 3D.
-    At the moment, the funcion only returns a feasible point.
+    At the moment, the function only returns a feasible point.
 
     Args:
         line_direction_vector: N-dimensional float vector with non-negative coordinates.
@@ -154,7 +154,7 @@ def optimize_distance_to_line(  # pylint: disable=too-many-arguments
             the point P we are looking for.
         threshold: non-negative float value. If the coordinate sum of the current point
             is below `threshold`, the function returns the current point.
-        max_iter: maximum number of iteration.
+        max_iter: maximum number of iterations.
         copy: If True, the function makes a copy of the input `line_direction_vector`. Otherwise
             `line_direction_vector` is modified in-place and holds the optimal value.
 
@@ -162,7 +162,7 @@ def optimize_distance_to_line(  # pylint: disable=too-many-arguments
         optimization problem, if it exists, up to inacurracy due to threshold size or early
         termination of the algorithm. Otherwise a point on the boundary of the box B defined by
         `upper_bounds`.
-    '''
+    """
     diff = float('inf')
     iter_ = 0
     point = line_direction_vector.copy() if copy else line_direction_vector
@@ -184,7 +184,7 @@ def constrain_density(  # pylint: disable=too-many-arguments
     epsilon: float = 1e-3,
     copy: bool = True,
 ):
-    '''
+    """
     Modify the input density, while respecting bound constraints, so that it sums to `target_sum`.
 
     The output density is kept as close as possible to the input in the following sense:
@@ -204,8 +204,7 @@ def constrain_density(  # pylint: disable=too-many-arguments
         density_upper_bound: float array of shape (W, H, D) with non-negative values.
             The bounds imposed upon the voxel values of the ouput array.
         max_density_mask: Optional boolean array of shape (W, H, D) indicating which voxels should
-            be assigned
-            their maximum values.
+            be assigned their maximum values.
         zero_density_mask: Optional boolean array of shape (W, H, D) indicating which voxels should
             be assigned the zero value.
         epsilon: tolerated error between the sum of the output and `target_sum`.
@@ -219,8 +218,7 @@ def constrain_density(  # pylint: disable=too-many-arguments
        AtlasBuildingError if the problem is not feasible, i.e,
        if the target sum is greater than the sum of the voxels of `maximum_density` or if
        the largest possible contribution of voxels with non-zero density is less than `target_sum`.
-    '''
-
+    """
     if target_sum < epsilon:
         if not copy:
             density[...] = 0.0
@@ -235,8 +233,10 @@ def constrain_density(  # pylint: disable=too-many-arguments
 
     if target_sum < max_subsum - epsilon:
         raise AtlasBuildingToolsError(
-            'The contribution of voxels with prescribed maximum density'
-            ' exceeds the density upper bound. One of the two constraints cannot be fulfilled.'
+            'The contribution of voxels with prescribed maximum density, that is'
+            f' {max_subsum - epsilon}'
+            f' exceeds the target sum, that is, {target_sum}. One of the two constraints cannot be'
+            ' fulfilled.'
         )
 
     zero_indices_subsum = 0
@@ -253,7 +253,7 @@ def constrain_density(  # pylint: disable=too-many-arguments
     complement = None
     if max_density_mask is not None:
         density[max_density_mask] = density_upper_bound[max_density_mask]
-        complement = max_density_mask
+        complement = max_density_mask.copy()
     if zero_density_mask is not None:
         density[zero_density_mask] = 0.0
         complement = np.logical_or(complement, zero_density_mask)
@@ -269,17 +269,27 @@ def constrain_density(  # pylint: disable=too-many-arguments
     # Find a density field respecting all the constraints and which is as close
     # as possible to the line defined by the input density wrt to Euclidean norm.
     density[complement] = optimize_distance_to_line(
-        line_direction_vector, upper_bound, target_sum - max_subsum, copy=copy
+        line_direction_vector,
+        upper_bound,
+        target_sum - max_subsum,
+        threshold=epsilon,
+        max_iter=50,
+        copy=copy,
     )
 
-    if np.abs(np.sum(density) - target_sum) > epsilon:
-        raise AtlasBuildingToolsError('The target sum could not be reached')
+    abs_error = np.abs(np.sum(density) - target_sum)
+    if abs_error > epsilon:
+        raise AtlasBuildingToolsError(
+            f'The target sum could not be reached. '
+            f'The absolute error is {abs_error}. It is larger than the tolerance '
+            f'epsilon = {epsilon}'
+        )
 
     return density
 
 
 def get_group_ids(region_map: 'RegionMap') -> Dict[str, Set[int]]:
-    '''
+    """
     Get AIBS structure ids for several region groups of interest.
 
     The groups below have been selected because specific count information is available
@@ -292,7 +302,7 @@ def get_group_ids(region_map: 'RegionMap') -> Dict[str, Set[int]]:
     Returns:
         A dictionary whose keys are region group names and whose values are
         sets of structure identifiers.
-    '''
+    """
     cerebellum_group_ids = region_map.find(
         'Cerebellum', attr='name', with_descendants=True
     ) | region_map.find('arbor vitae', attr='name', with_descendants=True)
@@ -329,9 +339,9 @@ def get_group_ids(region_map: 'RegionMap') -> Dict[str, Set[int]]:
 
 
 def get_region_masks(
-    group_ids: Dict[str, Set[int]], annotation_raw: NDArray[float]
+    group_ids: Dict[str, Set[int]], annotation: NDArray[float]
 ) -> Dict[str, NDArray[bool]]:
-    '''
+    """
     Get the boolean masks of several region groups of interest.
 
     The groups below have been selected because specific count information is available
@@ -340,23 +350,23 @@ def get_region_masks(
     Args:
         group_ids: a dictionary whose keys are group names and whose values are
             sets of AIBS structure identifiers.
-        annotation_raw: integer array of shape (W, H, D) enclosing the AIBS annotation of
+        annotation: integer array of shape (W, H, D) enclosing the AIBS annotation of
             the whole mouse brain.
 
     Returns:
         A dictionary whose keys are region group names and whose values are
         the boolean masks of these groups. Each boolean array is of shape (W, H, D) and
         encodes which voxels belong to the corresponding group.
-    '''
+    """
     region_masks = {}
     region_masks['Cerebellum group'] = np.isin(
-        annotation_raw, list(group_ids['Cerebellum group'])
+        annotation, list(group_ids['Cerebellum group'])
     )
     region_masks['Isocortex group'] = np.isin(
-        annotation_raw, list(group_ids['Isocortex group'])
+        annotation, list(group_ids['Isocortex group'])
     )
     region_masks['Rest'] = np.isin(
-        annotation_raw,
+        annotation,
         list({0} | group_ids['Cerebellum group'] | group_ids['Isocortex group']),
         invert=True,
     )

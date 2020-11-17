@@ -31,6 +31,7 @@ import json
 from pathlib import Path
 import logging
 import click
+import numpy as np
 
 from voxcell import RegionMap, VoxelData  # type: ignore
 
@@ -97,12 +98,14 @@ def app(verbose):
 )
 @log_args(L)
 def cell_density(annotation_path, hierarchy_path, nissl_path, output_path, soma_radii):
-    '''Compute and save the overall mouse brain cell density.\n
+    """Compute and save the overall mouse brain cell density.\n
 
     The input Nissl stain volume of AIBS is turned into an actual density field complying with
     the cell counts of several regions.
 
     Density is expressed as a number of cells per voxel.
+    The output density field array is a float64 array of shape (W, H, D) where (W, H, D)
+    is the shape of the input annotated volume.
 
     The computation of the overall cell density is based on:\n
         * the Nissl stain intensity, which is supposed to represent the overall cell density, up to
@@ -110,7 +113,7 @@ def cell_density(annotation_path, hierarchy_path, nissl_path, output_path, soma_
         * cell counts from the scientific literature, which are used to determine a local \n
             linear dependency factor each regions where a cell count is available.\n
         * the optional soma radii, used to operate a correction.
-    '''
+    """
 
     annotation = VoxelData.load_nrrd(annotation_path)
     region_map = RegionMap.load_json(hierarchy_path)
@@ -120,9 +123,11 @@ def cell_density(annotation_path, hierarchy_path, nissl_path, output_path, soma_
             soma_radii = json.load(file_)
 
     overall_cell_density = compute_cell_density(
-        region_map, annotation, nissl, soma_radii
+        region_map, annotation.raw, nissl.raw, soma_radii
     )
-    nissl.with_data(overall_cell_density).save_nrrd(output_path)
+    nissl.with_data(np.asarray(overall_cell_density, dtype=float)).save_nrrd(
+        output_path
+    )
 
 
 @app.command()
@@ -151,27 +156,30 @@ def cell_density(annotation_path, hierarchy_path, nissl_path, output_path, soma_
     help=('The path to the unconstrained overall glia cell density nrrd file.'),
 )
 @click.option(
-    '--astro-density-path',
+    '--astrocyte-density-path',
     type=EXISTING_FILE_PATH,
     required=True,
     help=('The path to the unconstrained astrocyte density nrrd file.'),
 )
 @click.option(
-    '--oligo-density-path',
+    '--oligodendrocyte-density-path',
     type=EXISTING_FILE_PATH,
     required=True,
     help=('The path to the unconstrained oligodendrocyte density nrrd file.'),
 )
 @click.option(
-    '--micro-density-path',
+    '--microglia-density-path',
     type=EXISTING_FILE_PATH,
     required=True,
     help=('The path to the unconstrained microglia density nrrd file.'),
 )
 @click.option(
-    '--glia-proportions',
+    '--glia-proportions-path',
     type=EXISTING_FILE_PATH,
-    help='Path to the json file containing the different proportions of each glia type',
+    help='Path to the json file containing the different proportions of each glia type.'
+    'This file must hold a dictionary of the following form: '
+    '{"astrocyte": <proportion>, "microglia": <proportion>, "oligodendrocyte": <proportion>,'
+    ' "glia": 1.0}',
 )
 @click.option(
     '--output-dir',
@@ -185,16 +193,18 @@ def glia_cell_densities(
     annotation_path,
     hierarchy_path,
     cell_density_path,
-    glia_path,
-    astrocyte_path,
-    oligodendrocyte_path,
-    micro_glia_path,
-    glia_proportions,
+    glia_density_path,
+    astrocyte_density_path,
+    oligodendrocyte_density_path,
+    microglia_density_path,
+    glia_proportions_path,
     output_dir,
 ):  # pylint: disable=too-many-arguments, too-many-locals
-    '''Compute and save the glia cell densities.\n
+    """Compute and save the glia cell densities.\n
 
     Density is expressed as a number of cells per voxel.
+    The output density field arrays are float64 arrays of shape (W, H, D) where (W, H, D)
+    is the shape of the input annotated volume.
 
     The computation is based on:\n
         * an estimate of the overall cell density\n
@@ -208,6 +218,8 @@ def glia_cell_densities(
 
     An optimization process is responsible for enforcing these constraints while keeping\n
     the output densities as close as possible to the unconstrained input densities.\n
+    Note: optimization is not fully implemented and the current process only returns a
+    feasible point.
 
     The ouput glia densities are saved in the specified output directory under the following\n
     names:\n
@@ -219,27 +231,27 @@ def glia_cell_densities(
     In addition, the overall neuron cell density is inferred from the overall cell density and
     the glia cell density and saved in the same directory under the name:\n
         * neuron_density.
-    '''
+    """
 
     annotation = VoxelData.load_nrrd(annotation_path)
     region_map = RegionMap.load_json(hierarchy_path)
     overall_cell_density = VoxelData.load_nrrd(cell_density_path)
-    with open(glia_proportions, 'r') as file_:
+    with open(glia_proportions_path, 'r') as file_:
         glia_proportions = json.load(file_)
 
     glia_densities = {
-        'glia': VoxelData.load_nrrd(glia_path).raw,
-        'astrocyte': VoxelData.load_nrrd(astrocyte_path).raw,
-        'oligodendrocyte': VoxelData.load_nrrd(oligodendrocyte_path).raw,
-        'microglia': VoxelData.load_nrrd(micro_glia_path).raw,
+        'glia': VoxelData.load_nrrd(glia_density_path).raw,
+        'astrocyte': VoxelData.load_nrrd(astrocyte_density_path).raw,
+        'oligodendrocyte': VoxelData.load_nrrd(oligodendrocyte_density_path).raw,
+        'microglia': VoxelData.load_nrrd(microglia_density_path).raw,
     }
 
     glia_densities = compute_glia_densities(
         region_map,
         annotation.raw,
-        overall_cell_density.raw,
         sum(glia_cell_counts().values()),
         glia_densities,
+        overall_cell_density.raw,
         glia_proportions,
         copy=False,
     )
@@ -248,11 +260,11 @@ def glia_cell_densities(
         os.makedirs(output_dir)
 
     neuron_density = overall_cell_density.raw - glia_densities['glia']
-    annotation.with_data(neuron_density).save_nrrd(
+    annotation.with_data(np.asarray(neuron_density, dtype=float)).save_nrrd(
         str(Path(output_dir, 'neuron_density.nrrd'))
     )
     for glia_type, density in glia_densities.items():
-        annotation.with_data(density).save_nrrd(
+        annotation.with_data(np.asarray(density, dtype=float)).save_nrrd(
             str(Path(output_dir, f'{glia_type}_density.nrrd'))
         )
 
@@ -289,16 +301,16 @@ def glia_cell_densities(
     help=('The path to the overall neuron cell density nrrd file.'),
 )
 @click.option(
-    '--inhibitory-cell-counts-path',
+    '--inhibitory-neuron-counts-path',
     type=EXISTING_FILE_PATH,
     required=False,
-    default=Path(Path(__file__).parent, 'data', 'mm1c.xlsx'),
+    default=Path(Path(__file__).parent, 'data', 'mmc1.xlsx'),
     help=(
-        'The path to the excel document mm1c.xlsx of the suplementary materials of '
+        'The path to the excel document mmc1.xlsx of the suplementary materials of '
         '"Brain-wide Maps Reveal Stereotyped Cell-Type- Based Cortical Architecture '
         'and Subcortical Sexual Dimorphism" by Kim et al., 2017. '
         'https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc1.xlsx. '
-        'Defaults to atlas_building_tools/app/data/mm1c.xlsx.'
+        'Defaults to atlas_building_tools/app/data/mmc1.xlsx.'
     ),
 )
 @click.option(
@@ -318,9 +330,11 @@ def inhibitory_neuron_densities(
     inhibitory_neuron_counts_path,
     output_dir,
 ):  # pylint: disable=too-many-arguments
-    '''Compute and save the inhibitory and excitatory neuron densities.\n
+    """Compute and save the inhibitory and excitatory neuron densities.\n
 
     Density is expressed as a number of cells per voxel.
+    The output density field arrays are float64 arrays of shape (W, H, D) where (W, H, D)
+    is the shape of the input annotated volume.
 
     The computation is based on:\n
         * an estimate of the overall neuron density\n
@@ -340,7 +354,7 @@ def inhibitory_neuron_densities(
     names:\n
         * inhibitory_neuron_density.nrrd \n
         * excitatory_neuron_density.nrrd \n
-    '''
+    """
 
     annotation = VoxelData.load_nrrd(annotation_path)
     region_map = RegionMap.load_json(hierarchy_path)
@@ -349,19 +363,19 @@ def inhibitory_neuron_densities(
     inhibitory_neuron_density = compute_inhibitory_neuron_density(
         region_map,
         annotation.raw,
-        VoxelData.load_nrrd(gad1_path),
-        VoxelData.load_nrrd(nrn1_path),
+        VoxelData.load_nrrd(gad1_path).raw,
+        VoxelData.load_nrrd(nrn1_path).raw,
         neuron_density,
-        inhibitory_data(inhibitory_df),
+        inhibitory_data=inhibitory_data(inhibitory_df),
     )
 
     if not Path(output_dir).exists():
         os.makedirs(output_dir)
 
-    annotation.with_data(inhibitory_neuron_density).save_nrrd(
+    annotation.with_data(np.asarray(inhibitory_neuron_density, dtype=float)).save_nrrd(
         str(Path(output_dir, 'inhibitory_neuron_density.nrrd'))
     )
     excitatory_density = neuron_density - inhibitory_neuron_density
-    annotation.with_data(excitatory_density).save_nrrd(
+    annotation.with_data(np.asarray(excitatory_density, dtype=float)).save_nrrd(
         str(Path(output_dir, 'excitatory_neuron_density.nrrd'))
     )

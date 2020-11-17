@@ -147,4 +147,5 @@ def test_compute_inhibitory_density_large_input():
     )
 
     assert np.all(inhibitory_neuron_density <= neuron_density)
-    npt.assert_almost_equal(np.sum(inhibitory_neuron_density), 30000)
+    npt.assert_allclose(np.sum(inhibitory_neuron_density), 30000, rtol=1e-3)
+    assert inhibitory_neuron_density.dtype == np.float64

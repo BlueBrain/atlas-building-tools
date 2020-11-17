@@ -5,7 +5,7 @@ from typing import Dict, Optional
 import numpy as np
 from nptyping import NDArray  # type: ignore
 
-from voxcell import RegionMap, VoxelData  # type: ignore
+from voxcell import RegionMap  # type: ignore
 from atlas_building_tools.densities.cell_counts import cell_counts
 from atlas_building_tools.densities.utils import (
     compensate_cell_overlap,
@@ -21,7 +21,7 @@ def fix_purkinje_layer_density(
     cell_density: NDArray[float],
     region_masks: Dict[str, NDArray[bool]],
 ) -> NDArray[float]:
-    '''
+    """
     Assign a constant number of cells to the voxels sitting both in Cerebellum and the
     Purkinje layer.
 
@@ -41,7 +41,7 @@ def fix_purkinje_layer_density(
         float array of shape (W, H, D) with non-negative entries.
         The array represents the overall cell density, satifying the constraint that
         the Purkinje layer has a constant number of cells per voxel.
-    '''
+    """
 
     group_ids = get_group_ids(region_map)
     purkinje_layer_mask = np.isin(annotation_raw, list(group_ids['Purkinje layer']))
@@ -66,11 +66,11 @@ def fix_purkinje_layer_density(
 
 def compute_cell_density(
     region_map: RegionMap,
-    annotation: VoxelData,
+    annotation: NDArray[int],
     nissl: NDArray[float],
     soma_radii: Optional[Dict[int, str]] = None,
 ) -> NDArray[float]:
-    '''
+    """
     Compute the overall cell density based on Nissl staining and cell counts from literature.
 
     The input Nissl stain intensity volume of AIBS is assumed to be depend linearly on the cell
@@ -91,7 +91,7 @@ def compute_cell_density(
 
     Args:
         region_map: object to navigate the mouse brain regions hierarchy.
-        annotation_raw: integer array of shape (W, H, D) enclosing the AIBS annotation of
+        annotation: integer array of shape (W, H, D) enclosing the AIBS annotation of
             the whole mouse brain.
         nissl: float array of shape (W, H, D) with non-negative entries. The input
             Nissl stain intensity.
@@ -106,19 +106,19 @@ def compute_cell_density(
         The overall mouse brain cell density, respecting region-specific cell counts provided
         by the scientific literature as well as the Purkinje layer constraint of a constant number
         of cells per voxel.
-    '''
+    """
 
     nissl = compensate_cell_overlap(
-        nissl, annotation.raw, gaussian_filter_stdv=1.0, copy=False
+        nissl, annotation, gaussian_filter_stdv=1.0, copy=False
     )
 
     if soma_radii:
-        apply_soma_area_correction(region_map, annotation.raw, nissl, soma_radii)
+        apply_soma_area_correction(region_map, annotation, nissl, soma_radii)
 
     group_ids = get_group_ids(region_map)
-    region_masks = get_region_masks(group_ids, annotation.raw)
+    region_masks = get_region_masks(group_ids, annotation)
     cell_density = fix_purkinje_layer_density(
-        region_map, annotation.raw, nissl, region_masks
+        region_map, annotation, nissl, region_masks
     )
     for group, mask in region_masks.items():
         cell_density[mask] = nissl[mask] * (cell_counts()[group] / np.sum(nissl[mask]))
