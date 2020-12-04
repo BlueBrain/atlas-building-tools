@@ -13,7 +13,7 @@ from nptyping import NDArray  # type: ignore
 
 from tqdm import tqdm  # type: ignore
 import numpy as np  # type: ignore
-from lazy import lazy  # type: ignore
+from cached_property import cached_property  # type: ignore
 
 from atlas_building_tools.distances.distances_to_meshes import (
     distances_from_voxels_to_meshes_wrt_dir,
@@ -78,7 +78,7 @@ class LayeredAtlas:
         self.region_map = region_map
         self.layer_regexps = layer_regexps
 
-    @lazy
+    @cached_property
     def region(self) -> 'VoxelData':
         """
         Accessor of the layered atlas as a VoxelData object.
@@ -91,7 +91,7 @@ class LayeredAtlas:
         )
         return self.annotation.with_data(region_mask)
 
-    @lazy
+    @cached_property
     def volume(self) -> NDArray[np.int]:
         """
         Get the volume enclosed by the specified layers.

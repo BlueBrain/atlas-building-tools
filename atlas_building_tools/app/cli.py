@@ -8,7 +8,6 @@ from atlas_building_tools.version import VERSION
 from atlas_building_tools.app import (
     cell_densities,
     cell_detection,
-    cell_positions,
     combination,
     direction_vectors,
     orientation_field,
@@ -25,7 +24,6 @@ def main():
         {
             'cell-densities': cell_densities.app,
             'cell-detection': cell_detection.app,
-            'cell-positions': cell_positions.cmd,
             'combination': combination.app,
             'direction-vectors': direction_vectors.app,
             'orientation-field': orientation_field.cmd,

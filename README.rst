@@ -22,7 +22,6 @@ The tools allow to:
 * assign direction vectors or orientations to voxels in a selected brain region
 * compute distances between voxels and region boundaries, i.e., the so-called placement hints to be used by the `placement-algorithm`_
 * compute cell densities for several cell types including neurons and glia cells in the whole mouse brain
-* compute cell 3D positions for several cell types in the whole mouse brain
 
 
 Installation
