@@ -41,7 +41,7 @@ LAYER_ENDINGS = '^([a-zA-Z]*-?[a-zA-Z]+)(?:[1-5]|2/3|6[ab])$'
 def get_isocortical_regions(
     brain_regions: NDArray[int], region_map: Union[str, 'RegionMap']
 ) -> List[str]:
-    '''
+    """
     Get the acronyms of all isocortical regions present in `brain_regions`.
 
     Args:
@@ -56,7 +56,7 @@ def get_isocortical_regions(
     For the Mouse ccfv2 annotation with a resolution of 25um, 40 acronyms
     are returned. For the Mouse ccfv3 annotation of the same resolution,
     43 acronyms are returned.
-    '''
+    """
     isocortex_mask = get_region_mask('Isocortex', brain_regions, region_map)
     ids = np.unique(brain_regions[isocortex_mask])
     region_map = load_region_map(region_map)
@@ -74,7 +74,7 @@ def get_isocortical_regions(
 def compute_direction_vectors(
     region_map: Union[str, dict, 'RegionMap'], brain_regions: 'VoxelData'
 ) -> NDArray[np.float32]:
-    '''
+    """
     Compute the mouse isocortex direction vectors.
 
     Arguments:
@@ -85,7 +85,7 @@ def compute_direction_vectors(
     Returns:
         Vector field of 3D unit vectors over the isocortex volume with the same shape
         as the input one. Voxels outside the Isocortex have np.nan coordinates.
-    '''
+    """
     direction_vectors = np.full(brain_regions.shape + (3,), np.nan, dtype=np.float32)
     region_map = load_region_map(region_map)
     # Get the highest-level regions of the isocortex: ACAd, ACAv, AId, AIp, AIv, ...
@@ -97,10 +97,8 @@ def compute_direction_vectors(
         region_mask = get_region_mask(region, brain_regions.raw, region_map)
         # pylint: disable=not-an-iterable
         aabb_slice = tuple(
-            [
-                slice(bottom, top + 1)
-                for (bottom, top) in np.array(minimum_aabb(region_mask)).T
-            ]
+            slice(bottom, top + 1)
+            for (bottom, top) in np.array(minimum_aabb(region_mask)).T
         )
         voxel_data = brain_regions.with_data(brain_regions.raw[aabb_slice])
         try:

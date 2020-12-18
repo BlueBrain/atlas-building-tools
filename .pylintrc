@@ -14,3 +14,7 @@ ignore-docstrings=yes
 
 # Ignore imports when computing similarities.
 ignore-imports=no
+
+[DESIGN]
+# Maximum number of arguments for function / method
+max-args=7

@@ -1,1 +1,1 @@
-include atlas_building_tools/app/data/mmc1.xlsx
+recursive-include atlas_building_tools/app/data *

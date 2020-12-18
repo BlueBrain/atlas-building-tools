@@ -37,6 +37,7 @@ from voxcell import RegionMap, VoxelData  # type: ignore
 
 from atlas_building_tools.app.utils import (
     log_args,
+    EXISTING_DIR_PATH,
     EXISTING_FILE_PATH,
     set_verbose,
 )
@@ -51,7 +52,7 @@ from atlas_building_tools.densities.cell_counts import (
     glia_cell_counts,
     inhibitory_data,
 )
-
+from atlas_building_tools.densities.mtype_densities import DensityProfileCollection
 
 L = logging.getLogger(__name__)
 
@@ -378,4 +379,95 @@ def inhibitory_neuron_densities(
     excitatory_density = neuron_density - inhibitory_neuron_density
     annotation.with_data(np.asarray(excitatory_density, dtype=float)).save_nrrd(
         str(Path(output_dir, 'excitatory_neuron_density.nrrd'))
+    )
+
+
+@app.command()
+@click.option(
+    '--excitatory-neuron-density-path',
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help='Path to the excitatory neuron density nrrd file',
+)
+@click.option(
+    '--inhibitory-neuron-density-path',
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help='Path to the inhibitory neuron density nrrd file',
+)
+@click.option(
+    '--placement-hints-config-path',
+    type=EXISTING_FILE_PATH,
+    help='Path to the placement hints config file (.yaml)',
+)
+@click.option(
+    '--layer-slices-path',
+    type=EXISTING_FILE_PATH,
+    default=Path(Path(__file__).parent, 'data', 'mtypes', 'meta', 'layers.tsv'),
+    help='Path to the layer slices file (.tsv).',
+)
+@click.option(
+    '--mtype-to-profile-map-path',
+    type=EXISTING_FILE_PATH,
+    default=Path(Path(__file__).parent, 'data', 'mtypes', 'meta', 'mapping.tsv'),
+    help='Path to the map which assigns a cell density profile to each mtype (.tsv)',
+)
+@click.option(
+    '--density-profiles-dir',
+    type=EXISTING_DIR_PATH,
+    default=Path(Path(__file__).parent, 'data', 'mtypes'),
+    help='Path to directory containing the cell density profiles',
+)
+@click.option(
+    '--output-dir',
+    required=True,
+    help='Path to output directory. It will be created if it doesn\'t exist already.',
+)
+@log_args(L)
+def mtype_densities(
+    excitatory_neuron_density_path,
+    inhibitory_neuron_density_path,
+    placement_hints_config_path,
+    mtype_to_profile_map_path,
+    layer_slices_path,
+    density_profiles_dir,
+    output_dir,
+):  # pylint: disable=too-many-arguments
+    """
+    Create neuron density nrrd files for the mtypes listed in `mtype_to_profile_map_path`.
+
+    Somatosensory cortex layers are subdivided into slices (a.k.a bins). Each mtype in
+    `mtype_to_profile_map_path` (defaults to mapping.tsv) is assigned a density profile, that is,
+    the list of the numbers of neurons with this mtype in each slice. From this, a relative density
+    profile is derived, i.e. the list of the neuron proportions in each slice.
+    Using the overall inhibitory neuron and excitatory neuron densities together with the relative
+    density profiles, we obtain a volumetric neuron density for each mtype under the form of nrrd
+    files.
+
+    Placement hints are used to divide layers into slices, i.e., sublayers of equal thickness along
+    the cortical axis. The number of slices per layer is specified in `layer_slices_path` (defaults
+    to layers.tsv).
+
+    Neuron densities are expressed in number of neurons per voxel.
+
+    The density profile datasets were obtained in
+    "A Derived Positional Mapping of Inhibitory Subtypes in the Somatosensory Cortex"
+    by D. Keller et al., 2019., https://www.frontiersin.org/articles/10.3389/fnana.2019.00078/full.
+    These datasets and associated metadata files can be found in
+    atlas_building_tools/app/data/mtypes. This command uses the latter files used by default.
+    """
+
+    L.info('Collecting density profiles ...')
+
+    density_profile_collection = DensityProfileCollection.load(
+        mtype_to_profile_map_path, layer_slices_path, density_profiles_dir
+    )
+
+    L.info('Density profile collection successfully instantiated.')
+
+    density_profile_collection.create_mtype_densities(
+        excitatory_neuron_density_path,
+        inhibitory_neuron_density_path,
+        placement_hints_config_path,
+        output_dir,
     )

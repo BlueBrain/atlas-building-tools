@@ -99,10 +99,20 @@ def save_placement_hints(
         top = distances[index]
         # A placement hint array is a 1D array of size `number of layers` of float arrays of
         # shape (W, H, D, 2).
-        # [PH]_layer_i.raw[0] holds the distances wrt to direction vectors of all voxels
-        # to the bottom of layer i (non-positive values).
-        # [PH]_layer_i.raw[1] holds the distances wrt to direction vectors of all voxels
-        # to the top of layer i (non-negative values).
+        # The description of a placement hint [PH]layer_i is quite convoluted.
+        # (TODO: check if distances to boundaries could be used directly).
+        # Given a voxel v, let L be the line passing through v along the direction vector of v. The
+        # line L intersects the bottom of the deepest layer (e.g., layer 6 for the AIBS mouse
+        # isocortex) in a voxel w. Then [PH]_layer_i.raw[..., 0] gives the (non-negative) distance
+        # of w to the bottom of layer i while [PH]_layer_i.raw[..., 1] gives the (non-negative)
+        # distance of w to the top of layer i.
+        # Example: both arrays [PH]_layer_i.raw[...,0] and [PH]_layer_i.raw[..., 1] are constant
+        # for O1 column atlases.
+        # Note that [PH]_layer_i.raw[...,0] - [PH]y.raw holds the non-negative distances wrt to
+        # direction vectors of all voxels to the bottom of layer i (these are non-positive values
+        # for the voxels lying inside layer_i). [PH]_layer_i.raw[..., 1] - [PH]y.raw holds the
+        # distances wrt to direction vectors of all voxels to the top of layer i (these are
+        # non-negative values for voxels lying inside layer_i).
         placement_hints = np.stack((bottom, top), axis=-1) + y[..., np.newaxis]
         layer_placement_hints_path = str(Path(output_dir, '[PH]{}.nrrd'.format(name)))
         voxel_data.with_data(voxel_size * placement_hints).save_nrrd(
