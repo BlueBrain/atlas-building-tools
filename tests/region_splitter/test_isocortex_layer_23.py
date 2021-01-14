@@ -1,5 +1,6 @@
 '''Unit tests for split_23'''
 from pathlib import Path
+from collections import defaultdict
 import json
 import pytest
 
@@ -9,10 +10,63 @@ import numpy.testing as npt
 
 TEST_PATH = Path(Path(__file__).parent.parent)
 
-from voxcell import RegionMap, VoxelData
+from voxcell import RegionMap, VoxelData, region_map
 
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 import atlas_building_tools.region_splitter.isocortex_layer_23 as tested
+
+
+def get_isocortex_hierarchy_excerpt():
+    return {
+        "id": 315,
+        "acronym": "Isocortex",
+        "name": "Isocortex",
+        "children": [
+            {
+                "id": 500,
+                "acronym": "MO",
+                "name": "Somatomotor areas",
+                "children": [
+                    {
+                        "id": 107,
+                        "acronym": "MO1",
+                        "name": "Somatomotor areas, Layer 1",
+                        "children": [],
+                        "parent_structure_id": 500,
+                    },
+                    {
+                        "id": 219,
+                        "acronym": "MO2/3",
+                        "name": "Somatomotor areas, Layer 2/3",
+                        "children": [],
+                        "parent_structure_id": 500,
+                    },
+                    {
+                        "id": 299,
+                        "acronym": "MO5",
+                        "name": "Somatomotor areas, Layer 5",
+                        "children": [],
+                        "parent_structure_id": 500,
+                    },
+                    {
+                        "id": 644,
+                        "acronym": "MO6a",
+                        "name": "Somatomotor areas, Layer 6a",
+                        "children": [],
+                        "parent_structure_id": 500,
+                    },
+                    {
+                        "id": 947,
+                        "acronym": "MO6b",
+                        "name": "Somatomotor areas, Layer 6b",
+                        "children": [],
+                        "parent_structure_id": 500,
+                    },
+                ],
+                "parent_structure_id": 315,
+            }
+        ],
+    }
 
 
 def test_get_isocortex_hierarchy():
@@ -72,38 +126,62 @@ def test_create_id_generator():
 
 
 def test_edit_hierarchy():
+    isocortex_hierarchy = get_isocortex_hierarchy_excerpt()
+    expected_hierarchy = get_isocortex_hierarchy_excerpt()
+    expected_hierarchy['children'][0]['children'][1]['children'] = [
+        {
+            "id": 948,
+            "acronym": "MO2",
+            "name": "Somatomotor areas, Layer 2",
+            "children": [],
+            "parent_structure_id": 219,
+        },
+        {
+            "id": 949,
+            "acronym": "MO3",
+            "name": "Somatomotor areas, Layer 3",
+            "children": [],
+            "parent_structure_id": 219,
+        },
+    ]
+    new_layer_ids = defaultdict(dict)
+    region_map = RegionMap.from_dict(
+        {'acronym': 'root', 'name': 'root', 'id': 0, 'children': [isocortex_hierarchy]}
+    )
+    tested.edit_hierarchy(
+        isocortex_hierarchy, new_layer_ids, tested.create_id_generator(region_map)
+    )
+    assert isocortex_hierarchy == expected_hierarchy
+
+
+def test_edit_hierarchy_full_json_file():
     region_map = RegionMap.load_json(str(Path(TEST_PATH, '1.json')))
     isocortex_ids = region_map.find('Isocortex', attr='acronym', with_descendants=True)
     assert not isocortex_ids & (
         region_map.find('@.*3[ab]?$', attr='acronym')
         - region_map.find('@.*2/3$', attr='acronym')
     )
-    # As of 2020.04.22, AIBS's Isocortex has 4 region ids in layer 2.
+    # As of 2020.04.22, AIBS's Isocortex has 4 region ids in layer 2 but none in layer 3.
     initial_isocortex_layer_2_ids = isocortex_ids & region_map.find(
         '@.*2$', attr='acronym'
     )
     isocortex_layer_23_ids = isocortex_ids & region_map.find('@.*2/3$', attr='acronym')
-    id_generator = tested.create_id_generator(region_map)
-    layer_3_new_ids = {
-        id_: next(id_generator) for id_ in list(isocortex_layer_23_ids)[:5]
-    }
     isocortex_hierarchy = None
+    new_layer_ids = defaultdict(dict)
     with open(str(Path(TEST_PATH, '1.json'))) as h_file:
         allen_hierarchy = json.load(h_file)
         isocortex_hierarchy = tested.get_isocortex_hierarchy(allen_hierarchy)
-    tested.edit_hierarchy(isocortex_hierarchy, layer_3_new_ids)
+    tested.edit_hierarchy(
+        isocortex_hierarchy, new_layer_ids, tested.create_id_generator(region_map)
+    )
     modified_region_map = RegionMap.from_dict(isocortex_hierarchy)
-    assert not modified_region_map.find('@.*2/3$', attr='acronym')
+    assert modified_region_map.find('@.*2/3$', attr='acronym') == isocortex_layer_23_ids
     isocortex_layer_2_ids = modified_region_map.find('@.*2$', attr='acronym')
-    isocortex_layer_3_ids = modified_region_map.find('@.*3$', attr='acronym')
-    npt.assert_array_equal(
-        list(isocortex_layer_3_ids),
-        (614454278, 614454279, 614454280, 614454281, 614454282),
+    isocortex_layer_3_ids = modified_region_map.find('@.*[^/]3$', attr='acronym')
+    assert len(isocortex_layer_2_ids) == len(isocortex_layer_23_ids) + len(
+        initial_isocortex_layer_2_ids
     )
-    npt.assert_array_equal(
-        sorted(isocortex_layer_23_ids),
-        sorted(isocortex_layer_2_ids - initial_isocortex_layer_2_ids),
-    )
+    assert len(isocortex_layer_3_ids) == len(isocortex_layer_23_ids)
 
 
 def test_split_isocortex_layer_23():
@@ -201,9 +279,11 @@ def test_split_isocortex_layer_23():
     tested.split(allen_hierarchy, isocortex_data, direction_vectors, ratio)
     isocortex_hierarchy = tested.get_isocortex_hierarchy(allen_hierarchy)
     modified_region_map = RegionMap.from_dict(isocortex_hierarchy)
-    assert not modified_region_map.find('@.*2/3$', attr='acronym')
     isocortex_layer_2_ids = modified_region_map.find('@.*2$', attr='acronym')
-    isocortex_layer_3_ids = modified_region_map.find('@.*3$', attr='acronym')
+    isocortex_layer_3_ids = modified_region_map.find('@.*[^/]3$', attr='acronym')
+    assert len(modified_region_map.find('@.*2/3$', attr='acronym')) == len(
+        isocortex_layer_3_ids
+    )
     npt.assert_array_equal(
         np.unique(raw), sorted({0} | isocortex_layer_2_ids | isocortex_layer_3_ids)
     )
