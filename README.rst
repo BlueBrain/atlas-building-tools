@@ -145,6 +145,24 @@ On the BB5 cluster, install poisson-recon-pybind with:
     module load unstable py-poisson-recon-pybind/0.1.0
 
 
+Instructions for developers
+===========================
+
+Run the following commands before submitting your code for review:
+
+.. code-block:: bash
+
+    cd atlas-building-tools
+    isort -l 100 --profile black atlas_building_tools tests setup.py
+    black -l 100 atlas_building_tools tests setup.py
+
+These formatting operations will help you pass the linting check `testenv:lint` defined in
+`tox.ini`.
+
+
+
+
+
 .. _`Allen Institute for Brain Science (AIBS)`: https://alleninstitute.org/what-we-do/brain-science/
 .. _`A Cell Atlas for the Mouse Brain`: https://www.frontiersin.org/articles/10.3389/fninf.2018.00084/full
 .. _apt-get: https://askubuntu.com/questions/428772/how-to-install-specific-version-of-some-package

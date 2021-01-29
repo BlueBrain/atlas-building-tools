@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Version 0.1.3
+--------------
+- Adds a function creating a boolean mask of cylinder-shaped subregion of a 3D volume [`NSETM-1320`_]
+
+
 Version 0.1.2
 --------------
 - Upgrades the dependency on cgal-pybind in setup.py: cgal-pybind>=0.1.1 [`BBPP82-614`_]
@@ -46,6 +51,7 @@ Version 0.1.0 (2021-04-27)
 - CLI to turn the excel measurement compilation gaba_papers.xlsx of D. Rodarie into a CSV file.
 
 
+.. _`NSETM-1320`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1320
 .. _`BBPP82-614`: https://bbpteam.epfl.ch/project/issues/browse/BBPP82-614
 .. _`NSETM-1487`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1487
 .. _`NSETM-1475`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1475
