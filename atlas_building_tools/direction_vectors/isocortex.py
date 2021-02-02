@@ -143,7 +143,7 @@ def compute_direction_vectors(
     )
     if nans > 0:
         warnings.warn(
-            'NaN direction vectors in {:.5%} of isocortical voxels'.format(nans)
+            'NaN direction vectors in {:.5%} of isocortical voxels'.format(float(nans))
         )
 
     return direction_vectors

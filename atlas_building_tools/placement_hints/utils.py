@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
 
 
-Region = Union[str, voxcell.VoxelData, NDArray[np.int]]
+Region = Union[str, voxcell.VoxelData, NDArray[int]]
 
 
 def centroid_outfacing_mesh(mesh: trimesh.Trimesh) -> trimesh.Trimesh:
@@ -37,7 +37,7 @@ def layers_volume(
     region_map: Union[str, dict, 'voxcell.RegionMap'],
     layers: List[str],
     region: Optional[Region] = 'Isocortex',
-) -> NDArray[np.int]:
+) -> NDArray[int]:
     '''
     Labels a 3D volume using the indices of its `layers`.
 
@@ -66,7 +66,7 @@ def layers_volume(
 
 
 def save_placement_hints(
-    distances: NDArray[np.float],
+    distances: NDArray[float],
     output_dir: str,
     voxel_data: voxcell.VoxelData,
     layer_names: List[str],

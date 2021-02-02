@@ -149,8 +149,9 @@ def mean_min_dist(
         mean of the distances of the points in the sample to `points_2`.
     '''
     sampled_indices = np.random.choice(len(points_1), size=sample_size, replace=False)
-    distances = np.min(cdist(points_1[sampled_indices], points_2), axis=1)
-    return np.mean(distances)
+    distances: NDArray[float] = np.min(cdist(points_1[sampled_indices], points_2), axis=1)
+
+    return float(np.mean(distances))
 
 
 def log_mesh_optimization_info(

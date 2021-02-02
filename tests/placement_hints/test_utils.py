@@ -24,8 +24,8 @@ def test_centroid_outfacing_mesh():
     npt.assert_array_equal(result.faces, expected_faces)
 
     # The centroid lies inside of the mesh
-    vertices = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [0, 0, 0]], dtype=np.float)
-    faces = np.array([[0, 1, 2], [1, 3, 2], [2, 3, 0], [0, 3, 1]], dtype=np.float)
+    vertices = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1], [0, 0, 0]], dtype=float)
+    faces = np.array([[0, 1, 2], [1, 3, 2], [2, 3, 0], [0, 3, 1]], dtype=float)
     mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
     result = tested.centroid_outfacing_mesh(mesh)
     assert (

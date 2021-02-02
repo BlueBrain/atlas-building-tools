@@ -92,7 +92,7 @@ class LayeredAtlas:
         return self.annotation.with_data(region_mask)
 
     @cached_property
-    def volume(self) -> NDArray[np.int]:
+    def volume(self) -> NDArray[int]:
         """
         Get the volume enclosed by the specified layers.
 
@@ -115,7 +115,7 @@ class LayeredAtlas:
         )
 
     def create_layer_meshes(
-        self, layered_volume: NDArray[np.int]
+        self, layered_volume: NDArray[int]
     ) -> List['trimesh.Trimesh']:
         """
         Create meshes representing the upper boundary of each layer
@@ -275,7 +275,7 @@ def compute_distances_to_layer_meshes(  # pylint: disable=too-many-arguments
     acronym: str,
     annotation: 'VoxelData',
     region_map: 'RegionMap',
-    direction_vectors: NDArray[np.float],
+    direction_vectors: NDArray[float],
     layer_regexps: List[str],
     has_hemispheres: bool = True,
     flip_direction_vectors: bool = False,

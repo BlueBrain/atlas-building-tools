@@ -30,7 +30,7 @@ from skimage import morphology  # type: ignore
 
 if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
-    from voxcell import RegionMap  # type: ignore
+
 
 L = logging.getLogger(__name__)
 logging.captureWarnings(True)
@@ -94,7 +94,7 @@ def find_spots(
     return np.array(spots)
 
 
-def intensity_curve_fitting(curve: NDArray[float], delta: int) -> np.float:
+def intensity_curve_fitting(curve: NDArray[float], delta: int) -> float:
     '''
     Fit a bell-shaped curve to a function reaching its maximum at `delta`.
 
@@ -165,12 +165,12 @@ def _compute_spot_radius(
     top = np.min([spot + delta + 1, np.array(greyscale.shape) - 1], axis=0) + 1
     window = greyscale[bottom[0] : top[0], bottom[1] : top[1]]
     centred_spot = spot - bottom
-    return np.mean(
+    return float(np.mean(
         [
             intensity_curve_fitting(window[:, centred_spot[1]], centred_spot[0]),
             intensity_curve_fitting(window[centred_spot[0], :], centred_spot[1]),
         ]
-    )
+    ))
 
 
 def _jpg_to_greyscale(
@@ -178,7 +178,7 @@ def _jpg_to_greyscale(
     png: Image,
     gaussian_filter_stddev: float = 1.5,
     intensity_threshold: float = 0.1,
-) -> NDArray[np.float]:
+) -> NDArray[float]:
     '''
     Convert a jpg image to a greyscale 2D array.
 

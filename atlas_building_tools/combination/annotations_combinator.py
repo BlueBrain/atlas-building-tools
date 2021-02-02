@@ -32,9 +32,9 @@ L = logging.getLogger(__name__)
 
 def is_ancestor(
     region_map: 'voxcell.RegionMap',
-    annotation_1: NDArray[np.int],
-    annotation_2: NDArray[np.int],
-) -> NDArray[np.bool]:
+    annotation_1: NDArray[int],
+    annotation_2: NDArray[int],
+) -> NDArray[bool]:
     '''
     Returns a binary mask encoding the is-ancestor relationship between two annotated arrays.
 
@@ -59,7 +59,7 @@ def is_ancestor(
     def is_ancestor_(id_1: int, id_2: int) -> bool:
         return (id_1, id_2) in is_ancestor_set
 
-    return np.vectorize(is_ancestor_, otypes=[np.bool])(annotation_1, annotation_2)
+    return np.vectorize(is_ancestor_, otypes=[bool])(annotation_1, annotation_2)
 
 
 def combine_annotations(

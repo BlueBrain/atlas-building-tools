@@ -18,7 +18,7 @@ class Test_isocortex(unittest.TestCase):
             padding=10, layer_thickness=15, x_thickness=35, z_thickness=25
         )
         direction_vectors = np.zeros(
-            cls.isocortex_mock.annotation.raw.shape + (3,), dtype=np.float
+            cls.isocortex_mock.annotation.raw.shape + (3,), dtype=float
         )
         direction_vectors[cls.isocortex_mock.annotation.raw > 0] = (0.0, 1.0, 0.0)
         cls.result = tested.compute_placement_hints(

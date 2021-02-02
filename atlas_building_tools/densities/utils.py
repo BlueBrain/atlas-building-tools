@@ -1,7 +1,7 @@
 '''Utility functions for cell density computation.'''
 
 from typing import Dict, Set, TYPE_CHECKING
-import numpy as np
+import numpy as np  # type: ignore
 import scipy.misc
 import scipy.ndimage
 from nptyping import NDArray  # type: ignore
@@ -175,7 +175,7 @@ def optimize_distance_to_line(  # pylint: disable=too-many-arguments
     return point
 
 
-def constrain_density(  # pylint: disable=too-many-arguments
+def constrain_density(  # pylint: disable=too-many-arguments, too-many-branches
     target_sum: float,
     density: NDArray[float],
     density_upper_bound: NDArray[float],
@@ -254,8 +254,11 @@ def constrain_density(  # pylint: disable=too-many-arguments
     if max_density_mask is not None:
         density[max_density_mask] = density_upper_bound[max_density_mask]
         complement = max_density_mask.copy()
+
     if zero_density_mask is not None:
         density[zero_density_mask] = 0.0
+        if complement is None:
+            complement = zero_density_mask.copy()
         complement = np.logical_or(complement, zero_density_mask)
 
     if complement is None:

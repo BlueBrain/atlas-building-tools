@@ -124,7 +124,7 @@ def check_direction_vectors(direction_vectors, inside, options=None):
 class Test_direction_vectors_for_hemispheres:
     @staticmethod
     def landscape_1():
-        source = np.zeros((16, 16, 16), dtype=np.bool)
+        source = np.zeros((16, 16, 16), dtype=bool)
         source[3:15, 3:15, 3:7] = True
         inside = np.zeros_like(source)
         inside[3:15, 3:15, 6:10] = True
@@ -134,7 +134,7 @@ class Test_direction_vectors_for_hemispheres:
 
     @staticmethod
     def landscape_2():
-        source = np.zeros((16, 16, 16), dtype=np.bool)
+        source = np.zeros((16, 16, 16), dtype=bool)
         source[3:13, 3:13, 3] = True
         source[3:13, 3:13, 12] = True
         inside = np.zeros_like(source)
@@ -145,7 +145,7 @@ class Test_direction_vectors_for_hemispheres:
 
     @staticmethod
     def landscape_3():
-        target = np.zeros((16, 16, 16), dtype=np.bool)
+        target = np.zeros((16, 16, 16), dtype=bool)
         target[3:13, 3:13, 3] = True
         target[3:13, 3:13, 12] = True
         inside = np.zeros_like(target)
@@ -262,7 +262,7 @@ class Test_compute_direction_vectors:
 
     @staticmethod
     def voxel_data_1():
-        raw = np.zeros((16, 16, 16), dtype=np.int)
+        raw = np.zeros((16, 16, 16), dtype=int)
         raw[3:15, 3:15, 3:6] = 1
         raw[3:15, 3:15, 6] = 2
         raw[3:15, 3:15, 7] = 3
@@ -280,7 +280,7 @@ class Test_compute_direction_vectors:
 
     @staticmethod
     def voxel_data_2():
-        raw = np.zeros((16, 16, 16), dtype=np.int)
+        raw = np.zeros((16, 16, 16), dtype=int)
         raw[3:13, 3:13, 3] = 1
         raw[3:13, 3:13, 4:7] = 2
         raw[3:13, 3:13, 7] = 3

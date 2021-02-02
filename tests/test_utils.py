@@ -40,7 +40,7 @@ class Test_load_region_map:
 
 def test_get_region_mask():
     annotation = np.arange(27).reshape((3, 3, 3))
-    expected = np.zeros((3, 3, 3), dtype=np.bool)
+    expected = np.zeros((3, 3, 3), dtype=bool)
     expected[0, 0, 2] = True  # label 2, "SSp-m6b"
     expected[1, 0, 0] = True  # label 9, "SSp-tr6a"
     expected[2, 1, 1] = True  # label 22, "SSp-tr6a"

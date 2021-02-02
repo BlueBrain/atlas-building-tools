@@ -31,7 +31,7 @@ def test_find_regiodesics_exec_or_raise_raises(_):
 
 
 def test_compute_boundary():
-    v_1 = np.zeros((5, 5, 5), dtype=np.bool)
+    v_1 = np.zeros((5, 5, 5), dtype=bool)
     v_1[1:4, 1:4, 1:4] = True
     v_2 = ~v_1
     boundary = tested.compute_boundary(v_1, v_2)
@@ -39,7 +39,7 @@ def test_compute_boundary():
     expected[2, 2, 2] = False
     npt.assert_array_equal(boundary, expected)
 
-    v_1 = np.zeros((5, 5, 5), dtype=np.bool)
+    v_1 = np.zeros((5, 5, 5), dtype=bool)
     v_1[0:2, :, 1:4] = True
     v_2 = np.zeros_like(v_1)
     v_2[2:, :, 1:4] = True
@@ -50,14 +50,14 @@ def test_compute_boundary():
 
 
 def test_mark_with_regiodesics_labels():
-    full_volume = np.zeros((9, 9, 9), dtype=np.int)
+    full_volume = np.zeros((9, 9, 9), dtype=int)
     full_volume[:, :, :3] = 1  # bottom
     full_volume[:, :, 3:6] = 2  # in between
     full_volume[:, :, 6:] = 3  # top
     marked = tested.mark_with_regiodesics_labels(
         full_volume == 1, full_volume == 2, full_volume == 3
     )
-    expected = np.zeros((9, 9, 9), dtype=np.int)
+    expected = np.zeros((9, 9, 9), dtype=int)
     expected[:, :, 4] = RegiodesicsLabels.INTERIOR
     expected[:, :, 3] = RegiodesicsLabels.BOTTOM
     expected[0, :, 4] = RegiodesicsLabels.SHELL
@@ -69,7 +69,7 @@ def test_mark_with_regiodesics_labels():
 
 
 def test_compute_direction_vectors():
-    raw = np.zeros((8, 8, 8), dtype=np.int)
+    raw = np.zeros((8, 8, 8), dtype=int)
     raw[:, :, :2] = 1  # bottom
     raw[:, :, 2:6] = 2  # interior
     raw[:, :, 6:8] = 3  # top
@@ -81,7 +81,7 @@ def test_compute_direction_vectors():
 
 
 def test_compute_direction_vectors_exception():
-    raw = np.zeros((8, 8, 8), dtype=np.int)
+    raw = np.zeros((8, 8, 8), dtype=int)
     raw[:, :, 2:6] = 2  # interior
     raw[:, :, 6:8] = 3  # top
     with pytest.raises(AtlasBuildingToolsError):

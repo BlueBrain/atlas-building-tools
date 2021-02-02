@@ -31,7 +31,7 @@ def test_get_isocortical_regions():
 def test_compute_direction_vectors():
     # Two high-level regions, namely ACAd and ACAv
     # with layers 1, 2/3, 5 and 6
-    raw = np.zeros((16, 16, 16), dtype=np.int)
+    raw = np.zeros((16, 16, 16), dtype=int)
     # ACAd6
     raw[3:8, 3:12, 3] = 927  # ACAd6b, since ACAd6a is ignored
     raw[3:8, 3:12, 12] = 927
@@ -67,7 +67,7 @@ def test_compute_direction_vectors_with_missing_bottom():
     # Two high-level regions, namely ACAd and ACAv
     # with layers 1, 2/3, 5
     # Layer 6 is missing and troubles are expected!
-    raw = np.zeros((16, 16, 16), dtype=np.int)
+    raw = np.zeros((16, 16, 16), dtype=int)
 
     # ACAd5
     raw[3:8, 3:12, 4] = 1015

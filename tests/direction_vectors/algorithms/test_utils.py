@@ -9,7 +9,7 @@ def test_zero_to_nan():
     field = np.ones((2, 2, 2, 3), dtype=np.float32)
     field[0, 0, 0] = 0
     field[1, 1, 1] = 0
-    expected = np.ones((2, 2, 2, 3), dtype=np.float)
+    expected = np.ones((2, 2, 2, 3), dtype=float)
     expected[0, 0, 0] = np.nan
     expected[1, 1, 1] = np.nan
     tested.zero_to_nan(field)
@@ -19,14 +19,14 @@ def test_zero_to_nan():
     field = np.ones((2, 2, 2, 4), dtype=np.float64)
     field[0, 1, 0] = 0
     field[1, 0, 1] = 0
-    expected = np.ones((2, 2, 2, 4), dtype=np.float)
+    expected = np.ones((2, 2, 2, 4), dtype=float)
     expected[0, 1, 0] = np.nan
     expected[1, 0, 1] = np.nan
     tested.zero_to_nan(field)
     npt.assert_array_equal(field, expected)
 
     # Wrong input type
-    field = np.ones((2, 2, 2, 4), dtype=np.int)
+    field = np.ones((2, 2, 2, 4), dtype=int)
     with pyt.raises(ValueError):
         tested.zero_to_nan(field)
 
@@ -73,7 +73,7 @@ def test_compute_blur_gradient():
     )
 
     # Wrong input type
-    scalar_field = np.ones((2, 2, 2), dtype=np.int)
+    scalar_field = np.ones((2, 2, 2), dtype=int)
     with pyt.raises(ValueError):
         tested.compute_blur_gradient(scalar_field, 0.1)
 

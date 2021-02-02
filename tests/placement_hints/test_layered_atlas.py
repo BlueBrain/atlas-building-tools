@@ -36,7 +36,7 @@ class Test_Layered_Atlas(unittest.TestCase):
         expected = self.isocortex_mock.annotation.raw.copy()
         expected[expected == self.isocortex_mock.background] = 0
         expected[expected > 0] = 1
-        npt.assert_array_equal(raw, expected.astype(np.bool))
+        npt.assert_array_equal(raw, expected.astype(bool))
 
     def test_create_layers_volume(self):
         volume = self.layered_atlas.volume
@@ -60,7 +60,7 @@ class Test_Layered_Atlas(unittest.TestCase):
 
     def test_compute_distances_to_layer_meshes(self):
         direction_vectors = np.zeros(
-            self.isocortex_mock.annotation.raw.shape + (3,), dtype=np.float
+            self.isocortex_mock.annotation.raw.shape + (3,), dtype=float
         )
         direction_vectors[self.isocortex_mock.annotation.raw > 0] = (0.0, 1.0, 0.0)
         distances = tested.compute_distances_to_layer_meshes(
@@ -102,7 +102,7 @@ class Test_Layered_Atlas(unittest.TestCase):
 
     def test_save_problematic_voxel_mask(self):
         with tempfile.TemporaryDirectory() as tempdir:
-            problematic_voxel_mask = np.zeros((2, 2, 2), dtype=np.bool)
+            problematic_voxel_mask = np.zeros((2, 2, 2), dtype=bool)
             problematic_voxel_mask[0, 0, 0] = True
             problematic_voxel_mask[0, 1, 0] = True
             problems = {

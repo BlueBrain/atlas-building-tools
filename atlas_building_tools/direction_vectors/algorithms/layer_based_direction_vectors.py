@@ -117,7 +117,7 @@ def direction_vectors_for_hemispheres(
         # We assume that the region of interest has two hemispheres
         # which are symetric wrt the plane z = volume.shape[2] // 2.
         hemisphere_masks = split_into_halves(  # type: ignore
-            np.ones(landscape['inside'].shape, dtype=np.bool)
+            np.ones(landscape['inside'].shape, dtype=bool)
         )
 
     if algorithm not in ALGORITHMS:
