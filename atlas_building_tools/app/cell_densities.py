@@ -1,7 +1,8 @@
 '''Generate and save cell densities
 
-A density value is a float number corresponding to the number of cells in a voxel.
-A density field is a 3D volumetric array assigning to each voxel a density value.
+A density value is a non-negative float number corresponding to the number of cells in mm^3.
+A density field is a 3D volumetric array assigning to each voxel a density value, that is
+the mean cell density within this voxel.
 
 This script computes and saves the following cell densities under the form of density fields.
 
@@ -21,40 +22,51 @@ Density estimates are based on datasets produced by in-situ hybridization experi
 Genetic marker stained intensity and Nissl stained intensity are assumed to be a good indicator
 of the soma density in a population of interest.
 
-It is assumed throughout that such intensities depend "almost" linearly
-on the cell density when restricted to a brain region, but we shall not give a precise meaning to
- the word "almost".
+It is assumed throughout that such intensities depend "almost" linearly on the cell density when
+restricted to a brain region, but we shall not give a precise meaning to the word "almost".
 '''
 
-import os
 import json
-from pathlib import Path
 import logging
+import os
+from pathlib import Path
+
 import click
 import numpy as np
-
 from voxcell import RegionMap, VoxelData  # type: ignore
+from atlas_analysis.atlas import assert_properties
 
-from atlas_building_tools.app.utils import (
-    log_args,
-    EXISTING_DIR_PATH,
-    EXISTING_FILE_PATH,
-    set_verbose,
-)
-
-from atlas_building_tools.densities.cell_density import compute_cell_density
-from atlas_building_tools.densities.glia_densities import compute_glia_densities
-from atlas_building_tools.densities.inhibitory_neuron_density import (
-    compute_inhibitory_neuron_density,
-)
+from atlas_building_tools.app.utils import EXISTING_FILE_PATH, EXISTING_DIR_PATH,\
+    log_args, set_verbose
 from atlas_building_tools.densities.cell_counts import (
     extract_inhibitory_neurons_dataframe,
     glia_cell_counts,
     inhibitory_data,
 )
+from atlas_building_tools.densities.cell_density import compute_cell_density
+from atlas_building_tools.densities.glia_densities import compute_glia_densities
+from atlas_building_tools.densities.inhibitory_neuron_density import (
+    compute_inhibitory_neuron_density,
+)
 from atlas_building_tools.densities.mtype_densities import DensityProfileCollection
 
 L = logging.getLogger(__name__)
+
+
+def _get_voxel_volume_in_mm3(voxel_data: 'VoxelData') -> float:
+    """
+    Returns the voxel volume of `voxel_data` in mm^3.
+
+    Note: the voxel_dimensions of `voxel_data` are assumed to be
+    expressed in um (micron = 1e-6 m).
+
+    Args:
+        voxel_data: VoxelData object whose voxel volume will be computed.
+
+    Returns:
+        The volume in mm^3 of a `voxel_data` voxel.
+    """
+    return voxel_data.voxel_volume / 1e9
 
 
 @click.group()
@@ -87,14 +99,16 @@ def app(verbose):
     '--output-path',
     type=str,
     required=True,
-    help='Path where to write the output cell density nrrd file.',
+    help='Path where to write the output cell density nrrd file.'
+    'A voxel value is a number of cells per mm^3',
 )
 @click.option(
     '--soma-radii',
     type=EXISTING_FILE_PATH,
     required=False,
     help='Optional path to the soma radii json file. If specified'
-    ', the input nissl stain intensity is adjusted by taking regions soma radii into account.',
+    ', the input nissl stain intensity is adjusted by taking regions soma radii into account.'
+    ' See cell_detection module.',
     default=None,
 )
 @log_args(L)
@@ -104,7 +118,7 @@ def cell_density(annotation_path, hierarchy_path, nissl_path, output_path, soma_
     The input Nissl stain volume of AIBS is turned into an actual density field complying with
     the cell counts of several regions.
 
-    Density is expressed as a number of cells per voxel.
+    Density is expressed as a number of cells per mm^3.
     The output density field array is a float64 array of shape (W, H, D) where (W, H, D)
     is the shape of the input annotated volume.
 
@@ -112,19 +126,23 @@ def cell_density(annotation_path, hierarchy_path, nissl_path, output_path, soma_
         * the Nissl stain intensity, which is supposed to represent the overall cell density, up to
             to region-dependent constant scaling factors.\n
         * cell counts from the scientific literature, which are used to determine a local \n
-            linear dependency factor each regions where a cell count is available.\n
+            linear dependency factor for each region where a cell count is available.\n
         * the optional soma radii, used to operate a correction.
     """
 
     annotation = VoxelData.load_nrrd(annotation_path)
-    region_map = RegionMap.load_json(hierarchy_path)
     nissl = VoxelData.load_nrrd(nissl_path)
+
+    # Check nrrd metadata consistency
+    assert_properties([annotation, nissl])
+
+    region_map = RegionMap.load_json(hierarchy_path)
     if soma_radii is not None:
         with open(soma_radii, 'r') as file_:
             soma_radii = json.load(file_)
 
     overall_cell_density = compute_cell_density(
-        region_map, annotation.raw, nissl.raw, soma_radii
+        region_map, annotation.raw, _get_voxel_volume_in_mm3(annotation), nissl.raw, soma_radii
     )
     nissl.with_data(np.asarray(overall_cell_density, dtype=float)).save_nrrd(
         output_path
@@ -203,7 +221,7 @@ def glia_cell_densities(
 ):  # pylint: disable=too-many-arguments, too-many-locals
     """Compute and save the glia cell densities.\n
 
-    Density is expressed as a number of cells per voxel.
+    Density is expressed as a number of cells per mm^3.
     The output density field arrays are float64 arrays of shape (W, H, D) where (W, H, D)
     is the shape of the input annotated volume.
 
@@ -215,7 +233,7 @@ def glia_cell_densities(
     The cell counts and the overall cell density are used to constrain the glia cell densities\n
     so that:\n
         * they do not exceed voxel-wise the overall cell density\n
-        * density sums match the provided cell counts\n
+        * the density sums multiplied by the voxel volume match the provided cell counts\n
 
     An optimization process is responsible for enforcing these constraints while keeping\n
     the output densities as close as possible to the unconstrained input densities.\n
@@ -235,21 +253,32 @@ def glia_cell_densities(
     """
 
     annotation = VoxelData.load_nrrd(annotation_path)
-    region_map = RegionMap.load_json(hierarchy_path)
     overall_cell_density = VoxelData.load_nrrd(cell_density_path)
+
+    glia_densities = {
+        'glia': VoxelData.load_nrrd(glia_density_path),
+        'astrocyte': VoxelData.load_nrrd(astrocyte_density_path),
+        'oligodendrocyte': VoxelData.load_nrrd(oligodendrocyte_density_path),
+        'microglia': VoxelData.load_nrrd(microglia_density_path),
+    }
+
+    atlases = list(glia_densities.values)
+    atlases += [annotation, overall_cell_density]
+    assert_properties(atlases)
+
+    region_map = RegionMap.load_json(hierarchy_path)
     with open(glia_proportions_path, 'r') as file_:
         glia_proportions = json.load(file_)
 
     glia_densities = {
-        'glia': VoxelData.load_nrrd(glia_density_path).raw,
-        'astrocyte': VoxelData.load_nrrd(astrocyte_density_path).raw,
-        'oligodendrocyte': VoxelData.load_nrrd(oligodendrocyte_density_path).raw,
-        'microglia': VoxelData.load_nrrd(microglia_density_path).raw,
+        glia_cell_type: voxel_data.raw
+        for (glia_cell_type, voxel_data) in glia_densities.items()
     }
 
     glia_densities = compute_glia_densities(
         region_map,
         annotation.raw,
+        _get_voxel_volume_in_mm3(annotation),
         sum(glia_cell_counts().values()),
         glia_densities,
         overall_cell_density.raw,
@@ -333,7 +362,7 @@ def inhibitory_neuron_densities(
 ):  # pylint: disable=too-many-arguments
     """Compute and save the inhibitory and excitatory neuron densities.\n
 
-    Density is expressed as a number of cells per voxel.
+    Density is expressed as a number of cells per mm^3.
     The output density field arrays are float64 arrays of shape (W, H, D) where (W, H, D)
     is the shape of the input annotated volume.
 
@@ -358,15 +387,19 @@ def inhibitory_neuron_densities(
     """
 
     annotation = VoxelData.load_nrrd(annotation_path)
+    neuron_density = VoxelData.load_nrrd(neuron_density_path)
+
+    assert_properties([annotation, neuron_density])
+
     region_map = RegionMap.load_json(hierarchy_path)
-    neuron_density = VoxelData.load_nrrd(neuron_density_path).raw
     inhibitory_df = extract_inhibitory_neurons_dataframe(inhibitory_neuron_counts_path)
     inhibitory_neuron_density = compute_inhibitory_neuron_density(
         region_map,
         annotation.raw,
+        _get_voxel_volume_in_mm3(annotation),
         VoxelData.load_nrrd(gad1_path).raw,
         VoxelData.load_nrrd(nrn1_path).raw,
-        neuron_density,
+        neuron_density.raw,
         inhibitory_data=inhibitory_data(inhibitory_df),
     )
 
@@ -376,8 +409,8 @@ def inhibitory_neuron_densities(
     annotation.with_data(np.asarray(inhibitory_neuron_density, dtype=float)).save_nrrd(
         str(Path(output_dir, 'inhibitory_neuron_density.nrrd'))
     )
-    excitatory_density = neuron_density - inhibitory_neuron_density
-    annotation.with_data(np.asarray(excitatory_density, dtype=float)).save_nrrd(
+    excitatory_neuron_density = neuron_density - inhibitory_neuron_density
+    annotation.with_data(np.asarray(excitatory_neuron_density, dtype=float)).save_nrrd(
         str(Path(output_dir, 'excitatory_neuron_density.nrrd'))
     )
 

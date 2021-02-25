@@ -16,7 +16,14 @@ TESTS_PATH = Path(__file__).parent.parent
 
 def test_normalize():
     annotation_raw = np.array(
-        [[[0, 0, 0, 0], [0, 255, 1211, 0], [0, 347, 100, 0], [0, 0, 0, 0],]],
+        [
+            [
+                [0, 0, 0, 0],
+                [0, 255, 1211, 0],
+                [0, 347, 100, 0],
+                [0, 0, 0, 0],
+            ]
+        ],
         dtype=np.uint32,
     )
     marker = np.array(
@@ -53,7 +60,14 @@ def test_normalize():
 
 def test_compensate_cell_overlap():
     annotation_raw = np.array(
-        [[[0, 0, 0, 0], [0, 15, 1, 0], [0, 999, 1001, 0], [0, 0, 0, 0],]],
+        [
+            [
+                [0, 0, 0, 0],
+                [0, 15, 1, 0],
+                [0, 999, 1001, 0],
+                [0, 0, 0, 0],
+            ]
+        ],
         dtype=np.uint32,
     )
     marker = np.array(
@@ -147,74 +161,104 @@ def test_optimize_distance_to_line_3D():
     npt.assert_array_almost_equal(optimum, np.array([1.0 / 3.0, 1.0, 2.0 / 3.0]))
 
 
-def test_constrain_density():
+def test_constrain_cell_counts_per_voxel():
     upper_bound = np.array([[[1.0, 1.0, 2.0, 0.5, 0.5]]])
-    density = np.array([[[0.1, 0.1, 0.6, 0.25, 0.15]]])
-    zero_density_mask = np.array([[[True, True, False, False, False]]])
-    max_density_mask = np.array([[[False, False, True, False, False]]])
-    density = tested.constrain_density(
-        3.0, density, upper_bound, max_density_mask, zero_density_mask, epsilon=1e-7, copy=True
+    cell_counts = np.array([[[0.1, 0.1, 0.6, 0.25, 0.15]]])
+    zero_cell_counts_mask = np.array([[[True, True, False, False, False]]])
+    max_cell_counts_mask = np.array([[[False, False, True, False, False]]])
+    cell_counts = tested.constrain_cell_counts_per_voxel(
+        3.0,
+        cell_counts,
+        upper_bound,
+        max_cell_counts_mask,
+        zero_cell_counts_mask,
+        epsilon=1e-7,
+        copy=True,
     )
     expected = np.array([[[0.0, 0.0, 2.0, 0.5, 0.5]]])
-    npt.assert_almost_equal(density, expected, decimal=6)
+    npt.assert_almost_equal(cell_counts, expected, decimal=6)
 
     upper_bound = np.array([[[2.0, 0.9, 0.75, 0.5, 1.5, 0.1]]])
-    density = np.array([[[0.1, 0.8, 0.25, 0.25, 0.85, 0.1]]])
-    zero_density_mask = np.array([[[True, False, False, False, False, True]]])
-    max_density_mask = np.array([[[False, True, False, False, True, False]]])
-    density = tested.constrain_density(
-        3.4, density, upper_bound, max_density_mask, zero_density_mask, epsilon=1e-7, copy=False
+    cell_counts = np.array([[[0.1, 0.8, 0.25, 0.25, 0.85, 0.1]]])
+    zero_cell_counts_mask = np.array([[[True, False, False, False, False, True]]])
+    max_cell_counts_mask = np.array([[[False, True, False, False, True, False]]])
+    cell_counts = tested.constrain_cell_counts_per_voxel(
+        3.4,
+        cell_counts,
+        upper_bound,
+        max_cell_counts_mask,
+        zero_cell_counts_mask,
+        epsilon=1e-7,
+        copy=False,
     )
     expected = np.array([[[0.0, 0.9, 0.5, 0.5, 1.5, 0.0]]])
-    npt.assert_almost_equal(density, expected, decimal=6)
+    npt.assert_almost_equal(cell_counts, expected, decimal=6)
 
     # Same constraints, but with a different line
-    density = np.array([[[0.1, 0.8, 0.6, 0.2, 0.85, 0.1]]])
+    cell_counts = np.array([[[0.1, 0.8, 0.6, 0.2, 0.85, 0.1]]])
     expected = np.array([[[0.0, 0.9, 0.75, 0.25, 1.5, 0.0]]])
-    density = tested.constrain_density(
-        3.4, density, upper_bound, max_density_mask, zero_density_mask, epsilon=1e-7, copy=True
+    cell_counts = tested.constrain_cell_counts_per_voxel(
+        3.4,
+        cell_counts,
+        upper_bound,
+        max_cell_counts_mask,
+        zero_cell_counts_mask,
+        epsilon=1e-7,
+        copy=True,
     )
-    npt.assert_almost_equal(density, expected, decimal=6)
+    npt.assert_almost_equal(cell_counts, expected, decimal=6)
 
 
-def test_constrain_density_exceptions():
+def test_constrain_cell_counts_per_voxel_exceptions():
     # Should raise because the contribution of voxels
-    # with maximum density exceeds the target sum
+    # with maximum cell counts exceeds the target sum
     with pytest.raises(AtlasBuildingToolsError):
         upper_bound = np.array([[[1.0, 1.0, 4.0, 0.5, 0.5]]])
-        density = np.array([[[0.1, 0.1, 0.6, 0.25, 0.15]]])
-        zero_density_mask = np.array([[[True, True, False, False, False]]])
-        max_density_mask = np.array([[[False, False, True, False, False]]])
-        tested.constrain_density(
-            3.0, density, upper_bound, max_density_mask, zero_density_mask, epsilon=1e-7, copy=True
+        cell_counts = np.array([[[0.1, 0.1, 0.6, 0.25, 0.15]]])
+        zero_cell_counts_mask = np.array([[[True, True, False, False, False]]])
+        max_cell_counts_mask = np.array([[[False, False, True, False, False]]])
+        tested.constrain_cell_counts_per_voxel(
+            3.0,
+            cell_counts,
+            upper_bound,
+            max_cell_counts_mask,
+            zero_cell_counts_mask,
+            epsilon=1e-7,
+            copy=True,
         )
 
     # Should raise because the maximum contribution of voxels
-    # with non-zero density is less than the target sum.
+    # with non-zero cell counts is less than the target sum.
     with pytest.raises(AtlasBuildingToolsError):
         upper_bound = np.array([[[1.0, 1.0, 1.0, 0.5, 0.5]]])
-        density = np.array([[[0.1, 0.1, 0.6, 0.25, 0.15]]])
-        zero_density_mask = np.array([[[True, True, False, False, False]]])
-        max_density_mask = np.array([[[False, False, True, False, False]]])
-        tested.constrain_density(
-            3.0, density, upper_bound, max_density_mask, zero_density_mask, epsilon=1e-7, copy=True
+        cell_counts = np.array([[[0.1, 0.1, 0.6, 0.25, 0.15]]])
+        zero_cell_counts_mask = np.array([[[True, True, False, False, False]]])
+        max_cell_counts_mask = np.array([[[False, False, True, False, False]]])
+        tested.constrain_cell_counts_per_voxel(
+            3.0,
+            cell_counts,
+            upper_bound,
+            max_cell_counts_mask,
+            zero_cell_counts_mask,
+            epsilon=1e-7,
+            copy=True,
         )
 
     # Should raise because the target sum is not reached
     with pytest.raises(AtlasBuildingToolsError):
         upper_bound = np.array([[[1.0, 1.0, 1.0, 0.5, 0.5]]])
-        density = np.array([[[0.1, 0.1, 0.6, 0.25, 0.15]]])
-        zero_density_mask = np.array([[[True, True, False, False, False]]])
-        max_density_mask = np.array([[[False, False, True, False, False]]])
+        cell_counts = np.array([[[0.1, 0.1, 0.6, 0.25, 0.15]]])
+        zero_cell_counts_mask = np.array([[[True, True, False, False, False]]])
+        max_cell_counts_mask = np.array([[[False, False, True, False, False]]])
         with patch(
             'atlas_building_tools.densities.utils.optimize_distance_to_line',
-            return_value=density,
+            return_value=cell_counts,
         ):
-            tested.constrain_density(
+            tested.constrain_cell_counts_per_voxel(
                 3.0,
-                density,
+                cell_counts,
                 upper_bound,
-                max_density_mask,
-                zero_density_mask,
+                max_cell_counts_mask,
+                zero_cell_counts_mask,
                 copy=True,
             )

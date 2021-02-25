@@ -250,5 +250,5 @@ def extract_inhibitory_neurons_dataframe(
         names=['ROI', 'fullName', 'PV', 'SST', 'VIP'],
         usecols='A,B,D,F,H',
         skiprows=[0, 1],
-        engine='openpyxl'
+        engine='openpyxl',
     ).set_index('ROI')

@@ -10,7 +10,6 @@ from scipy.ndimage.morphology import generate_binary_structure  # ignore: type
 
 from voxcell import RegionMap  # type: ignore
 
-
 # pylint: disable=invalid-name
 FloatArray = Union[
     NDArray[float], NDArray[np.float16], NDArray[np.float32], NDArray[np.float64]

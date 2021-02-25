@@ -175,43 +175,43 @@ def optimize_distance_to_line(  # pylint: disable=too-many-arguments
     return point
 
 
-def constrain_density(  # pylint: disable=too-many-arguments, too-many-branches
+def constrain_cell_counts_per_voxel(  # pylint: disable=too-many-arguments, too-many-branches
     target_sum: float,
-    density: NDArray[float],
-    density_upper_bound: NDArray[float],
-    max_density_mask: NDArray[bool] = None,
-    zero_density_mask: NDArray[bool] = None,
+    cell_counts: NDArray[float],
+    cell_counts_upper_bound: NDArray[float],
+    max_cell_counts_mask: NDArray[bool] = None,
+    zero_cell_counts_mask: NDArray[bool] = None,
     epsilon: float = 1e-3,
     copy: bool = True,
 ):
     """
-    Modify the input density, while respecting bound constraints, so that it sums to `target_sum`.
+    Modify `cell_counts` so that it sums to `target_sum` while respecting bound constraints.
 
-    The output density is kept as close as possible to the input in the following sense:
-    the algorithm minimizes the distance of the line defined by the input vector under
-    the upper bounds and sum constraints.
+    The output array is kept as close as possible to the input in the following sense:
+    the algorithm aims at minimizing the distance to the line defined by the input vector
+    under the upper bounds and sum constraints.
 
     Each voxel value of the output is bounded from above by the corresponding value of
-    `maximum_density`.
+    `cell_counts_upper_bound`.
 
     Additional constraints can be imposed:
-        * the voxels in the optional `max_density_mask` are assigned their maximum values.
-        * the voxels in the optional `zero_density_mask` are assigned the zero value.
+        * the voxels in the optional `max_cell_counts_mask` are assigned their maximum values.
+        * the voxels in the optional `zero_cell_counts_mask` are assigned the zero value.
 
     Args:
         target_sum: the value constraining the sum of all voxel values.
-        density: float array of shape (W, H, D) with non-negative values. The array to modify.
-        density_upper_bound: float array of shape (W, H, D) with non-negative values.
+        cell_counts: float array of shape (W, H, D) with non-negative values. The array to modify.
+        cell_counts_upper_bound: float array of shape (W, H, D) with non-negative values.
             The bounds imposed upon the voxel values of the ouput array.
-        max_density_mask: Optional boolean array of shape (W, H, D) indicating which voxels should
-            be assigned their maximum values.
-        zero_density_mask: Optional boolean array of shape (W, H, D) indicating which voxels should
-            be assigned the zero value.
+        max_cell_counts_mask: Optional boolean array of shape (W, H, D) indicating which voxels
+            should be assigned their maximum values.
+        zero_cell_counts_mask: Optional boolean array of shape (W, H, D) indicating which voxels
+            should be assigned the zero value.
         epsilon: tolerated error between the sum of the output and `target_sum`.
 
     Returns:
         float array of shape (W, H, D) with non-negative values.
-        The output array values should not exceed those of `density_upper_bounds`.
+        The output array values should not exceed those of `cell_counts_upper_bound`.
         The sum of array values should be `epsilon`-close to `target_sum`.
 
     Raises:
@@ -221,15 +221,15 @@ def constrain_density(  # pylint: disable=too-many-arguments, too-many-branches
     """
     if target_sum < epsilon:
         if not copy:
-            density[...] = 0.0
+            cell_counts[...] = 0.0
         else:
-            density = np.zeros_like(density)
+            cell_counts = np.zeros_like(cell_counts)
 
-        return density
+        return cell_counts
 
     max_subsum = 0
-    if max_density_mask is not None:
-        max_subsum = np.sum(density_upper_bound[max_density_mask])
+    if max_cell_counts_mask is not None:
+        max_subsum = np.sum(cell_counts_upper_bound[max_cell_counts_mask])
 
     if target_sum < max_subsum - epsilon:
         raise AtlasBuildingToolsError(
@@ -240,38 +240,40 @@ def constrain_density(  # pylint: disable=too-many-arguments, too-many-branches
         )
 
     zero_indices_subsum = 0
-    if zero_density_mask is not None:
-        zero_indices_subsum = np.sum(density_upper_bound[zero_density_mask])
+    if zero_cell_counts_mask is not None:
+        zero_indices_subsum = np.sum(cell_counts_upper_bound[zero_cell_counts_mask])
 
-    if np.sum(density_upper_bound) - zero_indices_subsum < target_sum - epsilon:
+    if np.sum(cell_counts_upper_bound) - zero_indices_subsum < target_sum - epsilon:
         raise AtlasBuildingToolsError(
             'The maximum contribution of voxels with non-zero density'
             ' is less than the target sum. The target sum cannot be reached.'
         )
 
-    density = density.copy() if copy else density
+    cell_counts = cell_counts.copy() if copy else cell_counts
     complement = None
-    if max_density_mask is not None:
-        density[max_density_mask] = density_upper_bound[max_density_mask]
-        complement = max_density_mask.copy()
+    if max_cell_counts_mask is not None:
+        cell_counts[max_cell_counts_mask] = cell_counts_upper_bound[
+            max_cell_counts_mask
+        ]
+        complement = max_cell_counts_mask.copy()
 
-    if zero_density_mask is not None:
-        density[zero_density_mask] = 0.0
+    if zero_cell_counts_mask is not None:
+        cell_counts[zero_cell_counts_mask] = 0.0
         if complement is None:
-            complement = zero_density_mask.copy()
-        complement = np.logical_or(complement, zero_density_mask)
+            complement = zero_cell_counts_mask.copy()
+        complement = np.logical_or(complement, zero_cell_counts_mask)
 
     if complement is None:
         complement = tuple([slice(0, None)] * 3)
     else:
         complement = ~complement
 
-    line_direction_vector = density[complement]
-    upper_bound = density_upper_bound[complement]
+    line_direction_vector = cell_counts[complement]
+    upper_bound = cell_counts_upper_bound[complement]
 
-    # Find a density field respecting all the constraints and which is as close
-    # as possible to the line defined by the input density wrt to Euclidean norm.
-    density[complement] = optimize_distance_to_line(
+    # Find a cell count field respecting all the constraints and which is as close
+    # as possible to the line defined by the input cell counts wrt to Euclidean norm.
+    cell_counts[complement] = optimize_distance_to_line(
         line_direction_vector,
         upper_bound,
         target_sum - max_subsum,
@@ -280,7 +282,7 @@ def constrain_density(  # pylint: disable=too-many-arguments, too-many-branches
         copy=copy,
     )
 
-    abs_error = np.abs(np.sum(density) - target_sum)
+    abs_error = np.abs(np.sum(cell_counts) - target_sum)
     if abs_error > epsilon:
         raise AtlasBuildingToolsError(
             f'The target sum could not be reached. '
@@ -288,7 +290,7 @@ def constrain_density(  # pylint: disable=too-many-arguments, too-many-branches
             f'epsilon = {epsilon}'
         )
 
-    return density
+    return cell_counts
 
 
 def get_group_ids(region_map: 'RegionMap') -> Dict[str, Set[int]]:

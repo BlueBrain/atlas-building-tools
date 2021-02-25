@@ -1,13 +1,12 @@
 '''Functions to compute inhibitory neuron density.'''
 
-import warnings
 from typing import Dict, Optional, TYPE_CHECKING, Tuple, Union
 import numpy as np
-from nptyping import NDArray  # type: ignore
+from nptyping import NDArray
 
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 from atlas_building_tools.densities.utils import (
-    constrain_density,
+    constrain_cell_counts_per_voxel,
     compensate_cell_overlap,
     get_group_ids,
     get_region_masks,
@@ -17,20 +16,17 @@ if TYPE_CHECKING:
     from voxcell import RegionMap  # type: ignore
 
 
-def _compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
+def compute_inhibitory_neuron_intensity(
     gad1: NDArray[float],
     nrn1: NDArray[float],
-    neuron_density: NDArray[float],
-    inhibitory_proportion: Optional[float] = None,
-    inhibitory_data: Optional[Dict[str, Union[int, Dict[str, float]]]] = None,
-    region_masks: Optional[Dict[str, NDArray[bool]]] = None,
+    inhibitory_data: Dict[str, Union[int, Dict[str, float], Dict[str, NDArray[bool]]]],
 ) -> Tuple[NDArray[float], int]:
     """
-    Compute a first approximation of the inhibitory neuron density using a prescribed neuron count.
+    Compute a first approximation of the inhibitory neuron density based on gene markers.
 
     The input genetic marker datasets GAD1 and NRN1 are used to shape the spatial density
     distribution of the inhibitory and excitatory neurons respectively. Gene marker stained
-    intensities are assumed to depend linearly on neuron density (number of neurons per voxel).
+    intensities are assumed to depend linearly on neuron density (number of neurons per mm^3).
 
     Note regarding these markers:
         Every Gabaergic neuron expresses GAD1 and every GAD1 reacting cell is a gabaergic neuron.
@@ -41,97 +37,61 @@ def _compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
         Neuron Type Differentiation:
         "GAD67 is mainly expressed in inhibitory neurons, and can thus be used to estimate their
         density, while NRN1 is mainly expressed in excitatory neurons (Figure 4A). We normalized
-         the GAD67 marker with a sum of both markers, with an overall ratio of 7.94% between
-         inhibitory neurons (Kim et al., 2017). We then used the resulting volumetric inhibitory
-         marker density."
+        the GAD67 marker with a sum of both markers, with an overall ratio of 7.94% between
+        inhibitory neurons (Kim et al., 2017). We then used the resulting volumetric inhibitory
+        marker density."
 
     Args:
         gad1: float array of shape (W, H, D) with non-negative entries. The GAD1 (a.k.a GAD67)
             marker dataset.
         nrn1: float array of shape (W, H, D) with non-negative entries. The Nrn1 marker dataset.
-        neuron_density: float array of shape (W, H, D) with non-negative entries. The overall
-            neuron density.
-        inhibitory_proportion: (Optional) proportion of inhibitory neurons among all neuron cells.
-            If it is not provided, then `inhibitory_data` and `region_masks` must be specified.
-        inhibitory_data: (Optional) a dictionary with two keys:
-            'ratios': the corresponding value is a dictionary of type Dict[str, float] assigning
-            the proportion of inhibitory neurons to each group named by a key string.
-            'neuron_count': the total inhibitory neuron count for the whole mouse brain.
-        region_masks: (Optional) dictionary whose keys are region group names and whose values are
-            the boolean masks of these groups. Each boolean array is of shape (W, H, D) and
-            encodes which voxels belong to the corresponding group.
+        inhibitory_data: a dictionary with 3 keys:
+            'proportions': a dictionary of type Dict[str, float] assigning the proportion of
+                inhibitory neurons in each group named by a key string.
+            'neuron_count': the inhibitory neuron count.
+            'region_masks': dictionary whose keys are region group names and whose values are
+                the boolean masks of these groups. Each boolean array is of shape (W, H, D) and
+                encodes which voxels belong to the corresponding group.
 
     Returns:
-        tuple (innhibitory_neuron_density, inhibitory_neuron_count)
-        `innhibitory_neuron_density` is a float array of shape (W, H, D) with non-negative entries.
-        `inhibitory_neuron_count` is a self-explanatory integer cell count.
-
-    Raises:
-        AtlasBuildingToolsError if both `inhibitory_proportion` and `inhibitory_data` are None.
-        or if `inhibitory_proportion` is None, `inhibitory_data` is not None but `region_masks`
-        is None.
+        `inhibitory_neuron_intensity`, a float array of shape (W, H, D) with non-negative entries.
     """
 
-    if inhibitory_proportion is None and inhibitory_data is None:
-        raise AtlasBuildingToolsError(
-            'Either inhibitory_proportion or inhibitory_data should be provided. Both are None.'
+    inhibitory_neuron_intensity = gad1 / np.mean(gad1)
+    excitatory_neuron_counts_per_voxel = nrn1 / np.mean(nrn1)
+
+    marker_sum = np.zeros_like(inhibitory_neuron_intensity)
+    for group, mask in inhibitory_data['region_masks'].items():  # type: ignore
+        inhibitory_proportion = inhibitory_data['proportions'][group]  # type: ignore
+        inhibitory_neuron_intensity[mask] = (
+            inhibitory_neuron_intensity[mask] * inhibitory_proportion
         )
+        marker_sum[mask] = inhibitory_neuron_intensity[
+            mask
+        ] + excitatory_neuron_counts_per_voxel[mask] * (1.0 - inhibitory_proportion)
 
-    if inhibitory_proportion is not None and inhibitory_data is not None:
-        warnings.warn(
-            'Both inhibitory_proportion and inhibitory_data are specified.'
-            ' Using inhibitory_proportion only.'
-        )
+    inhibitory_neuron_intensity[marker_sum > 0.0] /= marker_sum[marker_sum > 0.0]
+    inhibitory_neuron_intensity /= np.max(inhibitory_neuron_intensity)
 
-    if (
-        inhibitory_proportion is None
-        and inhibitory_data is not None
-        and region_masks is None
-    ):
-        raise AtlasBuildingToolsError(
-            'region_masks must be provided if inhibitory_proportion isn\'t.'
-        )
+    return inhibitory_neuron_intensity
 
-    inhibitory_neuron_density = gad1 / np.mean(gad1)
-    excitatory_neuron_density = nrn1 / np.mean(nrn1)
 
-    marker_sum = np.zeros_like(inhibitory_neuron_density)
-    if inhibitory_proportion is not None:
-        marker_sum = (
-            inhibitory_neuron_density * inhibitory_proportion
-            + excitatory_neuron_density * (1.0 - inhibitory_proportion)
-        )
-        inhibitory_neuron_density *= inhibitory_proportion
-        inhibitory_neuron_count = int(np.sum(neuron_density) * inhibitory_proportion)
-    else:
-        for group, mask in region_masks.items():  # type: ignore
-            inhibitory_proportion = inhibitory_data['proportions'][group]  # type: ignore
-            inhibitory_neuron_density[mask] = (
-                inhibitory_neuron_density[mask] * inhibitory_proportion
-            )
-            marker_sum[mask] = inhibitory_neuron_density[
-                mask
-            ] + excitatory_neuron_density[mask] * (1.0 - inhibitory_proportion)
-        inhibitory_neuron_count = inhibitory_data['neuron_count']  # type: ignore
-
-    inhibitory_neuron_density[marker_sum > 0.0] /= marker_sum[marker_sum > 0.0]
-    inhibitory_neuron_density /= np.max(inhibitory_neuron_density)
-
-    return inhibitory_neuron_density, inhibitory_neuron_count
+InhibitoryData = Dict[str, Union[int, Dict[str, float]]]
 
 
 def compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
     region_map: 'RegionMap',
-    annotation: NDArray[float],
+    annotation: NDArray[int],
+    voxel_volume: float,
     gad1: NDArray[float],
     nrn1: NDArray[float],
     neuron_density: NDArray[float],
     inhibitory_proportion: Optional[float] = None,
-    inhibitory_data: Optional[Dict[str, Union[int, Dict[str, float]]]] = None,
+    inhibitory_data: Optional[InhibitoryData] = None,
 ) -> NDArray[float]:
     """
     Compute the inhibitory neuron density using a prescribed neuron count and the overall neuron
-     density as an upper bound constraint.
+    density as an upper bound.
 
     Further constraints are imposed:
         * voxels of Purkinje layer are assigned the largest possible cell density
@@ -140,54 +100,59 @@ def compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
 
     Args:
         region_map: object to navigate the brain regions hierarchy.
-        annotation: integer array of shape (W, H, D) enclosing the AIBS annotation of
-            the whole mouse brain.
+        annotation: an integer array of shape (W, H, D) enclosing the AIBS annotation of the whole
+            mouse brain.
+        voxel_volume: the common volume in mm^3 of a voxel associated to any of the input arrays.
         gad1: float array of shape (W, H, D) with non-negative entries. The GAD marker dataset.
         nrn1: float array of shape (W, H, D) with non-negative entries. The Nrn1 marker dataset.
         neuron_density: float array of shape (W, H, D) with non-negative entries. The input
-            overall neuron density.
+            overall neuron density in number of neurons par mm^3.
         inhibitory_proportion: (Optional) proportion of inhibitory neurons among all neurons.
-            If it is not provided, then `inhibitory_data` and `region_masks` must be specified.
-        inhibitory_data: a dictionary with two keys:
-            'ratios': the corresponding value is a dictionary of type Dict[str, float] assigning
-            the proportion of ihnibitory neurons in each group named by a key string.
-            'neuron_count': the total inhibitory neuron count.
+            If not provided, then `inhibitory_data` must be specified.
+        inhibitory_data: (Optional) a dictionary with two keys:
+            'proportions': the corresponding value is a dictionary of type Dict[str, float]
+                assigning the proportion of ihnibitory neurons in each group named by a key string.
+            'neuron_count': the total number of inhibitory neurons.
+            Used only if `inhibitory_proportion` is None.
 
     Returns:
         float64 array of shape (W, H, D) with non-negative entries.
         The overall inhibitory neuron density is bounded by `neuron_density`, sums up to its
-        prescribed neuron count, and respects some region "hints" where maximal density values
-        are prescribed (Purkinje layer and molecular layer).
+        prescribed neuron count after multiplication by the voxel volume, and respects some region
+        "hints" where maximal density values are prescribed (Purkinje layer and molecular layer).
 
     Raises:
-        AtlasBuildingToolsError if both `inhibitory_proportion` and `inhibitory_data` are None.
+        AtlasBuildingToolsError if both `inhibitory_proportion` and `inhibitory_data`
+        are None.
     """
 
-    # The algorithm constraining densities needs double precision
+    # The algorithm constraining cell counts per voxel needs double precision
     gad1 = np.asarray(gad1, dtype=float)
     nrn1 = np.asarray(nrn1, dtype=float)
     neuron_density = np.asarray(neuron_density, dtype=float)
 
-    region_masks = None
-    group_ids = get_group_ids(region_map)
     if inhibitory_proportion is None:
         if inhibitory_data is None:
             raise AtlasBuildingToolsError(
                 'Either inhibitory_proportion or inhibitory_data should be provided'
                 '. Both are None.'
             )
-        region_masks = get_region_masks(group_ids, annotation)
+        group_ids = get_group_ids(region_map)
+        inhibitory_data['region_masks'] = get_region_masks(group_ids, annotation)
+    else:
+        inhibitory_data = {
+            'proportions': {'whole brain': inhibitory_proportion},
+            'neuron_count': int(
+                np.sum(neuron_density) * voxel_volume * inhibitory_proportion
+            ),
+        }
+        inhibitory_data['region_masks'] \
+            = {'whole brain': np.ones(annotation.shape, dtype=bool)}  # type: ignore
 
-    (
-        inhibitory_neuron_density,
-        inhibitory_neuron_count,
-    ) = _compute_inhibitory_neuron_density(
+    inhibitory_neuron_intensity = compute_inhibitory_neuron_intensity(
         compensate_cell_overlap(gad1, annotation, gaussian_filter_stdv=1.0),
         compensate_cell_overlap(nrn1, annotation, gaussian_filter_stdv=1.0),
-        neuron_density,
-        inhibitory_proportion,
         inhibitory_data,
-        region_masks,
     )
 
     inhibitory_neurons_mask = np.isin(
@@ -201,10 +166,16 @@ def compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
             list(group_ids['Cerebellar cortex'] & group_ids['Molecular layer']),
         ),
     )
-    return constrain_density(
-        inhibitory_neuron_count,
-        inhibitory_neuron_density,
-        neuron_density,
-        inhibitory_neurons_mask,
-        copy=False,
+
+    assert isinstance(inhibitory_data['neuron_count'], int)
+
+    return (
+        constrain_cell_counts_per_voxel(
+            inhibitory_data['neuron_count'],
+            inhibitory_neuron_intensity,
+            neuron_density * voxel_volume,
+            max_cell_counts_mask=inhibitory_neurons_mask,
+            copy=False,
+        )
+        / voxel_volume
     )

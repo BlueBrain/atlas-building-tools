@@ -5,7 +5,7 @@ import numpy as np
 from nptyping import NDArray  # type: ignore
 
 if TYPE_CHECKING:  # pragma: no cover
-    from voxcell import RegionMap   # type: ignore
+    from voxcell import RegionMap  # type: ignore
 
 
 def _compute_whole_brain_average_soma_radius(

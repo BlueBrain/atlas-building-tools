@@ -15,38 +15,34 @@ from atlas_building_tools.densities.utils import (
 from atlas_building_tools.densities.soma_radius import apply_soma_area_correction
 
 
-def fix_purkinje_layer_density(
+def fix_purkinje_layer_intensity(
     region_map: 'RegionMap',
-    annotation_raw: NDArray[int],
-    cell_density: NDArray[float],
+    annotation: NDArray[int],
     region_masks: Dict[str, NDArray[bool]],
-) -> NDArray[float]:
+    cell_intensity: NDArray[float],
+) -> None:
     """
     Assign a constant number of cells to the voxels sitting both in Cerebellum and the
     Purkinje layer.
 
+    The array `cell_intensity` is modified in place.
+
     Args:
         region_map: object to navigate the mouse brain regions hierarchy.
-        annotation_raw: integer array of shape (W, H, D) enclosing the AIBS annotation of
+        annotation: integer array of shape (W, H, D) enclosing the AIBS annotation of
             the whole mouse brain.
-        cell_density: float array of shape (W, H, D) with non-negative entries. The overall cell
-            density to be corrected.
-        cell_counts: a dictionary whose keys are region group names and whose values are
-            integer cell counts.
         region_masks: A dictionary whose keys are region group names and whose values are
             the boolean masks of these groups. Each boolean array is of shape (W, H, D) and
             encodes which voxels belong to the corresponding group.
-
-    Returns:
-        float array of shape (W, H, D) with non-negative entries.
-        The array represents the overall cell density, satifying the constraint that
-        the Purkinje layer has a constant number of cells per voxel.
+        cell_intensity: float array of shape (W, H, D) with non-negative entries. The overall cell
+            intensity to be corrected. The array `cell_intensity` is modified in place, in such a
+            way that the Purkinje layer has a constant intensity value.
     """
 
     group_ids = get_group_ids(region_map)
-    purkinje_layer_mask = np.isin(annotation_raw, list(group_ids['Purkinje layer']))
-    # Force Purkinje Layer regions of the Cerebellum group to have a constant density
-    # equal to the average density of the complement.
+    purkinje_layer_mask = np.isin(annotation, list(group_ids['Purkinje layer']))
+    # Force Purkinje Layer regions of the Cerebellum group to have a constant intensity
+    # equal to the average intensity of the complement.
     # pylint: disable=fixme
     # TODO: The Purkinje cell diameter is 25um. A correction of cell densities is required for the
     #  10um resolution.
@@ -57,16 +53,15 @@ def fix_purkinje_layer_density(
         region_masks['Cerebellum group'], ~purkinje_layer_mask
     )
     purkinje_layer_count = np.count_nonzero(cerebellum_purkinje_layer_mask)
-    cell_density[cerebellum_purkinje_layer_mask] = np.sum(
-        cell_density[cerebellum_wo_purkinje_layer_mask]
+    cell_intensity[cerebellum_purkinje_layer_mask] = np.sum(
+        cell_intensity[cerebellum_wo_purkinje_layer_mask]
     ) / (cell_counts()['Cerebellum group'] - purkinje_layer_count)
-
-    return cell_density
 
 
 def compute_cell_density(
     region_map: RegionMap,
     annotation: NDArray[int],
+    voxel_volume: float,
     nissl: NDArray[float],
     soma_radii: Optional[Dict[int, str]] = None,
 ) -> NDArray[float]:
@@ -82,30 +77,31 @@ def compute_cell_density(
 
     Note: Nissl staining, according to https://en.wikipedia.org/wiki/Nissl_body, is a
     "method (that) is useful to localize the cell body, as it can be seen in the soma and dendrites
-     of neurons, though not in the axon or axon hillock."
-    Here is the assumption on Nissl staining volume, as written in the introduction of
-    "A Cell Atlas for the Mouse Brain" by C. Ero et al., 2018.
+    of neurons, though not in the axon or axon hillock." Here is the assumption on Nissl staining
+    volume, as written in the introduction of
+    "A Cell Atlas for the Mouse Brain" by C. Ero et al., 2018", page 3:
     "We assumed the stained intensity of Nissl and other genetic markers to be a good indicator
-     of soma density specific to the population of interest, without significantly staining axons
-      and dendrites."
+    of soma density specific to the population of interest, without significantly staining axons
+    and dendrites."
 
     Args:
         region_map: object to navigate the mouse brain regions hierarchy.
-        annotation: integer array of shape (W, H, D) enclosing the AIBS annotation of
-            the whole mouse brain.
+        annotation: an integer array of shape (W, H, D) which encloses the AIBS annotation of
+            the whole mouse brain. The integers W, H and D are the integer dimensions of the array.
+        voxel_volume: the common volume of a voxel associated to any of the input arrays.
         nissl: float array of shape (W, H, D) with non-negative entries. The input
             Nissl stain intensity.
-        soma_radii: Optional dictionary whose keys are structure IDs (AIBS region identifiers)
+        soma_radii: (Optional) dictionary whose keys are structure IDs (AIBS region identifiers)
             and whose values are the average soma radii corresponding to these regions.
             Defaults to None. If specified, the input Nissl stain intensity is adjusted by
             taking these radii into account.
 
     Returns:
         float array of shape (W, H, D) with non-negative entries. The returned array is a
-        transformation of `nissl` which is modified in-line.
-        The overall mouse brain cell density, respecting region-specific cell counts provided
-        by the scientific literature as well as the Purkinje layer constraint of a constant number
-        of cells per voxel.
+        transformation of `nissl` which is modified in-line. It represents the overall mouse brain
+        cell density, expressed in number of cells per mm^3. It is compliant with several
+        region-specific cell  counts provided by the scientific literature as well as the Purkinje
+        layer constraint of a constant number of cells per voxel.
     """
 
     nissl = compensate_cell_overlap(
@@ -117,10 +113,8 @@ def compute_cell_density(
 
     group_ids = get_group_ids(region_map)
     region_masks = get_region_masks(group_ids, annotation)
-    cell_density = fix_purkinje_layer_density(
-        region_map, annotation, nissl, region_masks
-    )
+    fix_purkinje_layer_intensity(region_map, annotation, region_masks, nissl)
     for group, mask in region_masks.items():
-        cell_density[mask] = nissl[mask] * (cell_counts()[group] / np.sum(nissl[mask]))
+        nissl[mask] = nissl[mask] * (cell_counts()[group] / np.sum(nissl[mask]))
 
-    return cell_density
+    return nissl / voxel_volume
