@@ -157,7 +157,7 @@ def inhibitory_data(
      brain.
 
     Taken from the suplementary materials of
-    'Brain-wide Maps Reveal Stereotyped Cell-Type- Based Cortical Architecture '
+    'Brain-wide Maps Reveal Stereotyped Cell-Type-Based Cortical Architecture '
     'and Subcortical Sexual Dimorphism' by Kim et al., 2017.
     https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc1.xlsx
 
@@ -185,8 +185,8 @@ def inhibitory_data(
             'neuron_count': <value>
         }
         where the value corresponding to each group is a float in (0, 1) indicating the proportion
-         of inhibitory cells among neurons in that group and the value corresponding to
-          'neuron_count' is the number of inhibitory neurons in the whole mouse brain.
+        of inhibitory cells among neurons in that group and the value corresponding to
+        'neuron_count' is the number of inhibitory neurons in the whole mouse brain.
     """
 
     return {
@@ -216,18 +216,18 @@ def extract_inhibitory_neurons_dataframe(
     PV, SST and VIP in every AIBS region of the mouse brain.
 
     Note: The following markers have been used by Kim et al., in
-        'Brain-wide Maps Reveal Stereotyped Cell-Type- Based Cortical Architecture and '
-        'Subcortical Sexual Dimorphism' to detect inhibitory neurons:
-        parvalbumin (PV), somatostatin (SST), and vasoactive intestinal peptide (VIP).
-        PV, SST and VIP are only expressed in neurons,
-        The cell populations reacting respectively to PV, SST and VIP are not overlapping,
-         i.e. there is no cell in the brain that is co-expressing a combination of these markers.
-          This assumption is supported in the Cortex and Hippocampus by transcriptomic studies.
+    'Brain-wide Maps Reveal Stereotyped Cell-Type-Based Cortical Architecture and '
+    'Subcortical Sexual Dimorphism' to detect inhibitory neurons:
+    parvalbumin (PV), somatostatin (SST), and vasoactive intestinal peptide (VIP).
+    PV, SST and VIP are only expressed in neurons.
+    The cell populations reacting respectively to PV, SST and VIP are not overlapping,
+    i.e., there is no cell in the brain that is co-expressing a combination of these markers.
+    This assumption is supported in the Cortex and Hippocampus by transcriptomic studies.
 
     Args:
         inhibitory_neuron_counts_path: path to the excel document mm1c.xls of the supplementary
             materials of 'Brain-wide Maps Reveal Stereotyped Cell-Type-Based Cortical Architecture
-             and Subcortical Sexual Dimorphism' by Kim et al., 2017.
+            and Subcortical Sexual Dimorphism' by Kim et al., 2017.
             https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc1.xlsx
 
     Returns: pandas.DataFrame of the form
@@ -240,7 +240,7 @@ def extract_inhibitory_neurons_dataframe(
         Isocortex                          Isocortex      533366   594769.8  280774.05
         ...                                      ...         ...        ...        ...
         The columns of PV, SST and VIP contain the counts of the corresponding immunoreactive
-         cells for each AIBS acronym listed in the DataFrame index.
+        cells for each AIBS acronym listed in the DataFrame index.
 
     """
     return pd.read_excel(
