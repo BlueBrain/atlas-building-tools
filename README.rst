@@ -22,14 +22,17 @@ The tools allow to:
 * assign direction vectors or orientations to voxels in a selected brain region
 * compute distances between voxels and region boundaries, i.e., the so-called placement hints to be used by the `placement-algorithm`_
 * compute cell densities for several cell types including neurons and glia cells in the whole mouse brain
+* flatten a laminar brain region by collapsing the streamlines of its fiber tracts direction field, i.e., create a flat map to be used by `white-matter-projections`_
 
 
 Installation
 ============
 
-Besides the python package Rtree_, which might require the separate installation of
-the C++ library libspatialindex_ (see instructions below), this project depends on two
-BBP C++ toolkits, namely Regiodesics_ and Ultraliser_.
+This python project depends on:
+
+* the python package Rtree_, which might require the separate installation of the C++ library libspatialindex_ (see instructions below)
+* the BBP C++ toolkits Regiodesics_ and Ultraliser_
+* the BBP python-C++ bindings cgal-pybind_
 
 Regiodesics
 -----------
@@ -106,11 +109,31 @@ On the BB5 cluster, the following commands install libspatialindex:
     spack install py-rtree
     spack load py-rtree
 
+
+cgal-pybind
+-----------
+The BBP python project cgal-pybind_ contains python bindings for several functions of the
+CGAL_ C++ library. The algorithm of atlas-building-tools which creates a flat map uses specifically
+CGAL's `authalic map`_.
+
+On the BB5 cluster, the following commands install cgal-pybind:
+
+.. code-block:: bash
+
+    git clone https://github.com/BlueBrain/spack.git spack --depth 1
+    source spack/share/spack/setup-env.sh
+    spack install py-cgal-pybind
+    spack load py-cgal-pybind
+
+
 .. _`Allen Institute for Brain Science (AIBS)`: https://alleninstitute.org/what-we-do/brain-science/
 .. _`A Cell Atlas for the Mouse Brain`: https://www.frontiersin.org/articles/10.3389/fninf.2018.00084/full
 .. _apt-get: https://askubuntu.com/questions/428772/how-to-install-specific-version-of-some-package
+.. _`authalic map`: https://doc.cgal.org/latest/Surface_mesh_parameterization/classCGAL_1_1Surface__mesh__parameterization_1_1Discrete__authalic__parameterizer__3.html
 .. _`BBP Cell Atlas`: https://portal.bluebrain.epfl.ch/resources/models/cell-atlas/
 .. _brew: https://brew.sh/
+.. _cgal-pybind: https://bbpcode.epfl.ch/code/#/admin/projects/common/cgal-pybind
+.. _CGAL: https://www.cgal.org/
 .. _conda: https://docs.conda.io/en/latest/
 .. _libspatialindex: https://libspatialindex.org/
 .. _OpenSceneGraph: http://www.openscenegraph.org/
@@ -118,3 +141,4 @@ On the BB5 cluster, the following commands install libspatialindex:
 .. _Regiodesics: https://bbpcode.epfl.ch/browse/code/viz/Regiodesics/tree/
 .. _Rtree: https://pypi.org/project/Rtree/
 .. _Ultraliser: https://bbpcode.epfl.ch/browse/code/viz/Ultraliser/tree/
+.. _white-matter-projections: https://bbpcode.epfl.ch/browse/code/nse/white-matter-projections/tree/

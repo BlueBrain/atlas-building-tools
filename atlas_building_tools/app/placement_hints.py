@@ -55,7 +55,7 @@ def _placement_hints(
         flip_direction_vectors: (optional) if True, the input direction vectors are negated before
             use. This is required if direction vectors flaw from the top layer (shallowest) to the
             bottom layer (deepest). Otherwise, they are left unchanged. Defaults to False.
-         has_hemispheres: (optional) If True, split the volume into halves along the z-axis and
+        has_hemispheres: (optional) If True, split the volume into halves along the z-axis and
             handle each of theses 'hemispheres' separately. Otherwise the whole volume is handled.
             Defaults to True.
     '''
@@ -125,11 +125,22 @@ def app(verbose):
 @click.option(
     '--output-dir',
     required=True,
-    help='path of the directory to write.' ' It will be created if it doesn\'t exist',
+    help='path of the directory to write. It will be created if it doesn\'t exist',
 )
 @log_args(L)
 def ca1(annotation_path, hierarchy_path, direction_vectors_path, output_dir):
-    '''Generate and save the placement hints for the CA1 region of the mouse hippocampus'''
+    '''Generate and save the placement hints for the CA1 region of the mouse hippocampus
+
+    Placement hints are saved under the names:\n
+    * '[PH]y.nrrds\n
+    * '[PH]CA1so.nrrd', '[PH]CA1so.nrrd', '[PH]CA1sp.nrrd', '[PH]CA1sr.nrrd' and '[PH]CA1slm.nrrd'
+
+    A report and an nrrd volume on problematic distance computations are generated
+    in `output_dir` under the names:
+    * distance_report.json\n
+    * CA1_problematic_voxel_mask.nrrd (mask of the voxels for which the computed
+    placement hints cannot be trusted).
+    '''
 
     layer_regexps = ["CA1so", "CA1sp", "CA1sr", "CA1slm"]
     _placement_hints(
@@ -169,11 +180,25 @@ def ca1(annotation_path, hierarchy_path, direction_vectors_path, output_dir):
 @click.option(
     '--output-dir',
     required=True,
-    help='path of the directory to write.' ' It will be created if it doesn\'t exist',
+    help='path of the directory to write. It will be created if it doesn\'t exist',
 )
 @log_args(L)
 def isocortex(annotation_path, hierarchy_path, direction_vectors_path, output_dir):
-    '''Generate and save the placement hints of the mouse isocortex'''
+    '''Generate and save the placement hints of the mouse isocortex
+
+    This command assumes that the layer 2/3 of the isocortex has been split into
+    layer 2 and layer 3.
+
+    Placement hints are saved under the names:\n
+    * '[PH]y.nrrds\n
+    * '[PH]layer_1.nrrd', ..., [PH]layer_6.nrrd'
+
+    A report and an nrrd volume on problematic distance computations are generated
+    in `output_dir` under the names:
+    * distance_report.json\n
+    * isocortex_problematic_voxel_mask.nrrd (mask of the voxels for which the computed
+    placement hints cannot be trusted).
+    '''
 
     _placement_hints(
         annotation_path,
