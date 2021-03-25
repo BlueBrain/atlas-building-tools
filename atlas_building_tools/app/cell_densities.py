@@ -36,8 +36,12 @@ import numpy as np
 from voxcell import RegionMap, VoxelData  # type: ignore
 from atlas_analysis.atlas import assert_properties
 
-from atlas_building_tools.app.utils import EXISTING_FILE_PATH, EXISTING_DIR_PATH,\
-    log_args, set_verbose
+from atlas_building_tools.app.utils import (
+    EXISTING_FILE_PATH,
+    EXISTING_DIR_PATH,
+    log_args,
+    set_verbose,
+)
 from atlas_building_tools.densities.cell_counts import (
     extract_inhibitory_neurons_dataframe,
     glia_cell_counts,
@@ -49,6 +53,12 @@ from atlas_building_tools.densities.inhibitory_neuron_density import (
     compute_inhibitory_neuron_density,
 )
 from atlas_building_tools.densities.mtype_densities import DensityProfileCollection
+from atlas_building_tools.densities.excel_reader import (
+    read_measurements,
+    read_homogenous_neuron_type_regions,
+)
+
+DATA_PATH = Path(Path(__file__).parent, 'data')
 
 L = logging.getLogger(__name__)
 
@@ -142,7 +152,11 @@ def cell_density(annotation_path, hierarchy_path, nissl_path, output_path, soma_
             soma_radii = json.load(file_)
 
     overall_cell_density = compute_cell_density(
-        region_map, annotation.raw, _get_voxel_volume_in_mm3(annotation), nissl.raw, soma_radii
+        region_map,
+        annotation.raw,
+        _get_voxel_volume_in_mm3(annotation),
+        nissl.raw,
+        soma_radii,
     )
     nissl.with_data(np.asarray(overall_cell_density, dtype=float)).save_nrrd(
         output_path
@@ -504,3 +518,93 @@ def mtype_densities(
         placement_hints_config_path,
         output_dir,
     )
+
+
+@app.command()
+@click.option(
+    '--measurements-output-path',
+    required=True,
+    help='Path where the density-related measurement series will be written. CSV file whose columns'
+    ' are described in the main help section.',
+)
+@click.option(
+    '--homogenous-regions-output-path',
+    required=True,
+    help='Path where the list of AIBS brain regions with homogenous neuron type (e.g., inhibitory'
+    ' or excitatory) will be saved. CSV file with 2 columns: "brain region" and "cell type".',
+)
+@log_args(L)
+def compile_measurements(
+    measurements_output_path,
+    homogenous_regions_output_path,
+):
+    """
+    Compile the cell density related measurements of mmc3.xlsx and gaba_papers.xsls into a CSV file.
+
+    In addition to various measurements found in the scientific literature, a list of AIBS mouse
+    brain regions with homogenous neuron type is saved to `homogenous_regions_output_path`.
+
+    Two input excel files containing measurements are handled:
+    * mm3c.xls from the supplementary materials of
+        'Brain-wide Maps Reveal Stereotyped Cell-Type-Based Cortical Architecture and Subcortical
+        Sexual Dimorphism' by Kim et al., 2017.
+        https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc3.xlsx
+
+    * atlas_building_tools/app/data/gaba_papers.xlsx, a compilation of measurements from the
+        scientifc literature made by Rodarie Dimitri (BBP).
+
+    This command extracts measurements from the above two files and gathers them into a unique
+    CSV file with the following columns:
+
+    * brain region (str), a mouse brain region name, not necessarily compliant
+        with AIBS 1.json file. Thus some filtering must be done when working with AIBS\n
+        annotated files.\n
+    * cell type (str, e.g, 'PV+' for cells reacting to parvalbumin, 'inhibitory neuron' for\n
+    non-specific inhibitory neuron)\n
+    * measurement (float)\n
+    * standard deviation (non-negative float)\n
+    * measurement type (str), see measurement types below\n
+    * measurement unit (str), see measurement units below\n
+    * comment (str), a comment on how the measurement has been obtained\n
+    * source title (str), the title of the article where the measurement can be exracted\n
+    * specimen age (str, e.g., '8 week old', 'P56', '3 month old'), age of the mice used to obtain
+        the measurement\n
+
+    The different measurement types are, for a given brain region R and a given cell type T:\n
+    * 'cell density', number of cells of type T per mm^3 in R\n
+    * 'neuron proportion', number of cells of type T / number of neurons in R\n
+    * 'cell proportion', number of cells of type T / number of cells in R\n
+    * 'cell count per slice', number of cells of type T per slice of R\n
+
+    Measurement units:
+    * 'cell density': 'number of cells per mm^3'\n
+    * 'neuron proportion': None (empty)\n
+    * 'cell proportion': None (empty)\n
+    * 'cell count per slice': e.g, number of cells per 5 micrometer-thick slice\n
+
+    See atlas_building_tools/densities/excel_reader.py for more information.
+
+    Note: This function should be deprecated once its output has been stored permanently as the
+    the unique source of density-related measurements for the AIBS mouse brain. New measurements
+    should be added to the stored file (Nexus).
+    """
+
+    L.info('Loading excel files ...')
+    region_map = RegionMap.load_json(
+        Path(DATA_PATH, '1.json')
+    )  # Unmodified AIBS 1.json
+    measurements = read_measurements(
+        region_map,
+        Path(DATA_PATH, 'mmc3.xlsx'),
+        Path(DATA_PATH, 'gaba_papers.xlsx'),
+        # The next measurement file has been obtained after manual extraction
+        # of non-density measurements from the worksheets PV-SST-VIP and 'GAD67 densities'
+        # of gaba_papers.xlsx.
+        Path(DATA_PATH, 'non_density_measurements.csv'),
+    )
+    homogenous_regions = read_homogenous_neuron_type_regions(
+        Path(DATA_PATH, 'gaba_papers.xlsx')
+    )
+    L.info('Saving to CSV files ...')
+    measurements.to_csv(measurements_output_path, index=False)
+    homogenous_regions.to_csv(homogenous_regions_output_path, index=False)
