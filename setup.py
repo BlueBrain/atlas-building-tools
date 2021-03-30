@@ -26,15 +26,13 @@ setup(
         'nptyping==1.0.1',
         'numba>=0.48.0',
         'numpy>=1.15.0',
-        # numpy-quaternion version is caped because of an issue similar to 
+        # numpy-quaternion version is capped because of an issue similar to
         # https://stackoverflow.com/questions/20518632/importerror-numpy-core-multiarray-failed-to-import
         'numpy-quaternion<=2019.12.11.22.25.52',
         'openpyxl>=3.0.5',
-        # open3d version is caped because of https://github.com/intel-isl/Open3D/issues/1898
-        # which occurs on BB5.
-        'open3d<0.10.0.0',
         'pandas>=1.0.3',
         'Pillow>=7.1.2',
+        'poisson-recon-pybind>=0.1.0',
         'pynrrd>=0.4.0',
         'PyYAML>=5.3.1',
         'rtree>=0.9.4',

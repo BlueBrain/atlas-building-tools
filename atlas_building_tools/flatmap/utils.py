@@ -1,16 +1,20 @@
 '''
 Utils functions to flatten a laminar brain region.
 '''
+import logging
 from typing import Set, TYPE_CHECKING
 from nptyping import NDArray
 import numpy as np
-import open3d as o3d
 import trimesh
+
+from poisson_recon_pybind import create_poisson_surface, Vector3dVector
 
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 if TYPE_CHECKING:
     from voxcell import RegionMap, VoxelData  # type:  ignore
+
+L = logging.getLogger(__name__)
 
 
 def reconstruct_surface_mesh(
@@ -48,27 +52,22 @@ def reconstruct_surface_mesh(
     """
     points = normals.indices_to_positions(np.array(np.nonzero(volume)).T)
     normals = normals.raw[volume]
-
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(points)
-    pcd.normals = o3d.utility.Vector3dVector(normals)
-
-    poisson_mesh, _ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
-        pcd, depth=8, scale=1.1
+    L.info('Reconstructing the Poisson surface mesh (poisson_recon_pybind) ...')
+    vertices, triangles = create_poisson_surface(Vector3dVector(points), Vector3dVector(normals))
+    poisson_mesh = trimesh.Trimesh(
+        vertices=np.asarray(vertices),
+        faces=np.asarray(triangles),
     )
-    poisson_mesh = poisson_mesh.compute_vertex_normals()
 
     # Cleanup
-    poisson_mesh = poisson_mesh.normalize_normals()
-    poisson_mesh.remove_degenerate_triangles()
-    poisson_mesh.remove_duplicated_triangles()
-    poisson_mesh.remove_duplicated_vertices()
-    poisson_mesh.remove_non_manifold_edges()
+    L.info('Cleaning up the resulting Poisson mesh ...')
+    poisson_mesh.merge_vertices()
+    poisson_mesh.process(validate=True)
+    poisson_mesh.fill_holes()
+    poisson_mesh.fix_normals()
+    assert poisson_mesh.is_winding_consistent
 
-    return trimesh.Trimesh(
-        vertices=np.asarray(poisson_mesh.vertices),
-        faces=np.asarray(poisson_mesh.triangles),
-    )
+    return poisson_mesh
 
 
 def create_layers_volume(
