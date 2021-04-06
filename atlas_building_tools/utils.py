@@ -5,8 +5,8 @@ from typing import Tuple, Union
 
 import numpy as np  # type: ignore
 from nptyping import NDArray  # type: ignore
-from scipy.signal import correlate  # ignore: type
-from scipy.ndimage.morphology import generate_binary_structure  # ignore: type
+from scipy.signal import correlate  # type: ignore
+from scipy.ndimage.morphology import generate_binary_structure  # type: ignore
 
 from voxcell import RegionMap  # type: ignore
 

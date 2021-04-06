@@ -17,10 +17,10 @@ from distutils.spawn import find_executable
 from tempfile import TemporaryDirectory
 from subprocess import check_call
 
-from nptyping import NDArray  # ignore: type
-import numpy as np  # ignore: type
+from nptyping import NDArray  # type: ignore
+import numpy as np  # type: ignore
 
-from voxcell import VoxelData  # ignore: type
+from voxcell import VoxelData  # type: ignore
 
 from atlas_building_tools.direction_vectors.algorithms.utils import zero_to_nan
 from atlas_building_tools.utils import compute_boundary

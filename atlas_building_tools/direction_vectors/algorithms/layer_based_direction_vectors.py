@@ -1,9 +1,9 @@
 '''
 Generic script to compute direction vectors of a laminar region.
 
-This script supports the case of regions separated in two hemispheres such as the isocortex.
-It allows the use of two different lower-level algorithms computing directions vectors
-, both based on the identification of a source and a target boundary:
+This script supports the case of regions separated in two hemispheres such as the isocortex or
+the thalamus. It allows the use of two different lower-level algorithms computing directions
+vectors. Both algorithms are based on the identification of a source and a target region:
 a simple blur gradient approach and Regiodesics.
 
 These two algorithms are appropriate when the fibers of the brain region
@@ -13,7 +13,7 @@ The region where fibers end is referred to as the target region.
 In Regiodesics terminology, these correspond respectively to the bottom and top
 shells, a.k.a lower and upper shells.
 
-This script is used to compute the mouse isocortex directions vectors.
+This script is used to compute the mouse isocortex and the mouse thalamus directions vectors.
 '''
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
@@ -38,7 +38,7 @@ def attributes_to_ids(
     region_map: Union[str, dict, RegionMap],
     attributes: List[Union[Tuple[str, str], Tuple[str, int]]],
 ) -> List[int]:
-    '''
+    """
     Make a list of region identifiers out of hierarchy attributes including descendants.
 
     Args:
@@ -52,7 +52,7 @@ def attributes_to_ids(
         duplicate-free list of region identifiers corresponding to the
         input attribute values.
 
-    '''
+    """
     region_map = load_region_map(region_map)
     ids = set()
     for (attribute, value) in attributes:
@@ -66,9 +66,9 @@ def direction_vectors_for_hemispheres(
     landscape: Dict[str, NDArray[bool]],
     algorithm: str,
     hemisphere_options: Optional[Dict[str, Union[str, None]]] = None,
-    **kwargs: str
+    **kwargs: Union[int, float, str]
 ) -> NDArray[np.float32]:
-    '''
+    """
     Compute direction vectors for each of the two hemispheres.
 
     Arguments:
@@ -92,14 +92,20 @@ def direction_vectors_for_hemispheres(
             neither as source, nor as target.
         kwargs: (optional) Options specific to the underlying algorithm.
             For regiodesics.compute_direction_vectors, the option regiodesics_path=str can be used
-             to indicate where the regiodesics executable is located. Otherwise this function will
-             attempt to find it by means of distutils.spawn.find_executable.
+            to indicate where the regiodesics executable is located. Otherwise this function will
+            attempt to find it by means of distutils.spawn.find_executable.
+            For simple_blur_gradient.direction_vectors, the option sigma=float can be used to
+            specify the standard deviation of the Gaussian blur while source_weight=float,
+            target_weight=float can be used to set custom weights in the source and target regions.
 
     Returns:
         Array holding a vector field of unit vectors defined on the `inside` 3D volume. The shape
         of this array is (W, L, D, 3) if the shape of `inside` is (W, L, D).
         Outside the `inside` volume, the returned direction vectors have np.nan coordinates.
-    '''
+    """
+    if algorithm not in ALGORITHMS:
+        raise ValueError('algorithm must be one of {}'.format(ALGORITHMS.keys()))
+
     set_opposite_hemisphere_as = (
         hemisphere_options['set_opposite_hemisphere_as']
         if hemisphere_options is not None
@@ -120,9 +126,6 @@ def direction_vectors_for_hemispheres(
             np.ones(landscape['inside'].shape, dtype=bool)
         )
 
-    if algorithm not in ALGORITHMS:
-        raise ValueError('algorithm must be one of {}'.format(ALGORITHMS.keys()))
-
     direction_vectors = np.full(
         landscape['inside'].shape + (3,), np.nan, dtype=np.float32
     )
@@ -140,6 +143,7 @@ def direction_vectors_for_hemispheres(
         direction_vectors[hemisphere] = ALGORITHMS[algorithm](
             source, np.logical_and(landscape['inside'], hemisphere), target, **kwargs
         )[hemisphere]
+
     return direction_vectors
 
 
@@ -153,16 +157,16 @@ def compute_direction_vectors(
     landscape: Dict[str, AttributeList],
     algorithm: str = 'simple_blur_gradient',
     hemisphere_options: Optional[Dict[str, Union[str, None]]] = None,
-    **kwargs: str
+    **kwargs: Union[int, float, str]
 ) -> NDArray[np.float32]:
-    '''
+    """
     Computes within `inside` direction vectors that originate from `source` and end in `target`.
 
     Args:
         region_map: a path to hierarchy.json or dict made of such a file or a
             RegionMap object. Defaults to None.
-        brain_regions: full annotation array from which the region of interest
-            `inside` will be extracted.
+        brain_regions: full annotation array from which the region of interest `inside` will be
+            extracted.
         landscape: landscape: dict of the form
             {source': AttributeList, 'inside': AttributeList, 'target': AttributeList}
             where the value corresponding to
@@ -183,11 +187,12 @@ def compute_direction_vectors(
             should be included as a source or a target for the former. The possible values are
             'source', 'target' or None. If the value is None, the opposite hemisphere is not used,
             neither as source, nor as target.
+        kwargs: see direction_vectors_for_hemispheres documentation.
 
     Returns:
-        A vector field of float 3D unit vectors over the input 3D volume.
+        A vector field of float32 3D unit vectors over the input 3D volume.
 
-    '''
+    """
     if algorithm not in ALGORITHMS:
         raise ValueError('`algorithm` must be one of {}'.format(ALGORITHMS))
 
