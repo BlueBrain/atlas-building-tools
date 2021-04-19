@@ -1,13 +1,14 @@
-'''Utility functions for cell density computation.'''
+"""Utility functions for cell density computation."""
 
-from typing import Dict, Set, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Set
+
 import numpy as np  # type: ignore
 import scipy.misc
 import scipy.ndimage
 from nptyping import NDArray  # type: ignore
 
-from atlas_building_tools.utils import copy_array
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
+from atlas_building_tools.utils import copy_array
 
 if TYPE_CHECKING:  # pragme: no cover
     from voxcell import RegionMap  # type: ignore
@@ -51,9 +52,7 @@ def normalize_intensity(
     """
 
     outside_mean = np.mean(
-        marker_intensity[
-            np.logical_and((annotation == region_id), (marker_intensity > 0.0))
-        ]
+        marker_intensity[np.logical_and((annotation == region_id), (marker_intensity > 0.0))]
     )
     output_intensity = copy_array(marker_intensity, copy=copy)
     output_intensity -= outside_mean * threshold_scale_factor
@@ -163,7 +162,7 @@ def optimize_distance_to_line(  # pylint: disable=too-many-arguments
         termination of the algorithm. Otherwise a point on the boundary of the box B defined by
         `upper_bounds`.
     """
-    diff = float('inf')
+    diff = float("inf")
     iter_ = 0
     point = line_direction_vector.copy() if copy else line_direction_vector
     while diff > threshold and iter_ < max_iter:
@@ -233,10 +232,10 @@ def constrain_cell_counts_per_voxel(  # pylint: disable=too-many-arguments, too-
 
     if target_sum < max_subsum - epsilon:
         raise AtlasBuildingToolsError(
-            'The contribution of voxels with prescribed maximum density, that is'
-            f' {max_subsum - epsilon}'
-            f' exceeds the target sum, that is, {target_sum}. One of the two constraints cannot be'
-            ' fulfilled.'
+            "The contribution of voxels with prescribed maximum density, that is"
+            f" {max_subsum - epsilon}"
+            f" exceeds the target sum, that is, {target_sum}. One of the two constraints cannot be"
+            " fulfilled."
         )
 
     zero_indices_subsum = 0
@@ -245,16 +244,14 @@ def constrain_cell_counts_per_voxel(  # pylint: disable=too-many-arguments, too-
 
     if np.sum(cell_counts_upper_bound) - zero_indices_subsum < target_sum - epsilon:
         raise AtlasBuildingToolsError(
-            'The maximum contribution of voxels with non-zero density'
-            ' is less than the target sum. The target sum cannot be reached.'
+            "The maximum contribution of voxels with non-zero density"
+            " is less than the target sum. The target sum cannot be reached."
         )
 
     cell_counts = cell_counts.copy() if copy else cell_counts
     complement = None
     if max_cell_counts_mask is not None:
-        cell_counts[max_cell_counts_mask] = cell_counts_upper_bound[
-            max_cell_counts_mask
-        ]
+        cell_counts[max_cell_counts_mask] = cell_counts_upper_bound[max_cell_counts_mask]
         complement = max_cell_counts_mask.copy()
 
     if zero_cell_counts_mask is not None:
@@ -285,15 +282,15 @@ def constrain_cell_counts_per_voxel(  # pylint: disable=too-many-arguments, too-
     abs_error = np.abs(np.sum(cell_counts) - target_sum)
     if abs_error > epsilon:
         raise AtlasBuildingToolsError(
-            f'The target sum could not be reached. '
-            f'The absolute error is {abs_error}. It is larger than the tolerance '
-            f'epsilon = {epsilon}'
+            f"The target sum could not be reached. "
+            f"The absolute error is {abs_error}. It is larger than the tolerance "
+            f"epsilon = {epsilon}"
         )
 
     return cell_counts
 
 
-def get_group_ids(region_map: 'RegionMap') -> Dict[str, Set[int]]:
+def get_group_ids(region_map: "RegionMap") -> Dict[str, Set[int]]:
     """
     Get AIBS structure ids for several region groups of interest.
 
@@ -309,37 +306,31 @@ def get_group_ids(region_map: 'RegionMap') -> Dict[str, Set[int]]:
         sets of structure identifiers.
     """
     cerebellum_group_ids = region_map.find(
-        'Cerebellum', attr='name', with_descendants=True
-    ) | region_map.find('arbor vitae', attr='name', with_descendants=True)
+        "Cerebellum", attr="name", with_descendants=True
+    ) | region_map.find("arbor vitae", attr="name", with_descendants=True)
     isocortex_group_ids = (
-        region_map.find('Isocortex', attr='acronym', with_descendants=True)
-        | region_map.find('Entorhinal area', attr='name', with_descendants=True)
-        | region_map.find('Piriform area', attr='name', with_descendants=True)
+        region_map.find("Isocortex", attr="acronym", with_descendants=True)
+        | region_map.find("Entorhinal area", attr="name", with_descendants=True)
+        | region_map.find("Piriform area", attr="name", with_descendants=True)
     )
-    purkinje_layer_ids = region_map.find(
-        '@.*Purkinje layer', attr='name', with_descendants=True
-    )
+    purkinje_layer_ids = region_map.find("@.*Purkinje layer", attr="name", with_descendants=True)
     fiber_tracts_ids = (
-        region_map.find('fiber tracts', attr='acronym', with_descendants=True)
-        | region_map.find('grooves', attr='name', with_descendants=True)
-        | region_map.find('ventricular systems', attr='name', with_descendants=True)
-        | region_map.find('Basic cell groups and regions', attr='name')
-        | region_map.find('Cerebellum', attr='name')
+        region_map.find("fiber tracts", attr="acronym", with_descendants=True)
+        | region_map.find("grooves", attr="name", with_descendants=True)
+        | region_map.find("ventricular systems", attr="name", with_descendants=True)
+        | region_map.find("Basic cell groups and regions", attr="name")
+        | region_map.find("Cerebellum", attr="name")
     )
-    molecular_layer_ids = region_map.find(
-        '@.*molecular layer', attr='name', with_descendants=True
-    )
-    cerebellar_cortex_ids = region_map.find(
-        'Cerebellar cortex', attr='name', with_descendants=True
-    )
+    molecular_layer_ids = region_map.find("@.*molecular layer", attr="name", with_descendants=True)
+    cerebellar_cortex_ids = region_map.find("Cerebellar cortex", attr="name", with_descendants=True)
 
     return {
-        'Cerebellum group': cerebellum_group_ids,
-        'Isocortex group': isocortex_group_ids,
-        'Fiber tracts group': fiber_tracts_ids,
-        'Purkinje layer': purkinje_layer_ids,
-        'Molecular layer': molecular_layer_ids,
-        'Cerebellar cortex': cerebellar_cortex_ids,
+        "Cerebellum group": cerebellum_group_ids,
+        "Isocortex group": isocortex_group_ids,
+        "Fiber tracts group": fiber_tracts_ids,
+        "Purkinje layer": purkinje_layer_ids,
+        "Molecular layer": molecular_layer_ids,
+        "Cerebellar cortex": cerebellar_cortex_ids,
     }
 
 
@@ -364,15 +355,11 @@ def get_region_masks(
         encodes which voxels belong to the corresponding group.
     """
     region_masks = {}
-    region_masks['Cerebellum group'] = np.isin(
-        annotation, list(group_ids['Cerebellum group'])
-    )
-    region_masks['Isocortex group'] = np.isin(
-        annotation, list(group_ids['Isocortex group'])
-    )
-    region_masks['Rest'] = np.isin(
+    region_masks["Cerebellum group"] = np.isin(annotation, list(group_ids["Cerebellum group"]))
+    region_masks["Isocortex group"] = np.isin(annotation, list(group_ids["Isocortex group"]))
+    region_masks["Rest"] = np.isin(
         annotation,
-        list({0} | group_ids['Cerebellum group'] | group_ids['Isocortex group']),
+        list({0} | group_ids["Cerebellum group"] | group_ids["Isocortex group"]),
         invert=True,
     )
 

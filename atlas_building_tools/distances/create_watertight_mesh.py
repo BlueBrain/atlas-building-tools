@@ -1,23 +1,21 @@
-'''
+"""
 Main function to create a trimesh out of a voxellized 3D image
 and its utilities.
 Generating optimized meshes requires Ultraliser,
 see https://bbpcode.epfl.ch/browse/code/viz/Ultraliser
-'''
+"""
+import logging
 import os
-from pathlib import Path
 import subprocess
 import tempfile
 from distutils.spawn import find_executable
-import logging
-
-from nptyping import NDArray  # type: ignore
-
+from pathlib import Path
 
 import nrrd  # type: ignore
 import numpy as np  # type: ignore
-from scipy.spatial.distance import directed_hausdorff, cdist  # type: ignore
 import trimesh  # type: ignore
+from nptyping import NDArray  # type: ignore
+from scipy.spatial.distance import cdist, directed_hausdorff  # type: ignore
 
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
@@ -26,7 +24,7 @@ L.setLevel(logging.INFO)
 
 
 def _write_numpy_array_to_img_file(img_array: NDArray[bool], filename: str) -> None:
-    '''
+    """
     Write the content of a 3D image provided as a numpy array
     to a file with extension .img
 
@@ -36,25 +34,25 @@ def _write_numpy_array_to_img_file(img_array: NDArray[bool], filename: str) -> N
     Args:
         img_array(numpy.ndarray): numpy array holding the image content (voxels)
         filename(str): extension-free name of the file to write to.
-    '''
+    """
     # UltraVolume2Mesh expects a file name with .img extension,
     # see https://bbpcode.epfl.ch/browse/code/viz/Ultraliser/tree/ultraliser/common/Defines.h
     nrrd.write(
-        filename + '.nrrd',
+        filename + ".nrrd",
         np.uint8(img_array),
-        header={'encoding': 'raw'},
+        header={"encoding": "raw"},
         detached_header=True,  # ultraVolum2Mesh cannot read embedded headers.
     )
-    os.rename(filename + '.nrrd', filename + '.img')
-    os.remove(filename + '.nhdr')
+    os.rename(filename + ".nrrd", filename + ".img")
+    os.remove(filename + ".nhdr")
     # Create a one-line header file for ultraVolume2Mesh containing only the shape of the 3D array.
-    header = filename + '.hdr'
-    with open(header, 'w') as file_:
-        file_.write(' '.join([str(d) for d in img_array.shape]))
+    header = filename + ".hdr"
+    with open(header, "w") as file_:
+        file_.write(" ".join([str(d) for d in img_array.shape]))
 
 
 def _get_ultra_volume_2_mesh_path() -> str:
-    '''
+    """
     Get the path to the ultraVolume2Mesh executable file.
 
     The function checks if ultraVolume2Mesh is available by means of
@@ -67,15 +65,15 @@ def _get_ultra_volume_2_mesh_path() -> str:
     Raises:
         AtlasBuildingToolsError: if the executable file cannot be found.
 
-    '''
-    ultra_volume_2_mesh_path = find_executable('ultraVolume2Mesh')
+    """
+    ultra_volume_2_mesh_path = find_executable("ultraVolume2Mesh")
     if not ultra_volume_2_mesh_path:
         raise AtlasBuildingToolsError(
-            'ultraVolume2Mesh was not found in this system.\n'
-            'On BB5, you can load ultraliser with the command \'module load ultraliser\'.\n'
-            'You can also install ultraliser '
-            '(see https://bbpcode.epfl.ch/browse/code/viz/Ultraliser/tree/ultraliser)'
-            ' and modify your PATH accordingly.'
+            "ultraVolume2Mesh was not found in this system.\n"
+            "On BB5, you can load ultraliser with the command 'module load ultraliser'.\n"
+            "You can also install ultraliser "
+            "(see https://bbpcode.epfl.ch/browse/code/viz/Ultraliser/tree/ultraliser)"
+            " and modify your PATH accordingly."
         )
     return ultra_volume_2_mesh_path
 
@@ -87,7 +85,7 @@ def ultra_volume_2_mesh(
     iso_value: int,
     smooth_iterations: int,
 ) -> None:
-    '''
+    """
     Calls Ultraliser/ultraVolume2Mesh with the option --optimize-mesh and some user-defined options.
 
     The executable ultraVolume2Mesh creates the boundary mesh of a 3D voxellized image
@@ -102,32 +100,30 @@ def ultra_volume_2_mesh(
         smooth_iteration: value of the --smooth-iterations option.
     Raises:
         UlraliserException if the executable ultraVolume2mesh cannot be found.
-    '''
+    """
     # Retrieve Ultraliser/ultraVolume2mesh path
     ultra_volume_2_mesh_path = _get_ultra_volume_2_mesh_path()
 
     if Path(volume_path).suffix:
         raise ValueError(
-            '[ultra_volume_2_mesh] '
-            'The provided option \'volume_path\' {} has a non-empty file extension. '
-            'The program ultraVolume2mesh expects a filepath without extension.'.format(
-                volume_path
-            )
+            "[ultra_volume_2_mesh] "
+            "The provided option 'volume_path' {} has a non-empty file extension. "
+            "The program ultraVolume2mesh expects a filepath without extension.".format(volume_path)
         )
     subprocess.check_output(
         [
             ultra_volume_2_mesh_path,
-            '--volume-path',
+            "--volume-path",
             volume_path,
-            '--iso-value',
+            "--iso-value",
             str(iso_value),
-            '--export-obj',
-            '--optimize-mesh',
-            '--smooth-iterations',
+            "--export-obj",
+            "--optimize-mesh",
+            "--smooth-iterations",
             str(smooth_iterations),
-            '--smooth-factor',
+            "--smooth-factor",
             str(smooth_factor),
-            '--output-directory',
+            "--output-directory",
             output_directory,
         ]
     )
@@ -136,7 +132,7 @@ def ultra_volume_2_mesh(
 def mean_min_dist(
     points_1: NDArray[float], points_2: NDArray[float], sample_size: int = 1000
 ) -> float:
-    '''
+    """
     Compute the mean of the minimum distance of
     3D points in a random sample of `points_1` to all points in `points_2`.
 
@@ -147,7 +143,7 @@ def mean_min_dist(
 
     Returns:
         mean of the distances of the points in the sample to `points_2`.
-    '''
+    """
     sampled_indices = np.random.choice(len(points_1), size=sample_size, replace=False)
     distances: NDArray[float] = np.min(cdist(points_1[sampled_indices], points_2), axis=1)
 
@@ -157,7 +153,7 @@ def mean_min_dist(
 def log_mesh_optimization_info(
     optimized_mesh: trimesh.base.Trimesh, unoptimized_mesh: trimesh.base.Trimesh
 ):
-    '''
+    """
     Log information about the optimized and unoptimized meshes generated by ultraVolume2Mesh.
 
     This function logs
@@ -168,26 +164,24 @@ def log_mesh_optimization_info(
     Args:
         optimized_mesh: triangle mesh that has been optimized by ultraVolume2Mesh.
         unoptimized_mesh: triangle mesh obtained without optimization.
-    '''
-    meshes = {'Optimized': optimized_mesh, 'Unoptimized': unoptimized_mesh}
+    """
+    meshes = {"Optimized": optimized_mesh, "Unoptimized": unoptimized_mesh}
     for key, mesh in meshes.items():
-        L.info(
-            '%s mesh: %d vertices, %d faces', key, len(mesh.vertices), len(mesh.faces)
-        )
+        L.info("%s mesh: %d vertices, %d faces", key, len(mesh.vertices), len(mesh.faces))
     args = [
-        np.concatenate((mesh.triangles_center, mesh.vertices), axis=0)
-        for mesh in meshes.values()
+        np.concatenate((mesh.triangles_center, mesh.vertices), axis=0) for mesh in meshes.values()
     ]
     hausdorff = directed_hausdorff(args[0], args[1])[0]
     meandist = mean_min_dist(args[0], args[1])
-    L.info('Hausdorff distance of optimization: %f', hausdorff)
-    L.info('Mean distance of optimization: %f', meandist)
+    L.info("Hausdorff distance of optimization: %f", hausdorff)
+    L.info("Mean distance of optimization: %f", meandist)
 
 
 def create_watertight_trimesh(
-    binary_image: NDArray[bool], optimization_info: bool = False,
+    binary_image: NDArray[bool],
+    optimization_info: bool = False,
 ) -> trimesh.base.Trimesh:
-    '''
+    """
     Create a watertight triangle mesh out of a 3D binary image.
 
     Relies on Ultraliser/ultraVolume2Mesh.
@@ -199,12 +193,12 @@ def create_watertight_trimesh(
     Returns:
         optimized_mesh: the optimized triangle mesh produced by ultraVolume2Mesh
          (Dual Marching Cubes algorithm).
-    '''
+    """
     optimized_mesh = None  # The mesh to be returned.
     unoptimized_mesh = None
     with tempfile.TemporaryDirectory() as tempdir:
         # ultraVolume2Mesh requires a name without file extension.
-        volume_path = str(Path(tempdir, 'binary_image'))
+        volume_path = str(Path(tempdir, "binary_image"))
         # Write image to disk for later use by ultraliser.
         _write_numpy_array_to_img_file(binary_image, volume_path)
         # ultraVolume2Mesh writes the resulting meshes to two output files
@@ -221,12 +215,12 @@ def create_watertight_trimesh(
             smooth_iterations=15,
         )
         # The format of the following filepaths is imposed by Ultraliser.
-        output_filepath_opt = volume_path + '_' + str(iso_value) + '_' + 'optimized.obj'
-        output_filepath_unopt = output_filepath_opt.replace('_optimized', '')
+        output_filepath_opt = volume_path + "_" + str(iso_value) + "_" + "optimized.obj"
+        output_filepath_unopt = output_filepath_opt.replace("_optimized", "")
         for filepath in [output_filepath_unopt, output_filepath_opt]:
             if not Path(filepath).exists():
                 raise AtlasBuildingToolsError(
-                    'Ultraliser failed to generate the mesh {}'.format(filepath)
+                    "Ultraliser failed to generate the mesh {}".format(filepath)
                 )
         unoptimized_mesh = trimesh.load_mesh(output_filepath_unopt)
         optimized_mesh = trimesh.load_mesh(output_filepath_opt)

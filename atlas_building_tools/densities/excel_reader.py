@@ -1,4 +1,4 @@
-'''Utility functions to retrieve measurements pertaining to cell density and stored in excel files
+"""Utility functions to retrieve measurements pertaining to cell density and stored in excel files
 
 Measurements related to cell density are read and put under a uniform format so as to ease-off
 computations made by their consumers of the densities module.
@@ -35,12 +35,13 @@ atlas_building_tools/app/data/non_density_measurements.csv under the above forma
 
 Lexicon: AIBS stands for Allen Institute for Brain Science
     https://alleninstitute.org/what-we-do/brain-science/
-'''
+"""
 
-from warnings import warn
 import logging
 from collections import defaultdict
-from typing import Dict, List, Optional, Set, Tuple, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union
+from warnings import warn
+
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
@@ -49,6 +50,7 @@ from atlas_building_tools.exceptions import AtlasBuildingToolsWarning
 
 if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
+
     from pandas import DataFrame
     from voxcell import RegionMap
 
@@ -57,23 +59,23 @@ L = logging.getLogger(__name__)
 
 MEASUREMENT_TYPES = {
     # For a given brain region R and a given cell type T:
-    0: 'cell density',  # number of cells of type T per mm^3 in R
-    1: 'neuron proportion',  # number of cells of type T / number of neurons in R
-    2: 'cell proportion',  # number of cells of type T / number of cells in R
-    3: 'cell count per slice',  # number of cells of type T per slice of R, see MEASUREMENT_UNITS
+    0: "cell density",  # number of cells of type T per mm^3 in R
+    1: "neuron proportion",  # number of cells of type T / number of neurons in R
+    2: "cell proportion",  # number of cells of type T / number of cells in R
+    3: "cell count per slice",  # number of cells of type T per slice of R, see MEASUREMENT_UNITS
 }
 
 MEASUREMENT_UNITS = {
-    'cell density': 'number of cells per mm^3',
-    'neuron proportion': 'None',
-    'cell proportion': 'None',
-    'cell count per slice': 'number of cells per 5 micrometer-thick slice',
+    "cell density": "number of cells per mm^3",
+    "neuron proportion": "None",
+    "cell proportion": "None",
+    "cell count per slice": "number of cells per 5 micrometer-thick slice",
 }
 
 
 def compute_kim_et_al_neuron_densities(
-    inhibitory_neuron_densities_path: Union[str, 'Path']
-) -> 'pd.DataFrame':
+    inhibitory_neuron_densities_path: Union[str, "Path"]
+) -> "pd.DataFrame":
     """
     Extract from excel file and average over gender the densities of the cells reacting to
     PV, SST and VIP in every AIBS region of the mouse brain.
@@ -117,74 +119,72 @@ def compute_kim_et_al_neuron_densities(
     # Retrieve the PV, SST and VIP densities for both male and female specimen.
     kim_et_al_mmc3 = pd.read_excel(
         str(inhibitory_neuron_densities_path),
-        sheet_name='Sheet1',
+        sheet_name="Sheet1",
         header=None,
         names=[
-            'ROI',
-            'Full name',
-            'PV_male',
-            'PV_male_stddev',
-            'PV_female',
-            'PV_female_stddev',
-            'SST_male',
-            'SST_male_stddev',
-            'SST_female',
-            'SST_female_stddev',
-            'VIP_male',
-            'VIP_male_stddev',
-            'VIP_female',
-            'VIP_female_stddev',
+            "ROI",
+            "Full name",
+            "PV_male",
+            "PV_male_stddev",
+            "PV_female",
+            "PV_female_stddev",
+            "SST_male",
+            "SST_male_stddev",
+            "SST_female",
+            "SST_female_stddev",
+            "VIP_male",
+            "VIP_male_stddev",
+            "VIP_female",
+            "VIP_female_stddev",
         ],
-        usecols='A,B,' + 'D:G,' + 'H:K,' + 'L:O',
+        usecols="A,B," + "D:G," + "H:K," + "L:O",
         skiprows=[0, 1],
-        engine='openpyxl',
-    ).set_index('ROI')
+        engine="openpyxl",
+    ).set_index("ROI")
     for acronym in kim_et_al_mmc3.index:
         full_name = kim_et_al_mmc3.loc[acronym][0]
         if not isinstance(full_name, str) or not full_name:
             warn(
-                f'Region with acronym {acronym} has no valid full name. '
-                f'Found: {full_name} of type {type(full_name)}',
+                f"Region with acronym {acronym} has no valid full name. "
+                f"Found: {full_name} of type {type(full_name)}",
                 AtlasBuildingToolsWarning,
             )
-        nd_mask = kim_et_al_mmc3.loc[acronym] == 'N/D'
+        nd_mask = kim_et_al_mmc3.loc[acronym] == "N/D"
         if np.any(nd_mask):
             warn(
-                '[Reading Kim et al. 2017, mmc3.xlsx] '
+                "[Reading Kim et al. 2017, mmc3.xlsx] "
                 f'Region {full_name} with acronym {acronym} has "N/D" values in the following '
                 f'columns: {list(kim_et_al_mmc3.columns[nd_mask])}. The "N/D" values will be '
-                'handled as NaNs.',
+                "handled as NaNs.",
                 AtlasBuildingToolsWarning,
             )
 
-    kim_et_al_mmc3.replace('N/D', 'NaN', inplace=True)
+    kim_et_al_mmc3.replace("N/D", "NaN", inplace=True)
 
     # Average over the 2 genders
     data_frame = pd.DataFrame(
-        {'Full name': kim_et_al_mmc3['Full name']}, index=kim_et_al_mmc3.index
+        {"Full name": kim_et_al_mmc3["Full name"]}, index=kim_et_al_mmc3.index
     )
-    for marker in ['PV', 'SST', 'VIP']:
+    for marker in ["PV", "SST", "VIP"]:
         densities = np.array(
             [
-                np.asarray(kim_et_al_mmc3[f'{marker}_{gender}'], dtype=float)
-                for gender in ['male', 'female']
+                np.asarray(kim_et_al_mmc3[f"{marker}_{gender}"], dtype=float)
+                for gender in ["male", "female"]
             ]
         )
         data_frame[marker] = np.sum(densities, axis=0) / 2.0  # 2 genders
         standard_deviations = np.array(
             [
-                np.asarray(kim_et_al_mmc3[f'{marker}_{gender}_stddev'], dtype=float)
-                for gender in ['male', 'female']
+                np.asarray(kim_et_al_mmc3[f"{marker}_{gender}_stddev"], dtype=float)
+                for gender in ["male", "female"]
             ]
         )
-        data_frame[f'{marker}_stddev'] = (
-            np.sum(standard_deviations, axis=0) / 2.0
-        )  # 2 genders
+        data_frame[f"{marker}_stddev"] = np.sum(standard_deviations, axis=0) / 2.0  # 2 genders
 
     return data_frame
 
 
-def _get_aibs_region_names(region_map: 'RegionMap') -> Set[str]:
+def _get_aibs_region_names(region_map: "RegionMap") -> Set[str]:
     """
     Retrieve the names of every region in `region_map`.
 
@@ -198,16 +198,16 @@ def _get_aibs_region_names(region_map: 'RegionMap') -> Set[str]:
 
     """
     aibs_region_ids = region_map.find(
-        'Basic cell groups and regions', attr='name', with_descendants=True
+        "Basic cell groups and regions", attr="name", with_descendants=True
     )
 
-    return {region_map.get(id_, 'name') for id_ in aibs_region_ids}
+    return {region_map.get(id_, "name") for id_ in aibs_region_ids}
 
 
 def _set_metadata_columns(
-    dataframe: 'pd.DataFrame',
-    bibliography: 'pd.DataFrame',
-    comments: 'pd.DataFrame',
+    dataframe: "pd.DataFrame",
+    bibliography: "pd.DataFrame",
+    comments: "pd.DataFrame",
 ) -> None:
     """
     Add a source title a comment to every measurement in `dataframe`
@@ -234,7 +234,7 @@ def _set_metadata_columns(
     """
 
     def _fill_in_the_gaps(
-        dataframe: 'pd.DataFrame', collapsed_blocks: 'pd.DataFrame', header: str
+        dataframe: "pd.DataFrame", collapsed_blocks: "pd.DataFrame", header: str
     ) -> None:
         """
         Assign to each line block represented in `collapsed_blocks` the value of the first line
@@ -263,14 +263,14 @@ def _set_metadata_columns(
         )
 
     # Source titles and specimen ages define the same blocks of merged cells
-    for header in ['source title', 'specimen age']:
+    for header in ["source title", "specimen age"]:
         _fill_in_the_gaps(dataframe, bibliography, header)
 
-    _fill_in_the_gaps(dataframe, comments, 'comment')
+    _fill_in_the_gaps(dataframe, comments, "comment")
 
 
 def _set_measurement_type_and_unit_columns(
-    dataframe: 'pd.DataFrame', code_filter: Optional[List[int]] = None
+    dataframe: "pd.DataFrame", code_filter: Optional[List[int]] = None
 ) -> None:
     """
     Set the values of the 'measurement type' and 'measurement unit' columns.
@@ -288,18 +288,18 @@ def _set_measurement_type_and_unit_columns(
     """
     if code_filter is None:
         code_filter = [0]  # 'cell density' only
-    mask = dataframe['measurement type'].isin(code_filter)
+    mask = dataframe["measurement type"].isin(code_filter)
     dataframe.drop(dataframe.index[~mask], inplace=True)
     dataframe.reset_index(drop=True, inplace=True)
-    dataframe['measurement type'] = [
-        MEASUREMENT_TYPES[code] for code in dataframe['measurement type']
+    dataframe["measurement type"] = [
+        MEASUREMENT_TYPES[code] for code in dataframe["measurement type"]
     ]
-    dataframe['measurement unit'] = [
-        MEASUREMENT_UNITS[type_] for type_ in dataframe['measurement type']
+    dataframe["measurement unit"] = [
+        MEASUREMENT_UNITS[type_] for type_ in dataframe["measurement type"]
     ]
 
 
-def _create_bibliography(dataframe: 'pd.DataFrame') -> 'pd.DataFrame':
+def _create_bibliography(dataframe: "pd.DataFrame") -> "pd.DataFrame":
     """
     Create a helper bibliograph dataframe.
 
@@ -314,10 +314,10 @@ def _create_bibliography(dataframe: 'pd.DataFrame') -> 'pd.DataFrame':
             12  'Structural and Functional Aberrations'  'Add Table 1 to table 2'     56 days
             ...  ...                                      ...                         ...
     """
-    return pd.DataFrame({'source title': dataframe['source title']}).dropna()
+    return pd.DataFrame({"source title": dataframe["source title"]}).dropna()
 
 
-def _create_collapsed_comments(dataframe: 'pd.DataFrame') -> 'pd.DataFrame':
+def _create_collapsed_comments(dataframe: "pd.DataFrame") -> "pd.DataFrame":
     """
     Create a helper comments dataframe.
 
@@ -332,10 +332,10 @@ def _create_collapsed_comments(dataframe: 'pd.DataFrame') -> 'pd.DataFrame':
             17  'Add Table 1 to Table 2'
             ...  ...
     """
-    return pd.DataFrame({'comment': dataframe['comment']}).dropna()
+    return pd.DataFrame({"comment": dataframe["comment"]}).dropna()
 
 
-def _enforce_column_types(dataframe: 'pd.Dataframe', has_source: bool = True) -> None:
+def _enforce_column_types(dataframe: "pd.Dataframe", has_source: bool = True) -> None:
     """
     Prescribe the data types of the `dataframe` columns.
 
@@ -349,12 +349,12 @@ def _enforce_column_types(dataframe: 'pd.Dataframe', has_source: bool = True) ->
     """
     dataframe.astype(
         {
-            'brain region': str,
-            'cell type': str,
-            'measurement': float,
-            'measurement unit': str,
-            'standard deviation': float,
-            'measurement type': str,
+            "brain region": str,
+            "cell type": str,
+            "measurement": float,
+            "measurement unit": str,
+            "standard deviation": float,
+            "measurement type": str,
         },
         copy=False,
     )
@@ -362,17 +362,17 @@ def _enforce_column_types(dataframe: 'pd.Dataframe', has_source: bool = True) ->
     if has_source:
         dataframe.astype(
             {
-                'comment': str,
-                'source title': str,
-                'specimen age': str,
+                "comment": str,
+                "source title": str,
+                "specimen age": str,
             },
             copy=False,
         )
 
 
 def read_inhibitory_neuron_measurement_compilation(
-    measurements_path: Union[str, 'Path']
-) -> Tuple['pd.DataFrame', Set[str]]:
+    measurements_path: Union[str, "Path"]
+) -> Tuple["pd.DataFrame", Set[str]]:
     """
     Read the neuron densities of the worksheet 'GAD67 densities' in gaba_papers.xlsx
 
@@ -386,40 +386,40 @@ def read_inhibitory_neuron_measurement_compilation(
         this module.
     """
     # Reading takes several seconds, possibly due to formulaes interpretation
-    L.info('Loading excel worksheet ...')
+    L.info("Loading excel worksheet ...")
     inhibitory_neurons_worksheet = pd.read_excel(
         str(measurements_path),
-        sheet_name='GAD67 densities',
+        sheet_name="GAD67 densities",
         header=None,
         names=[
-            'brain region',
-            'measurement',
-            'standard deviation',
-            'comment',
-            'source title',
-            'specimen age',
-            'measurement type',
+            "brain region",
+            "measurement",
+            "standard deviation",
+            "comment",
+            "source title",
+            "specimen age",
+            "measurement type",
         ],
-        usecols='A:G',
+        usecols="A:G",
         skiprows=[0],
-        engine='openpyxl',
+        engine="openpyxl",
     )
 
-    L.info('Operating on dataframe ...')
+    L.info("Operating on dataframe ...")
     _set_measurement_type_and_unit_columns(inhibitory_neurons_worksheet)
     bibliography = _create_bibliography(inhibitory_neurons_worksheet)
     comments = _create_collapsed_comments(inhibitory_neurons_worksheet)
     _set_metadata_columns(inhibitory_neurons_worksheet, bibliography, comments)
     # Inhibitory neurons are assumed to coincide with the neurons which are
     # expressing GAD67, i.e., the GAD67+ cells.
-    inhibitory_neurons_worksheet['cell type'] = 'inhibitory neuron'
+    inhibitory_neurons_worksheet["cell type"] = "inhibitory neuron"
     inhibitory_neurons_worksheet.reset_index(drop=True, inplace=True)
     _enforce_column_types(inhibitory_neurons_worksheet)
 
     return inhibitory_neurons_worksheet
 
 
-def _stack_pv_sst_vip_measurements(dataframe: 'pd.DataFrame') -> 'pd.DataFrame':
+def _stack_pv_sst_vip_measurements(dataframe: "pd.DataFrame") -> "pd.DataFrame":
     """
     Turns measurements stored into columns with labels PV, SST or VIP into the uniform
     flat format described at the top of the module.
@@ -434,19 +434,19 @@ def _stack_pv_sst_vip_measurements(dataframe: 'pd.DataFrame') -> 'pd.DataFrame':
         DataFrame with the columns listed at the top of this module.
     """
     result = pd.DataFrame()
-    marker_columns = {'PV', 'SST', 'VIP', 'PV_stddev', 'SST_stddev', 'VIP_stddev'}
-    for marker in ['PV', 'SST', 'VIP']:
-        to_drop = list(marker_columns - {marker, marker + '_stddev'})
+    marker_columns = {"PV", "SST", "VIP", "PV_stddev", "SST_stddev", "VIP_stddev"}
+    for marker in ["PV", "SST", "VIP"]:
+        to_drop = list(marker_columns - {marker, marker + "_stddev"})
         marker_dataframe = dataframe.drop(columns=to_drop)
         marker_dataframe.rename(
-            columns={marker: 'measurement', marker + '_stddev': 'standard deviation'},
+            columns={marker: "measurement", marker + "_stddev": "standard deviation"},
             inplace=True,
         )
-        marker_dataframe['cell type'] = marker + '+'
+        marker_dataframe["cell type"] = marker + "+"
         result = result.append(marker_dataframe)
 
     result.reset_index(drop=True, inplace=True)
-    na_measurement_mask = result['measurement'].isna()
+    na_measurement_mask = result["measurement"].isna()
     result.drop(result.index[na_measurement_mask], inplace=True)
     result.reset_index(drop=True, inplace=True)
 
@@ -454,8 +454,8 @@ def _stack_pv_sst_vip_measurements(dataframe: 'pd.DataFrame') -> 'pd.DataFrame':
 
 
 def read_pv_sst_vip_measurement_compilation(
-    measurements_path: Union[str, 'Path']
-) -> 'pd.DataFrame':
+    measurements_path: Union[str, "Path"]
+) -> "pd.DataFrame":
     """
     Read the neuron densities of the worksheet 'PV-SST-VIP' in gaba_papers.xlsx
 
@@ -470,41 +470,37 @@ def read_pv_sst_vip_measurement_compilation(
     """
     pv_sst_vip_neurons_worksheet = pd.read_excel(
         str(measurements_path),
-        sheet_name='PV-SST-VIP',
+        sheet_name="PV-SST-VIP",
         header=None,
         names=[
-            'brain region',
-            'PV',
-            'PV_stddev',
-            'SST',
-            'SST_stddev',
-            'VIP',
-            'VIP_stddev',
-            'comment',
-            'source title',
-            'specimen age',
-            'measurement type',
+            "brain region",
+            "PV",
+            "PV_stddev",
+            "SST",
+            "SST_stddev",
+            "VIP",
+            "VIP_stddev",
+            "comment",
+            "source title",
+            "specimen age",
+            "measurement type",
         ],
-        usecols='A:K',
+        usecols="A:K",
         skiprows=[0],
-        engine='openpyxl',
+        engine="openpyxl",
     )
 
     _set_measurement_type_and_unit_columns(pv_sst_vip_neurons_worksheet)
     bibliography = _create_bibliography(pv_sst_vip_neurons_worksheet)
     comments = _create_collapsed_comments(pv_sst_vip_neurons_worksheet)
     _set_metadata_columns(pv_sst_vip_neurons_worksheet, bibliography, comments)
-    pv_sst_vip_neurons_worksheet = _stack_pv_sst_vip_measurements(
-        pv_sst_vip_neurons_worksheet
-    )
+    pv_sst_vip_neurons_worksheet = _stack_pv_sst_vip_measurements(pv_sst_vip_neurons_worksheet)
     _enforce_column_types(pv_sst_vip_neurons_worksheet)
 
     return pv_sst_vip_neurons_worksheet
 
 
-def read_homogenous_neuron_type_regions(
-    measurements_path: Union[str, 'Path']
-) -> 'pd.DataFrame':
+def read_homogenous_neuron_type_regions(measurements_path: Union[str, "Path"]) -> "pd.DataFrame":
     """
     Read the region list of the worksheet 'Full inhibexc regions' in gaba_papers.xlsx
 
@@ -518,26 +514,24 @@ def read_homogenous_neuron_type_regions(
 
     homogenous_regions_worksheet = pd.read_excel(
         str(measurements_path),
-        sheet_name='Fully inhibexc regions',
-        names=['brain region', 'comment'],
+        sheet_name="Fully inhibexc regions",
+        names=["brain region", "comment"],
         header=None,
-        usecols='A,D',
+        usecols="A,D",
         skiprows=[0],
-        engine='openpyxl',
+        engine="openpyxl",
     )
-    excitatory_mask = (
-        homogenous_regions_worksheet['comment'] == 'Purely excitatory region'
-    )
-    homogenous_regions_worksheet['cell type'] = 'inhibitory'
-    homogenous_regions_worksheet['cell type'][excitatory_mask] = 'excitatory'
-    homogenous_regions_worksheet.drop(columns=['comment'], inplace=True)
+    excitatory_mask = homogenous_regions_worksheet["comment"] == "Purely excitatory region"
+    homogenous_regions_worksheet["cell type"] = "inhibitory"
+    homogenous_regions_worksheet["cell type"][excitatory_mask] = "excitatory"
+    homogenous_regions_worksheet.drop(columns=["comment"], inplace=True)
 
     return homogenous_regions_worksheet
 
 
 def _enforce_aibs_nomenclature(
-    region_map: 'RegionMap', dataframe: 'pd.DataFrame'
-) -> 'pd.DataFrame':
+    region_map: "RegionMap", dataframe: "pd.DataFrame"
+) -> "pd.DataFrame":
     """
     Make region names appearing in mmc3.xlsx AIBS compliant whenever possible.
 
@@ -555,27 +549,27 @@ def _enforce_aibs_nomenclature(
         return region_name.replace("È", "e")
 
     dataframe.loc[
-        dataframe['Full name'] == 'Whole brain', 'Full name'
-    ] = 'Basic cell groups and regions'
+        dataframe["Full name"] == "Whole brain", "Full name"
+    ] = "Basic cell groups and regions"
 
     # Missing layer prefix
-    acav6 = 'Anterior cingulate area, ventral part, 6'
-    dataframe.loc[dataframe['Full name'] == acav6, 'Full name'] = acav6 + 'a'
-    copied_row = dataframe[dataframe['Full name'] == acav6 + 'a'].copy()
-    copied_row['Full name'] = acav6 + 'b'
+    acav6 = "Anterior cingulate area, ventral part, 6"
+    dataframe.loc[dataframe["Full name"] == acav6, "Full name"] = acav6 + "a"
+    copied_row = dataframe[dataframe["Full name"] == acav6 + "a"].copy()
+    copied_row["Full name"] = acav6 + "b"
     dataframe = dataframe.append(copied_row)
 
     # Fixing accents
-    dataframe['Full name'] = [_replace_accents(name) for name in dataframe['Full name']]
+    dataframe["Full name"] = [_replace_accents(name) for name in dataframe["Full name"]]
 
     # Most of the issues comme from names ending with 'layer 6' instead of ending with 'layer 6a'
     # or 'layer 6b' as in AIBS 1.json.
     # When such a problematic name is encountered, we remove it and insert its 'layer 6a' and/or
     # 'layer 6b' counterpart , if they exist.
     aibs_region_names = _get_aibs_region_names(region_map)
-    invalid_region_names = set(dataframe['Full name']) - aibs_region_names
+    invalid_region_names = set(dataframe["Full name"]) - aibs_region_names
     layer_6_names = set(
-        name for name in aibs_region_names if ('layer 6' in name) or ('Layer 6' in name)
+        name for name in aibs_region_names if ("layer 6" in name) or ("Layer 6" in name)
     )
     # "Dorsal peduncular area, layer 6a" is the only AIBS name listed in the "brain region"
     # column as "Dorsal peduncular area, layer 6" but with no "Dorsal peduncular area, layer 6b"
@@ -587,26 +581,25 @@ def _enforce_aibs_nomenclature(
         for invalid_name in invalid_region_names:
             if invalid_name in region_name:
                 handled_invalid_names.add(invalid_name)
-                indices = dataframe.index[dataframe['Full name'] == invalid_name]
-                assert len(indices) == 1,\
-                    f'Found more than one index for {invalid_name}, expected only one.'
+                indices = dataframe.index[dataframe["Full name"] == invalid_name]
+                assert (
+                    len(indices) == 1
+                ), f"Found more than one index for {invalid_name}, expected only one."
                 row = dataframe.loc[indices[0]]
-                new_row = pd.DataFrame(
-                    {column: [row[column]] for column in dataframe.columns}
-                )
-                new_row['Full name'] = region_name
+                new_row = pd.DataFrame({column: [row[column]] for column in dataframe.columns})
+                new_row["Full name"] = region_name
                 dataframe = dataframe.append(new_row)
 
     # Remove the invalid region names which have been fixed
-    indices = dataframe.index[dataframe['Full name'].isin(list(handled_invalid_names))]
+    indices = dataframe.index[dataframe["Full name"].isin(list(handled_invalid_names))]
     dataframe.drop(indices, inplace=True)
 
     return dataframe
 
 
 def read_kim_et_al_neuron_densities(
-    region_map: 'RegionMap', inhibitory_neuron_densities_path: Union[str, 'Path']
-) -> 'pd.DataFrame':
+    region_map: "RegionMap", inhibitory_neuron_densities_path: Union[str, "Path"]
+) -> "pd.DataFrame":
     """
     Read the neuron densities of the worksheet 'Sheet 1' in mmc3.xlsx
 
@@ -619,40 +612,38 @@ def read_kim_et_al_neuron_densities(
         a pd.DataFrame with the columns listed in the description at the top of this module.
     """
 
-    densities_dataframe = compute_kim_et_al_neuron_densities(
-        inhibitory_neuron_densities_path
-    )
+    densities_dataframe = compute_kim_et_al_neuron_densities(inhibitory_neuron_densities_path)
 
     # Only one full name is missing (NaN): the entry corresponding to the ROI "IB", i.e.,
     # AIBS "Interbrain" region
-    nan_fullname_mask = densities_dataframe['Full name'].isna()
-    npt.assert_array_equal(densities_dataframe.index[nan_fullname_mask], ['IB'])
-    densities_dataframe.loc[nan_fullname_mask, 'Full name'] = 'Interbrain'
+    nan_fullname_mask = densities_dataframe["Full name"].isna()
+    npt.assert_array_equal(densities_dataframe.index[nan_fullname_mask], ["IB"])
+    densities_dataframe.loc[nan_fullname_mask, "Full name"] = "Interbrain"
 
     densities_dataframe.reset_index(drop=True, inplace=True)
     densities_dataframe = _enforce_aibs_nomenclature(region_map, densities_dataframe)
-    densities_dataframe.rename(columns={'Full name': 'brain region'}, inplace=True)
-    densities_dataframe['measurement type'] = 'cell density'
-    densities_dataframe['measurement unit'] = 'number of cells per mm^3'
+    densities_dataframe.rename(columns={"Full name": "brain region"}, inplace=True)
+    densities_dataframe["measurement type"] = "cell density"
+    densities_dataframe["measurement unit"] = "number of cells per mm^3"
     densities_dataframe = _stack_pv_sst_vip_measurements(densities_dataframe)
     _enforce_column_types(densities_dataframe, has_source=False)
 
-    densities_dataframe['source title'] = (
-        'Brain-wide Maps Reveal Stereotyped Cell-Type-Based'
-        ' Cortical Architecture and Subcortical Sexual Dimorphism'
+    densities_dataframe["source title"] = (
+        "Brain-wide Maps Reveal Stereotyped Cell-Type-Based"
+        " Cortical Architecture and Subcortical Sexual Dimorphism"
     )
-    densities_dataframe['comment'] = 'Average over genders'
-    densities_dataframe['specimen age'] = '8- to 10-week old'
+    densities_dataframe["comment"] = "Average over genders"
+    densities_dataframe["specimen age"] = "8- to 10-week old"
 
     return densities_dataframe
 
 
 def read_measurements(
-    region_map: 'RegionMap',
-    mmc3_path: Union[str, 'Path'],
-    gaba_papers_path: Union[str, 'Path'],
-    non_density_measurements_path: Union[str, 'Path'],
-) -> 'pd.DataFrame':
+    region_map: "RegionMap",
+    mmc3_path: Union[str, "Path"],
+    gaba_papers_path: Union[str, "Path"],
+    non_density_measurements_path: Union[str, "Path"],
+) -> "pd.DataFrame":
     """
     Read all cell density related measurements from file and returns a unique DataFrame
     containing them.
@@ -674,12 +665,8 @@ def read_measurements(
 
     """
     dataframe = read_kim_et_al_neuron_densities(region_map, mmc3_path)
-    dataframe = dataframe.append(
-        read_inhibitory_neuron_measurement_compilation(gaba_papers_path)
-    )
-    dataframe = dataframe.append(
-        read_pv_sst_vip_measurement_compilation(gaba_papers_path)
-    )
+    dataframe = dataframe.append(read_inhibitory_neuron_measurement_compilation(gaba_papers_path))
+    dataframe = dataframe.append(read_pv_sst_vip_measurement_compilation(gaba_papers_path))
     dataframe = dataframe.append(pd.read_csv(non_density_measurements_path))
     dataframe.reset_index(drop=True, inplace=True)
 

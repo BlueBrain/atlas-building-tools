@@ -1,6 +1,7 @@
-import pytest as pyt
 import numpy as np
 import numpy.testing as npt
+import pytest as pyt
+
 import atlas_building_tools.direction_vectors.algorithms.utils as tested
 
 
@@ -57,9 +58,7 @@ def test_compute_blur_gradient():
     gradient = tested.compute_blur_gradient(scalar_field)  # the default stddev is 3.0
     assert np.all(~np.isnan(gradient))
     assert np.all(gradient[..., 0] > 0.0)  # vectors flow along the positive x-axis
-    npt.assert_array_almost_equal(
-        np.linalg.norm(gradient, axis=3), np.full((5, 5, 5), 1.0)
-    )
+    npt.assert_array_almost_equal(np.linalg.norm(gradient, axis=3), np.full((5, 5, 5), 1.0))
 
     # The standard deviation of the Gaussian blur is too small:
     # some gradient vectors are zero, but the non-zero ones
@@ -68,9 +67,7 @@ def test_compute_blur_gradient():
     nan_mask = np.isnan(gradient)
     assert np.any(nan_mask)
     norm = np.linalg.norm(gradient, axis=3)
-    npt.assert_array_almost_equal(
-        norm[~np.isnan(norm)], np.full((5, 5, 5), 1.0)[~np.isnan(norm)]
-    )
+    npt.assert_array_almost_equal(norm[~np.isnan(norm)], np.full((5, 5, 5), 1.0)[~np.isnan(norm)])
 
     # Wrong input type
     scalar_field = np.ones((2, 2, 2), dtype=int)
@@ -112,13 +109,7 @@ def test_quaternion_converters_consistency():
         np.array([[1.0, 0.0, 0.0], [1.0, 2.0, 3.0], [3.0, 2.0, 3.0], [0.0, 2.0, 1.0]])
     )
     quaternions = tested.vector_to_quaternion(vectors)
-    npt.assert_almost_equal(
-        tested.quaternion_to_vector(quaternions), vectors, decimal=3
-    )
-    vectors = tested.normalized(
-        np.array([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]])
-    )
+    npt.assert_almost_equal(tested.quaternion_to_vector(quaternions), vectors, decimal=3)
+    vectors = tested.normalized(np.array([[np.nan, np.nan, np.nan], [np.nan, np.nan, np.nan]]))
     quaternions = tested.vector_to_quaternion(vectors)
-    npt.assert_almost_equal(
-        tested.quaternion_to_vector(quaternions), vectors, decimal=3
-    )
+    npt.assert_almost_equal(tested.quaternion_to_vector(quaternions), vectors, decimal=3)

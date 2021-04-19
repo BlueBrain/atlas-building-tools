@@ -1,4 +1,4 @@
-'''Generic algorithm for the computation of direction vectors.
+"""Generic algorithm for the computation of direction vectors.
 
 This algorithm applies to every brain region for which the fiber directions follow
 streamlines which are orthogonal to a source and a target boundary surface.
@@ -18,18 +18,18 @@ with thin shadings close to specific boundaries.
 
 A Gaussian blur is then applied to the initial scalar field and
 the normalized gradient is returned.
-'''
+"""
 
 from dataclasses import dataclass
+
 import numpy as np  # type: ignore
-from atlas_building_tools.direction_vectors.algorithms.utils import (
-    compute_blur_gradient,
-)
+
+from atlas_building_tools.direction_vectors.algorithms.utils import compute_blur_gradient
 
 
 @dataclass
 class RegionShading:
-    '''
+    """
     Data class holding the parameters used to define a thin scalar shading on a region boundary.
 
     By shading, we mean a series of values which increases with the distance to the
@@ -56,7 +56,7 @@ class RegionShading:
         invert(bool): If False, the shading's region is defined by `ids`.
             Otherwise this region is defined as the set of identifiers which don't belong to
             `ids`.
-    '''
+    """
 
     ids: list
     boundary_region: int
@@ -66,7 +66,7 @@ class RegionShading:
 
 
 def create_thick_boundary_mask(input_mask, id_reg1, id_reg2, thickness):
-    '''
+    """
     Computes a boolean mask of a `thickness`-thick boundary between two regions.
 
     Arguments:
@@ -81,7 +81,7 @@ def create_thick_boundary_mask(input_mask, id_reg1, id_reg2, thickness):
         3D numpy.ndarray of booleans where boundary voxel values are set to True.
     Raises:
         ValueError if thickness is less than or equal to 0.
-    '''
+    """
     assert isinstance(thickness, int) and thickness > 0
     output_mask = np.full(input_mask.shape, False)
     # If, for at least one of the three dimensions, say d in [x, y, z],
@@ -109,7 +109,7 @@ def create_thick_boundary_mask(input_mask, id_reg1, id_reg2, thickness):
 
 
 def shading_from_boundary(annotation, region_shading):
-    '''
+    """
     Computes a scalar field which increases with the distance to a region.
 
     This function computes an integer scalar field, similar to a distance field,
@@ -134,28 +134,24 @@ def shading_from_boundary(annotation, region_shading):
 
     Returns:
         3D numpy.ndarray of integers, i.e., integer field over the input 3D volume.
-    '''
+    """
     boundary_region = 1
     region_to_shade = 2
     region_mask = np.zeros(annotation.shape, dtype=int)
     region_mask[annotation == region_shading.boundary_region] = boundary_region
-    region_to_shade_mask = np.isin(
-        annotation, region_shading.ids, invert=region_shading.invert
-    )
+    region_to_shade_mask = np.isin(annotation, region_shading.ids, invert=region_shading.invert)
     region_mask[region_to_shade_mask] = region_to_shade
     output_field = np.zeros(annotation.shape, dtype=int)
     for thickness in range(region_shading.limit_distance, 0, -1):
         output_field[
-            create_thick_boundary_mask(
-                region_mask, region_to_shade, boundary_region, thickness
-            )
+            create_thick_boundary_mask(region_mask, region_to_shade, boundary_region, thickness)
         ] = (thickness + region_shading.boundary_offset)
     output_field[~region_to_shade_mask] = 0
     return output_field
 
 
 def compute_initial_field(annotation_raw, region_weights, shadings=()):
-    '''
+    """
     Initialize a scalar field based on local region fields.
 
     Build a scalar field whose building blocks are constant weights overlayed
@@ -182,7 +178,7 @@ def compute_initial_field(annotation_raw, region_weights, shadings=()):
     Returns:
         initial_scalar_field is an integer numpy.ndarray whose shape is
         annotation_raw.shape
-    '''
+    """
 
     initial_field = np.zeros(annotation_raw.shape, dtype=int)
 
@@ -200,7 +196,7 @@ def compute_initial_field(annotation_raw, region_weights, shadings=()):
 
 
 def compute_direction_vectors(annotation_raw, initial_field, region_of_interest):
-    '''
+    """
     Computes the annotated volume's direction vectors as the normalized gradient
     of a custom scalar field.
 
@@ -240,7 +236,7 @@ def compute_direction_vectors(annotation_raw, initial_field, region_of_interest)
         float32 numpy.ndarray of shape (annotation.shape, 3), holding a
         3D vector fields of unit vectors. Outside the region of interest,
         the returned 3D vectors have numpy.nan coordinates.
-    '''
+    """
 
     # Get a smooth float field and return its gradient.
     direction_vectors = compute_blur_gradient(initial_field.astype(np.float32))

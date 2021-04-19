@@ -1,14 +1,13 @@
-'''
+"""
 Function computing the direction vectors of the mouse isocortex
-'''
-import re
+"""
 import logging
+import re
 import warnings
-from typing import List, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, List, Union
 
 import numpy as np  # type: ignore
 from nptyping import NDArray  # type: ignore
-
 from voxcell.math_utils import minimum_aabb  # pylint: disable=ungrouped-imports
 
 from atlas_building_tools.direction_vectors.algorithms.layer_based_direction_vectors import (
@@ -17,11 +16,11 @@ from atlas_building_tools.direction_vectors.algorithms.layer_based_direction_vec
 from atlas_building_tools.direction_vectors.algorithms.regiodesics import (
     find_regiodesics_exec_or_raise,
 )
-from atlas_building_tools.utils import load_region_map, get_region_mask
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
+from atlas_building_tools.utils import get_region_mask, load_region_map
 
 if TYPE_CHECKING:  # pragma: no cover
-    from voxcell import VoxelData, RegionMap  # type: ignore
+    from voxcell import RegionMap, VoxelData  # type: ignore
 
 L = logging.getLogger(__name__)
 logging.captureWarnings(True)
@@ -31,7 +30,7 @@ logging.captureWarnings(True)
 #  * 6a, 6b
 # Reference: AIBS 1.json as of 2020/04.
 # We search for these endings with the following regular expression:
-LAYER_ENDINGS = '^([a-zA-Z]*-?[a-zA-Z]+)(?:[1-5]|2/3|6[ab])$'
+LAYER_ENDINGS = "^([a-zA-Z]*-?[a-zA-Z]+)(?:[1-5]|2/3|6[ab])$"
 
 # pylint: disable=fixme
 # TODO: get layered subregions, excluding unrepresented
@@ -39,7 +38,7 @@ LAYER_ENDINGS = '^([a-zA-Z]*-?[a-zA-Z]+)(?:[1-5]|2/3|6[ab])$'
 
 
 def get_isocortical_regions(
-    brain_regions: NDArray[int], region_map: Union[str, 'RegionMap']
+    brain_regions: NDArray[int], region_map: Union[str, "RegionMap"]
 ) -> List[str]:
     """
     Get the acronyms of all isocortical regions present in `brain_regions`.
@@ -57,12 +56,12 @@ def get_isocortical_regions(
     are returned. For the Mouse ccfv3 annotation of the same resolution,
     43 acronyms are returned.
     """
-    isocortex_mask = get_region_mask('Isocortex', brain_regions, region_map)
+    isocortex_mask = get_region_mask("Isocortex", brain_regions, region_map)
     ids = np.unique(brain_regions[isocortex_mask])
     region_map = load_region_map(region_map)
     acronyms = set()
     for id_ in ids:
-        acronym = region_map.get(id_, 'acronym')
+        acronym = region_map.get(id_, "acronym")
         search = re.search(LAYER_ENDINGS, acronym)
         if search is not None:
             acronym = search.group(1)
@@ -72,7 +71,7 @@ def get_isocortical_regions(
 
 
 def compute_direction_vectors(
-    region_map: Union[str, dict, 'RegionMap'], brain_regions: 'VoxelData'
+    region_map: Union[str, dict, "RegionMap"], brain_regions: "VoxelData"
 ) -> NDArray[np.float32]:
     """
     Compute the mouse isocortex direction vectors.
@@ -93,12 +92,11 @@ def compute_direction_vectors(
     regions = get_isocortical_regions(brain_regions.raw, region_map)
 
     for region in regions:
-        L.info('Computing direction vectors for region %s', region)
+        L.info("Computing direction vectors for region %s", region)
         region_mask = get_region_mask(region, brain_regions.raw, region_map)
         # pylint: disable=not-an-iterable
         aabb_slice = tuple(
-            slice(bottom, top + 1)
-            for (bottom, top) in np.array(minimum_aabb(region_mask)).T
+            slice(bottom, top + 1) for (bottom, top) in np.array(minimum_aabb(region_mask)).T
         )
         voxel_data = brain_regions.with_data(brain_regions.raw[aabb_slice])
         try:
@@ -108,40 +106,32 @@ def compute_direction_vectors(
                 {
                     # Note: layer 6b matches with the bottom boundary of the isocortex.
                     # Layer 6a doesn't.
-                    'source': [('acronym', '@.*6[b]$')],
-                    'inside': [('acronym', region)],
-                    'target': [('acronym', '@.*1$')],
+                    "source": [("acronym", "@.*6[b]$")],
+                    "inside": [("acronym", region)],
+                    "target": [("acronym", "@.*1$")],
                 },
-                algorithm='regiodesics',
-                hemisphere_options={'set_opposite_hemisphere_as': 'target'},
-                regiodesics_path=find_regiodesics_exec_or_raise('direction_vectors'),
+                algorithm="regiodesics",
+                hemisphere_options={"set_opposite_hemisphere_as": "target"},
+                regiodesics_path=find_regiodesics_exec_or_raise("direction_vectors"),
             )
         except AtlasBuildingToolsError as error:
             L.warning(error)
             L.warning(
-                'Direction vectors computation failed for region %s: direction vectors are '
-                'set to (NaN, NaN, NaN) in this region.',
+                "Direction vectors computation failed for region %s: direction vectors are "
+                "set to (NaN, NaN, NaN) in this region.",
                 region,
             )
             continue
 
         region_mask = region_mask[aabb_slice]
-        direction_vectors[aabb_slice][region_mask] = region_direction_vectors[
-            region_mask
-        ]
+        direction_vectors[aabb_slice][region_mask] = region_direction_vectors[region_mask]
         del region_direction_vectors
 
     # Warns about generated NaN vectors within Isocortex
     nans = np.mean(
-        np.isnan(
-            direction_vectors[
-                get_region_mask('Isocortex', brain_regions.raw, region_map)
-            ]
-        )
+        np.isnan(direction_vectors[get_region_mask("Isocortex", brain_regions.raw, region_map)])
     )
     if nans > 0:
-        warnings.warn(
-            'NaN direction vectors in {:.5%} of isocortical voxels'.format(float(nans))
-        )
+        warnings.warn("NaN direction vectors in {:.5%} of isocortical voxels".format(float(nans)))
 
     return direction_vectors

@@ -1,6 +1,6 @@
-'''
+"""
 Module dedicated to error handling.
-'''
+"""
 
 
 class AtlasBuildingToolsError(Exception):

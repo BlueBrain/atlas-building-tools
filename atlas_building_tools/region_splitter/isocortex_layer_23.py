@@ -1,4 +1,4 @@
-'''
+"""
 Algorithm splitting the layer 2/3 of the mouse isocortex into
 layer 2 and layer 3.
 
@@ -7,17 +7,17 @@ distances along the direction vectors field.
 For each voxel of the original layer 2/3, we compute its approximate distances to the top and
 the bottom of this volume. We use subsequently a thickness ratio from the scientific literature to
 decide whether a voxel belongs either to layer 2 or layer 3.
-'''
+"""
 
 import copy
 import logging
 from collections import defaultdict
 from itertools import count
-from typing import Any, Dict, Iterator, Set, TYPE_CHECKING
-from nptyping import NDArray  # type: ignore
-from tqdm import tqdm
+from typing import TYPE_CHECKING, Any, Dict, Iterator, Set
 
 import numpy as np  # type: ignore
+from nptyping import NDArray  # type: ignore
+from tqdm import tqdm
 
 # pylint: disable=ungrouped-imports
 from voxcell import RegionMap  # type: ignore
@@ -45,21 +45,21 @@ def get_isocortex_hierarchy(allen_hierachy: HierarchyDict):
         allen_hierarchy: AIBS hierarchy dict instantiated from
             http://api.brain-map.org/api/v2/structure_graph_download/1.json.
     """
-    error_msg = 'Wrong input. The AIBS 1.json file is expected.'
-    if 'msg' not in allen_hierachy:
+    error_msg = "Wrong input. The AIBS 1.json file is expected."
+    if "msg" not in allen_hierachy:
         raise AtlasBuildingToolsError(error_msg)
 
-    hierarchy = allen_hierachy['msg'][0]
+    hierarchy = allen_hierachy["msg"][0]
     try:
-        while hierarchy['acronym'] != 'Isocortex':
-            hierarchy = hierarchy['children'][0]
+        while hierarchy["acronym"] != "Isocortex":
+            hierarchy = hierarchy["children"][0]
     except KeyError as error:
         raise AtlasBuildingToolsError(error_msg) from error
 
     return hierarchy
 
 
-def create_id_generator(region_map: 'RegionMap') -> Iterator[int]:
+def create_id_generator(region_map: "RegionMap") -> Iterator[int]:
     """Create an identifiers generator.
 
     The generator produces an identifier which is different from all
@@ -71,7 +71,7 @@ def create_id_generator(region_map: 'RegionMap') -> Iterator[int]:
     Return:
         iterator providing the next id.
     """
-    last = max(region_map.find('root', attr='acronym', with_descendants=True))
+    last = max(region_map.find("root", attr="acronym", with_descendants=True))
     return count(start=last + 1)
 
 
@@ -124,30 +124,30 @@ def edit_hierarchy(
         FIXME(Luc): The meaning of st_level and atlas_id is still unclear at the moment, see
         https://community.brain-map.org/t/what-is-the-meaning-of-atlas-id-and-st-level-in-1-json
     """
-    for child in hierarchy['children']:
-        if child['acronym'].endswith('2/3'):
-            assert 'children' in child, \
-                f'Missing "children" key for region {child["name"]}.'
-            assert child['children'] == [], (
+    for child in hierarchy["children"]:
+        if child["acronym"].endswith("2/3"):
+            assert "children" in child, f'Missing "children" key for region {child["name"]}.'
+            assert child["children"] == [], (
                 f'Region {child["name"]} is has an unexpected "children" value: '
-                f'{child["children"]}. Expected: [].')
-            assert child['name'].endswith('2/3')
+                f'{child["children"]}. Expected: [].'
+            )
+            assert child["name"].endswith("2/3")
 
             # Create children
             new_children = []
-            for layer in ['layer_2', 'layer_3']:
-                new_layer_ids[child['id']][layer] = next(id_generator)
+            for layer in ["layer_2", "layer_3"]:
+                new_layer_ids[child["id"]][layer] = next(id_generator)
                 new_child = copy.deepcopy(child)
-                new_child['acronym'] = child['acronym'][:-3]
-                new_child['name'] = child['name'][:-3]
-                new_child['id'] = new_layer_ids[child['id']][layer]
-                new_child['acronym'] = new_child['acronym'] + layer[-1]
-                new_child['name'] = new_child['name'] + layer[-1]
-                new_child['parent_structure_id'] = child['id']
+                new_child["acronym"] = child["acronym"][:-3]
+                new_child["name"] = child["name"][:-3]
+                new_child["id"] = new_layer_ids[child["id"]][layer]
+                new_child["acronym"] = new_child["acronym"] + layer[-1]
+                new_child["name"] = new_child["name"] + layer[-1]
+                new_child["parent_structure_id"] = child["id"]
                 new_children.append(new_child)
 
             # Populate the current 2/3 leaf node's children
-            child['children'] = new_children
+            child["children"] = new_children
 
         edit_hierarchy(child, new_layer_ids, id_generator)
 
@@ -198,8 +198,8 @@ def _edit_layer_23(
     edit_hierarchy(isocortex_hierarchy, new_layer_ids, create_id_generator(region_map))
 
     for id_ in layer_23_ids:
-        change_volume(id_, new_layer_ids[id_]['layer_2'], layer_2_mask)
-        change_volume(id_, new_layer_ids[id_]['layer_3'], ~layer_2_mask)
+        change_volume(id_, new_layer_ids[id_]["layer_2"], layer_2_mask)
+        change_volume(id_, new_layer_ids[id_]["layer_3"], ~layer_2_mask)
 
 
 def _compute_distance_to_boundary(
@@ -240,9 +240,7 @@ def _compute_distance_to_boundary(
     distance = 0.0
     current = start.copy()
     while _is_in_volume(current, volume_mask):
-        current = (
-            current + direction_vectors[tuple(current.astype(int))] * delta * direction
-        )
+        current = current + direction_vectors[tuple(current.astype(int))] * delta * direction
         distance += delta
 
     return distance
@@ -275,12 +273,8 @@ def _get_shallowest_layer_mask(
     voxels = np.array(np.where(volume_mask)).T
 
     for voxel in tqdm(voxels):  # pylint: disable=not-an-iterable
-        forward_distance = _compute_distance_to_boundary(
-            voxel, volume_mask, direction_vectors, 1
-        )
-        backward_distance = _compute_distance_to_boundary(
-            voxel, volume_mask, direction_vectors, -1
-        )
+        forward_distance = _compute_distance_to_boundary(voxel, volume_mask, direction_vectors, 1)
+        backward_distance = _compute_distance_to_boundary(voxel, volume_mask, direction_vectors, -1)
         ratio = forward_distance / (forward_distance + backward_distance)
         layer_mask[tuple(voxel)] = bool(ratio <= thickness_ratio)
 
@@ -289,7 +283,7 @@ def _get_shallowest_layer_mask(
 
 def split(
     hierarchy: HierarchyDict,
-    annotation: 'VoxelData',
+    annotation: "VoxelData",
     direction_vectors: NDArray[float],
     thickness_ratio: float = DEFAULT_RATIO,
 ) -> None:
@@ -313,26 +307,22 @@ def split(
             layer_2 thickness / (layer_2 thickness + layer_3 thickness)
             Defaults to `DEFAULT_RATIO`.
     """
-    assert (
-        'msg' in hierarchy
-    ), 'Wrong hierarchy input. The AIBS 1.json file is expected.'
-    region_map = RegionMap.from_dict(hierarchy['msg'][0])
-    isocortex_ids = region_map.find('Isocortex', attr='acronym', with_descendants=True)
+    assert "msg" in hierarchy, "Wrong hierarchy input. The AIBS 1.json file is expected."
+    region_map = RegionMap.from_dict(hierarchy["msg"][0])
+    isocortex_ids = region_map.find("Isocortex", attr="acronym", with_descendants=True)
     layers_2_and_3_ids = isocortex_ids & region_map.find(
-        '@.*2(/3)?$', attr='acronym', with_descendants=True
+        "@.*2(/3)?$", attr="acronym", with_descendants=True
     )
 
-    L.info('Computing the mask of the voxels of thickness at most %f', thickness_ratio)
+    L.info("Computing the mask of the voxels of thickness at most %f", thickness_ratio)
     layer_2_mask = _get_shallowest_layer_mask(
         np.isin(annotation.raw, list(layers_2_and_3_ids)),
         thickness_ratio,
         direction_vectors,
     )
-    layer_23_ids = isocortex_ids & region_map.find(
-        '@.*2/3$', attr='acronym', with_descendants=True
-    )
+    layer_23_ids = isocortex_ids & region_map.find("@.*2/3$", attr="acronym", with_descendants=True)
 
-    L.info('Editing annotation and hierarchy files ...')
+    L.info("Editing annotation and hierarchy files ...")
     _edit_layer_23(
         hierarchy,
         region_map,

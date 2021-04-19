@@ -43,9 +43,7 @@ To load Regiodesics on the BB5 cluster, run the following command:
 
 .. code-block:: bash
 
-    module load regiodesics/0.1.1
-
-where 0.1.1 can be replaced by any deployed git tag.
+    module load regiodesics/0.1.2
 
 For an installation of Regiodesics from the sources, install cmake (version >= 3.5 required),
 boost and OpenSceneGraph_ first.
@@ -73,7 +71,7 @@ To load Ultraliser on the BB5 cluster, run the following command:
 
 .. code-block:: bash
 
-    module load ultraliser
+    module load unstable ultraliser/0.2.0
 
 
 For an installation of Ultraliser from the sources, install cmake (version >= 3.5 required) and proceed as follows.
@@ -100,14 +98,11 @@ If you are using conda_, then libspatialindex should be installed automatically 
 
 If this is not the case, you can install libspatialindex via brew_ on MacOS or via apt-get_ on Ubuntu systems.
 
-On the BB5 cluster, the following commands install libspatialindex:
+On the BB5 cluster, install rtree and its dependency libspatialindex with:
 
 .. code-block:: bash
 
-    git clone https://github.com/BlueBrain/spack.git spack --depth 1
-    source spack/share/spack/setup-env.sh
-    spack install py-rtree
-    spack load py-rtree
+    module load unstable py-rtree/0.8.3
 
 
 cgal-pybind
@@ -116,14 +111,22 @@ The BBP python project cgal-pybind_ contains python bindings for several functio
 CGAL_ C++ library. The algorithm of atlas-building-tools which creates a flat map uses specifically
 CGAL's `authalic map`_.
 
-On the BB5 cluster, the following commands install cgal-pybind:
+On the BB5 cluster, install cgal-pybind with:
 
 .. code-block:: bash
 
-    git clone https://github.com/BlueBrain/spack.git spack --depth 1
-    source spack/share/spack/setup-env.sh
-    spack install py-cgal-pybind
-    spack load py-cgal-pybind
+    module load unstable py-cgal-pybind/0.0.2
+
+poisson-recon-pybind
+--------------------
+The BBP python project poisson-recon-pybind_ contains python bindings for the reconstruction
+surface algorithm of PoissonRecon_.
+
+On the BB5 cluster, install poisson-recon-pybind with:
+
+.. code-block:: bash
+
+    module load unstable py-poisson-recon-pybind/0.1.0
 
 
 .. _`Allen Institute for Brain Science (AIBS)`: https://alleninstitute.org/what-we-do/brain-science/
@@ -138,6 +141,8 @@ On the BB5 cluster, the following commands install cgal-pybind:
 .. _libspatialindex: https://libspatialindex.org/
 .. _OpenSceneGraph: http://www.openscenegraph.org/
 .. _`placement-algorithm`: https://bbpteam.epfl.ch/documentation/projects/placement-algorithm/latest/index.html
+.. _PoissonRecon: https://github.com/mkazhdan/PoissonRecon
+.. _`poisson-recon-pybind`: https://bbpgitlab.epfl.ch/nse/poisson-recon-pybind
 .. _Regiodesics: https://bbpcode.epfl.ch/browse/code/viz/Regiodesics/tree/
 .. _Rtree: https://pypi.org/project/Rtree/
 .. _Ultraliser: https://bbpcode.epfl.ch/browse/code/viz/Ultraliser/tree/

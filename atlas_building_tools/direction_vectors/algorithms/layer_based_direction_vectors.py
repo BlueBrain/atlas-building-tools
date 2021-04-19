@@ -1,4 +1,4 @@
-'''
+"""
 Generic script to compute direction vectors of a laminar region.
 
 This script supports the case of regions separated in two hemispheres such as the isocortex or
@@ -14,23 +14,19 @@ In Regiodesics terminology, these correspond respectively to the bottom and top
 shells, a.k.a lower and upper shells.
 
 This script is used to compute the mouse isocortex and the mouse thalamus directions vectors.
-'''
+"""
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 from nptyping import NDArray  # type: ignore
-
 from voxcell import RegionMap, VoxelData  # type: ignore
 
-from atlas_building_tools.direction_vectors.algorithms import (
-    simple_blur_gradient,
-    regiodesics,
-)
+from atlas_building_tools.direction_vectors.algorithms import regiodesics, simple_blur_gradient
 from atlas_building_tools.utils import load_region_map, split_into_halves
 
 ALGORITHMS: Dict[str, Callable] = {
-    'simple_blur_gradient': simple_blur_gradient.compute_direction_vectors,
-    'regiodesics': regiodesics.compute_direction_vectors,
+    "simple_blur_gradient": simple_blur_gradient.compute_direction_vectors,
+    "regiodesics": regiodesics.compute_direction_vectors,
 }
 
 
@@ -56,9 +52,7 @@ def attributes_to_ids(
     region_map = load_region_map(region_map)
     ids = set()
     for (attribute, value) in attributes:
-        ids |= region_map.find(
-            value, attribute, ignore_case=False, with_descendants=True
-        )
+        ids |= region_map.find(value, attribute, ignore_case=False, with_descendants=True)
     return list(ids)
 
 
@@ -104,44 +98,40 @@ def direction_vectors_for_hemispheres(
         Outside the `inside` volume, the returned direction vectors have np.nan coordinates.
     """
     if algorithm not in ALGORITHMS:
-        raise ValueError('algorithm must be one of {}'.format(ALGORITHMS.keys()))
+        raise ValueError("algorithm must be one of {}".format(ALGORITHMS.keys()))
 
     set_opposite_hemisphere_as = (
-        hemisphere_options['set_opposite_hemisphere_as']
-        if hemisphere_options is not None
-        else None
+        hemisphere_options["set_opposite_hemisphere_as"] if hemisphere_options is not None else None
     )
-    if set_opposite_hemisphere_as not in {None, 'source', 'target'}:
+    if set_opposite_hemisphere_as not in {None, "source", "target"}:
         raise (
             ValueError(
-                'Argument \"set_opposite_hemisphere_as\" should be None, \"source\" or'
-                ' \"target\". Got {}'.format(set_opposite_hemisphere_as)
+                'Argument "set_opposite_hemisphere_as" should be None, "source" or'
+                ' "target". Got {}'.format(set_opposite_hemisphere_as)
             )
         )
-    hemisphere_masks = [landscape['inside']]
+    hemisphere_masks = [landscape["inside"]]
     if hemisphere_options is not None:
         # We assume that the region of interest has two hemispheres
         # which are symetric wrt the plane z = volume.shape[2] // 2.
         hemisphere_masks = split_into_halves(  # type: ignore
-            np.ones(landscape['inside'].shape, dtype=bool)
+            np.ones(landscape["inside"].shape, dtype=bool)
         )
 
-    direction_vectors = np.full(
-        landscape['inside'].shape + (3,), np.nan, dtype=np.float32
-    )
+    direction_vectors = np.full(landscape["inside"].shape + (3,), np.nan, dtype=np.float32)
     for hemisphere in hemisphere_masks:
         source = (
-            np.logical_or(landscape['source'], ~hemisphere)
-            if set_opposite_hemisphere_as == 'source'
-            else np.logical_and(landscape['source'], hemisphere)
+            np.logical_or(landscape["source"], ~hemisphere)
+            if set_opposite_hemisphere_as == "source"
+            else np.logical_and(landscape["source"], hemisphere)
         )
         target = (
-            np.logical_or(landscape['target'], ~hemisphere)
-            if set_opposite_hemisphere_as == 'target'
-            else np.logical_and(landscape['target'], hemisphere)
+            np.logical_or(landscape["target"], ~hemisphere)
+            if set_opposite_hemisphere_as == "target"
+            else np.logical_and(landscape["target"], hemisphere)
         )
         direction_vectors[hemisphere] = ALGORITHMS[algorithm](
-            source, np.logical_and(landscape['inside'], hemisphere), target, **kwargs
+            source, np.logical_and(landscape["inside"], hemisphere), target, **kwargs
         )[hemisphere]
 
     return direction_vectors
@@ -155,7 +145,7 @@ def compute_direction_vectors(
     region_map: Union[str, dict, RegionMap],
     brain_regions: Union[str, VoxelData],
     landscape: Dict[str, AttributeList],
-    algorithm: str = 'simple_blur_gradient',
+    algorithm: str = "simple_blur_gradient",
     hemisphere_options: Optional[Dict[str, Union[str, None]]] = None,
     **kwargs: Union[int, float, str]
 ) -> NDArray[np.float32]:
@@ -194,27 +184,25 @@ def compute_direction_vectors(
 
     """
     if algorithm not in ALGORITHMS:
-        raise ValueError('`algorithm` must be one of {}'.format(ALGORITHMS))
+        raise ValueError("`algorithm` must be one of {}".format(ALGORITHMS))
 
     if isinstance(brain_regions, str):
         brain_regions = VoxelData.load_nrrd(brain_regions)
     else:
         if not isinstance(brain_regions, VoxelData):
-            raise ValueError(
-                '`brain_regions` must be specified as a path or a VoxelData object.'
-            )
+            raise ValueError("`brain_regions` must be specified as a path or a VoxelData object.")
     landscape = {
-        'source': np.isin(
+        "source": np.isin(
             brain_regions.raw,  # type: ignore
-            attributes_to_ids(region_map, landscape['source']),
+            attributes_to_ids(region_map, landscape["source"]),
         ),
-        'inside': np.isin(
+        "inside": np.isin(
             brain_regions.raw,  # type: ignore
-            attributes_to_ids(region_map, landscape['inside']),
+            attributes_to_ids(region_map, landscape["inside"]),
         ),
-        'target': np.isin(
+        "target": np.isin(
             brain_regions.raw,  # type: ignore
-            attributes_to_ids(region_map, landscape['target']),
+            attributes_to_ids(region_map, landscape["target"]),
         ),
     }
     direction_vectors = direction_vectors_for_hemispheres(

@@ -1,6 +1,7 @@
-'''Functions to compute the average soma radii of different brain regions.'''
+"""Functions to compute the average soma radii of different brain regions."""
 
-from typing import Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
+
 import numpy as np
 from nptyping import NDArray  # type: ignore
 
@@ -9,7 +10,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def _compute_whole_brain_average_soma_radius(
-    region_map: 'RegionMap', annotation_raw: NDArray[float], soma_radii: Dict[int, str]
+    region_map: "RegionMap", annotation_raw: NDArray[float], soma_radii: Dict[int, str]
 ) -> float:
     """
     Compute the whole-brain average soma radius weighted by region volumes
@@ -27,18 +28,15 @@ def _compute_whole_brain_average_soma_radius(
 
     """
     ids = (
-        list(region_map.find(id_, attr='id', with_descendants=True))
-        for id_ in soma_radii.keys()
+        list(region_map.find(id_, attr="id", with_descendants=True)) for id_ in soma_radii.keys()
     )
-    volumes = np.array(
-        [np.count_nonzero(np.isin(annotation_raw, id_group)) for id_group in ids]
-    )
+    volumes = np.array([np.count_nonzero(np.isin(annotation_raw, id_group)) for id_group in ids])
     radii = np.array([float(radius) for radius in soma_radii.values()])
     return np.average(radii, weights=volumes)
 
 
 def apply_soma_area_correction(
-    region_map: 'RegionMap',
+    region_map: "RegionMap",
     annotation_raw: NDArray[float],
     nissl: NDArray[float],
     soma_radii: Dict[int, str],
@@ -73,9 +71,7 @@ def apply_soma_area_correction(
             are the regions average soma radii.
     """
 
-    mean_radius = _compute_whole_brain_average_soma_radius(
-        region_map, annotation_raw, soma_radii
-    )
+    mean_radius = _compute_whole_brain_average_soma_radius(region_map, annotation_raw, soma_radii)
     weights = np.full(annotation_raw.shape, np.pi * (mean_radius ** 2))
     for id_, radius in soma_radii.items():
         weights[annotation_raw == id_] = np.pi * (float(radius) ** 2)
@@ -83,10 +79,10 @@ def apply_soma_area_correction(
     # In CCFv2 2011 and in the images used to estimate the soma radii, the fiber tracts are
     # assigned a unique 'root' identifier, that is 1009 (from 1.json as of 2020/06). This is
     # why we use a uniform soma area for all subregions of the fiber tracts.
-    fiber_tracts_id = list(region_map.find('fiber tracts', attr='acronym'))[0]
+    fiber_tracts_id = list(region_map.find("fiber tracts", attr="acronym"))[0]
     if fiber_tracts_id in soma_radii:
         fiber_tracts_ids = list(
-            region_map.find('fiber tracts', attr='acronym', with_descendants=True)
+            region_map.find("fiber tracts", attr="acronym", with_descendants=True)
         )
         radius_ = float(soma_radii[fiber_tracts_id])
         weights[np.isin(annotation_raw, fiber_tracts_ids)] = np.pi * (radius_ ** 2)

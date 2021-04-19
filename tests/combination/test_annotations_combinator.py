@@ -1,7 +1,6 @@
-'''test annotations_combinator'''
+"""test annotations_combinator"""
 import numpy as np
 import numpy.testing as npt
-
 import voxcell
 
 import atlas_building_tools.combination.annotations_combinator as tested
@@ -9,15 +8,15 @@ import atlas_building_tools.combination.annotations_combinator as tested
 
 def test_is_ancestor():
     hierachy = {
-        'id': 1,
-        'acronym': 'root',
-        'children': [
+        "id": 1,
+        "acronym": "root",
+        "children": [
             {
-                'id': 2,
-                'acronym': 'below',
-                'children': [
-                    {'id': 3, 'acronym': 'below_3'},
-                    {'id': 4, 'acronym': 'below_4'},
+                "id": 2,
+                "acronym": "below",
+                "children": [
+                    {"id": 3, "acronym": "below_3"},
+                    {"id": 4, "acronym": "below_4"},
                 ],
             }
         ],
@@ -32,22 +31,20 @@ def test_is_ancestor():
         ]
     )
     region_map = voxcell.RegionMap.from_dict(hierachy)
-    npt.assert_array_equal(
-        tested.is_ancestor(region_map, ccfv3_raw, ccfv2_raw), expected
-    )
+    npt.assert_array_equal(tested.is_ancestor(region_map, ccfv3_raw, ccfv2_raw), expected)
 
 
 def test_combine_annotations_fiber_tracts_are_merged():
     hierachy = {
-        'id': 1,
-        'acronym': 'root',
-        'children': [
+        "id": 1,
+        "acronym": "root",
+        "children": [
             {
-                'id': 2,
-                'acronym': 'below',
-                'children': [
-                    {'id': 3, 'acronym': 'below_3'},
-                    {'id': 4, 'acronym': 'below_4'},
+                "id": 2,
+                "acronym": "below",
+                "children": [
+                    {"id": 3, "acronym": "below_3"},
+                    {"id": 4, "acronym": "below_4"},
                 ],
             }
         ],
@@ -84,15 +81,15 @@ def test_combine_annotations_fiber_tracts_are_merged():
 
 def test_combine_annotations_non_leaf_ids_are_replaced():
     hierachy = {
-        'id': 1,
-        'acronym': 'root',
-        'children': [
+        "id": 1,
+        "acronym": "root",
+        "children": [
             {
-                'id': 2,
-                'acronym': 'grey',
-                'children': [
-                    {'id': 3, 'acronym': 'grey_3'},
-                    {'id': 4, 'acronym': 'grey_4'},
+                "id": 2,
+                "acronym": "grey",
+                "children": [
+                    {"id": 3, "acronym": "grey_3"},
+                    {"id": 4, "acronym": "grey_4"},
                 ],
             }
         ],
@@ -128,7 +125,7 @@ def test_combine_annotations_non_leaf_ids_are_replaced():
 
 
 def test_combine_annotations_zeros_are_ignored():
-    hierachy = {'id': 1, 'acronym': 'root', 'children': []}
+    hierachy = {"id": 1, "acronym": "root", "children": []}
     region_map = voxcell.RegionMap.from_dict(hierachy)
     shape = (2, 2, 2)
     voxel_dimensions = (10.0, 10.0, 10.0)
@@ -159,24 +156,24 @@ def test_combine_annotations_zeros_are_ignored():
 
 def test_ccfv2_overrides_ancestors():
     hierachy = {
-        'id': 1,
-        'acronym': 'root',
-        'children': [
+        "id": 1,
+        "acronym": "root",
+        "children": [
             {
-                'id': 2,
-                'acronym': 'left',
-                'children': [
-                    {'id': 3, 'acronym': 'below_3'},
-                    {'id': 4, 'acronym': 'below_4'},
-                    {'id': 8, 'acronym': 'below_8'},
+                "id": 2,
+                "acronym": "left",
+                "children": [
+                    {"id": 3, "acronym": "below_3"},
+                    {"id": 4, "acronym": "below_4"},
+                    {"id": 8, "acronym": "below_8"},
                 ],
             },
             {
-                'id': 5,
-                'acronym': 'right',
-                'children': [
-                    {'id': 6, 'acronym': 'below_6'},
-                    {'id': 7, 'acronym': 'below_7'},
+                "id": 5,
+                "acronym": "right",
+                "children": [
+                    {"id": 6, "acronym": "below_6"},
+                    {"id": 7, "acronym": "below_7"},
                 ],
             },
         ],
@@ -202,40 +199,40 @@ def test_ccfv2_overrides_ancestors():
 
 def test_combine_annotations():
     hierachy = {
-        'id': 1,
-        'acronym': 'root',
-        'children': [
+        "id": 1,
+        "acronym": "root",
+        "children": [
             {
-                'id': 2,
-                'acronym': 'left',
-                'children': [
-                    {'id': 3, 'acronym': 'left_3'},
-                    {'id': 4, 'acronym': 'left_4'},
+                "id": 2,
+                "acronym": "left",
+                "children": [
+                    {"id": 3, "acronym": "left_3"},
+                    {"id": 4, "acronym": "left_4"},
                 ],
             },
             {
-                'id': 5,
-                'acronym': 'fibers',
-                'children': [
+                "id": 5,
+                "acronym": "fibers",
+                "children": [
                     {
-                        'id': 6,
-                        'acronym': 'fiber_6',
-                        'children': [
-                            {'id': 8, 'acronym': 'fiber_8'},
-                            {'id': 9, 'acronym': 'fiber_9'},
+                        "id": 6,
+                        "acronym": "fiber_6",
+                        "children": [
+                            {"id": 8, "acronym": "fiber_8"},
+                            {"id": 9, "acronym": "fiber_9"},
                         ],
                     },
                     {
-                        'id': 7,
-                        'acronym': 'fiber_7',
-                        'children': [
-                            {'id': 10, 'acronym': 'fiber_10'},
-                            {'id': 11, 'acronym': 'fiber_11'},
+                        "id": 7,
+                        "acronym": "fiber_7",
+                        "children": [
+                            {"id": 10, "acronym": "fiber_10"},
+                            {"id": 11, "acronym": "fiber_11"},
                         ],
                     },
                 ],
             },
-            {'id': 12, 'acronym': 'right'},
+            {"id": 12, "acronym": "right"},
         ],
     }
     region_map = voxcell.RegionMap.from_dict(hierachy)

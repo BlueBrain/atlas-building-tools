@@ -1,4 +1,4 @@
-'''Function computing the direction vectors of the AIBS mouse cerebellum
+"""Function computing the direction vectors of the AIBS mouse cerebellum
 
 The algorithm creates a scalar field with low values in surfaces where fiber tracts are incoming
 and high values where fiber tracts are outgoing. The direction vectors are given by the gradient
@@ -7,21 +7,19 @@ of this scalar field.
 Note: At the moment, direction vectors are generated only for the following cerebellum subregions:
     - the flocculus
     - the lingula
-'''
+"""
 import numpy as np  # type: ignore
 from nptyping import NDArray  # type: ignore
 
-
-from atlas_building_tools.direction_vectors.algorithms.blur_gradient import (
-    compute_initial_field,
-    RegionShading,
-)
-
 import atlas_building_tools.direction_vectors.algorithms.blur_gradient as blur_gradient
+from atlas_building_tools.direction_vectors.algorithms.blur_gradient import (
+    RegionShading,
+    compute_initial_field,
+)
 
 
 def compute_direction_vectors(annotation_raw: NDArray[float]) -> NDArray[float]:
-    '''
+    """
     Computes cerebellum's direction vectors as the normalized gradient of a custom scalar field.
 
     The computations are restricted to the flocculus and the lingula subregions.
@@ -43,7 +41,7 @@ def compute_direction_vectors(annotation_raw: NDArray[float]) -> NDArray[float]:
 
     Returns:
         numpy.ndarray of shape (annotation.shape, 3) holding a 3D unit vector field.
-    '''
+    """
 
     # Flocculus
     flocculus_weights = {
@@ -54,9 +52,7 @@ def compute_direction_vectors(annotation_raw: NDArray[float]) -> NDArray[float]:
         0: 3,  # outside the brain
     }
     # Shading applied from the molecular layer to the outside of flocculus.
-    shading_on_flocculus_complement = [
-        RegionShading([728, 10691, 10690], 10692, 1, 4, invert=True)
-    ]
+    shading_on_flocculus_complement = [RegionShading([728, 10691, 10690], 10692, 1, 4, invert=True)]
     flocculus = [10690, 10691, 10692]
     flocculus_field = compute_initial_field(
         annotation_raw, flocculus_weights, shading_on_flocculus_complement

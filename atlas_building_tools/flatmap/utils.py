@@ -1,13 +1,13 @@
-'''
+"""
 Utils functions to flatten a laminar brain region.
-'''
+"""
 import logging
-from typing import Set, TYPE_CHECKING
-from nptyping import NDArray
+from typing import TYPE_CHECKING, Set
+
 import numpy as np
 import trimesh
-
-from poisson_recon_pybind import create_poisson_surface, Vector3dVector
+from nptyping import NDArray
+from poisson_recon_pybind import Vector3dVector, create_poisson_surface
 
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
@@ -17,9 +17,7 @@ if TYPE_CHECKING:
 L = logging.getLogger(__name__)
 
 
-def reconstruct_surface_mesh(
-    volume: NDArray[bool], normals: 'VoxelData'
-) -> trimesh.Trimesh:
+def reconstruct_surface_mesh(volume: NDArray[bool], normals: "VoxelData") -> trimesh.Trimesh:
     """
     Reconstruct a 3D surface mesh from a 3D binary image.
 
@@ -52,7 +50,7 @@ def reconstruct_surface_mesh(
     """
     points = normals.indices_to_positions(np.array(np.nonzero(volume)).T)
     normals = normals.raw[volume]
-    L.info('Reconstructing the Poisson surface mesh (poisson_recon_pybind) ...')
+    L.info("Reconstructing the Poisson surface mesh (poisson_recon_pybind) ...")
     vertices, triangles = create_poisson_surface(Vector3dVector(points), Vector3dVector(normals))
     poisson_mesh = trimesh.Trimesh(
         vertices=np.asarray(vertices),
@@ -60,7 +58,7 @@ def reconstruct_surface_mesh(
     )
 
     # Cleanup
-    L.info('Cleaning up the resulting Poisson mesh ...')
+    L.info("Cleaning up the resulting Poisson mesh ...")
     poisson_mesh.merge_vertices()
     poisson_mesh.process(validate=True)
     poisson_mesh.fill_holes()
@@ -72,7 +70,7 @@ def reconstruct_surface_mesh(
 
 def create_layers_volume(
     annotated_volume: NDArray[int],
-    region_map: 'RegionMap',
+    region_map: "RegionMap",
     metadata: dict,
     subregion_ids: Set[int] = None,
 ):
@@ -104,34 +102,32 @@ def create_layers_volume(
         annotated volume are labeled with the 0 index.
     """
 
-    if 'layers' not in metadata:
+    if "layers" not in metadata:
         raise AtlasBuildingToolsError('Missing "layers" key')
 
-    metadata_layers = metadata['layers']
+    metadata_layers = metadata["layers"]
 
-    missing = {'names', 'queries', 'attribute'} - set(metadata_layers.keys())
+    missing = {"names", "queries", "attribute"} - set(metadata_layers.keys())
     if missing:
         err_msg = (
             'The "layers" dictionary has the following mandatory keys: '
             '"names", "queries" and "attribute".'
-            f' Missing: {missing}.'
+            f" Missing: {missing}."
         )
         raise AtlasBuildingToolsError(err_msg)
 
     if not (
-        isinstance(metadata_layers['names'], list)
-        and isinstance(metadata_layers['queries'], list)
-        and len(metadata_layers['names']) == len(metadata_layers['queries'])
+        isinstance(metadata_layers["names"], list)
+        and isinstance(metadata_layers["queries"], list)
+        and len(metadata_layers["names"]) == len(metadata_layers["queries"])
     ):
         raise AtlasBuildingToolsError(
             'The values of "names" and "queries" must be lists of the same length'
         )
 
     layers = np.zeros_like(annotated_volume, dtype=np.uint8)
-    for (index, query) in enumerate(metadata_layers['queries'], 1):
-        layer_ids = region_map.find(
-            query, attr=metadata_layers['attribute'], with_descendants=True
-        )
+    for (index, query) in enumerate(metadata_layers["queries"], 1):
+        layer_ids = region_map.find(query, attr=metadata_layers["attribute"], with_descendants=True)
         if subregion_ids is not None:
             layer_ids = layer_ids & subregion_ids
         layers[np.isin(annotated_volume, list(layer_ids))] = index

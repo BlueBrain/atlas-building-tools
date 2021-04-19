@@ -1,4 +1,4 @@
-'''Detect cells and compute average cell radii for different regions of the
+"""Detect cells and compute average cell radii for different regions of the
 AIBS P56 Mouse brain.
 
 The input image files are
@@ -36,18 +36,18 @@ the jpg nissl images.
 Lexicon:
     * AIBS stands for 'Allen Institute for Brain Science'
     (https://alleninstitute.org/what-we-do/brain-science/)
-'''
+"""
 import json
-from pathlib import Path
 import logging
-import click
+from pathlib import Path
 
+import click
 
 from atlas_building_tools import cell_detection
 from atlas_building_tools.app.utils import (
-    log_args,
     EXISTING_DIR_PATH,
     EXISTING_FILE_PATH,
+    log_args,
     set_verbose,
 )
 
@@ -55,31 +55,31 @@ L = logging.getLogger(__name__)
 
 
 @click.group()
-@click.option('-v', '--verbose', count=True)
+@click.option("-v", "--verbose", count=True)
 def app(verbose):
-    '''Run the cell detection CLI'''
+    """Run the cell detection CLI"""
     set_verbose(L, verbose)
 
 
 @app.command()
 @click.option(
-    '--input-dir',
+    "--input-dir",
     type=EXISTING_DIR_PATH,
     required=True,
-    help=('This directory contains a list of svg files to convert.'),
+    help=("This directory contains a list of svg files to convert."),
 )
 @click.option(
-    '--remove-strokes',
+    "--remove-strokes",
     is_flag=True,
-    help='Removes the strokes surrounding colored areas.',
+    help="Removes the strokes surrounding colored areas.",
     default=False,
 )
 @click.option(
-    '--output-dir',
+    "--output-dir",
     type=str,
     required=True,
-    help='Directory where the png files will be saved. It will be '
-    'created if it doesn\'t exist already.',
+    help="Directory where the png files will be saved. It will be "
+    "created if it doesn't exist already.",
 )
 @log_args(L)
 def svg_to_png(
@@ -91,33 +91,33 @@ def svg_to_png(
 
     Strokes are optionally removed.
     """
-    filepaths = [Path.resolve(f) for f in Path(input_dir).glob('*.svg')]
+    filepaths = [Path.resolve(f) for f in Path(input_dir).glob("*.svg")]
     output_dir = Path(output_dir)
     if not output_dir.exists():
         output_dir.mkdir()
     for filepath in filepaths:
         cell_detection.svg_to_png(
             filepath,
-            Path(output_dir, filepath.name.replace('.svg', '.png')),
+            Path(output_dir, filepath.name.replace(".svg", ".png")),
             remove_strokes=remove_strokes,
         )
 
 
 @app.command()
 @click.option(
-    '--input-dir',
+    "--input-dir",
     type=EXISTING_DIR_PATH,
     required=True,
     help=(
-        'Path to the image directory. This directory contains a list of svg files to parse for '
-        'extracting fill color and AIBS structure_id values.'
+        "Path to the image directory. This directory contains a list of svg files to parse for "
+        "extracting fill color and AIBS structure_id values."
     ),
 )
 @click.option(
-    '--output-path',
+    "--output-path",
     type=str,
     required=True,
-    help='Path where the output json file will be saved.',
+    help="Path where the output json file will be saved.",
 )
 @log_args(L)
 def extract_color_map(
@@ -141,41 +141,39 @@ def extract_color_map(
            "#40a666": 810,\n
        }
     """
-    filepaths = [Path.resolve(f) for f in Path(input_dir).glob('*.svg')]
+    filepaths = [Path.resolve(f) for f in Path(input_dir).glob("*.svg")]
     color_map = {}
     for filepath in filepaths:
         color_map.update(cell_detection.extract_color_map(filepath))
-    with open(output_path, 'w') as out:
-        json.dump(color_map, out, indent=1, separators=(',', ': '))
+    with open(output_path, "w") as out:
+        json.dump(color_map, out, indent=1, separators=(",", ": "))
 
 
 @app.command()
 @click.option(
-    '--input-dir',
+    "--input-dir",
     type=EXISTING_DIR_PATH,
     required=True,
     help=(
-        'Path to the image directory. This directory contains a list of jpg and png files whose '
-        ' identical base names are brain section identifiers. The jpg files are nissl images. '
-        'The png files hold colored annotation.'
+        "Path to the image directory. This directory contains a list of jpg and png files whose "
+        " identical base names are brain section identifiers. The jpg files are nissl images. "
+        "The png files hold colored annotation."
     ),
 )
 @click.option(
-    '--color-map-path',
+    "--color-map-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=(
-        'The path to the json file mapping hexdecimal color codes to AIBS structure ids.'
-    ),
+    help=("The path to the json file mapping hexdecimal color codes to AIBS structure ids."),
 )
 @click.option(
-    '--output-path',
+    "--output-path",
     type=str,
     required=True,
-    help='Path where the output json file will be saved. This file encloses a dictionary '
-    'whose keys are region identifiers (a.k.a structure id) and whose values are the corresponding '
-    'average soma radii. Note that the computation is possible only for a small subset '
-    ' of regions for which both a nissle image (jpg) and an annotation image (svg) exist.',
+    help="Path where the output json file will be saved. This file encloses a dictionary "
+    "whose keys are region identifiers (a.k.a structure id) and whose values are the corresponding "
+    "average soma radii. Note that the computation is possible only for a small subset "
+    " of regions for which both a nissle image (jpg) and an annotation image (svg) exist.",
 )
 @log_args(L)
 def compute_average_soma_radius(
@@ -190,12 +188,12 @@ def compute_average_soma_radius(
     """
     # We take only .jpg file names since the .png files names are identical,
     # apart from the extension.
-    filepaths = [Path.resolve(f) for f in Path(input_dir).glob('*.jpg')]
+    filepaths = [Path.resolve(f) for f in Path(input_dir).glob("*.jpg")]
 
-    with open(color_map_path, 'r') as file_:
+    with open(color_map_path, "r") as file_:
         color_map = json.load(file_)
         soma_radius_dict = cell_detection.compute_average_soma_radius(
             color_map, filepaths, delta=16, max_radius=10, intensity_threshold=0.1
         )
-        with open(output_path, 'w+') as out:
-            json.dump(soma_radius_dict, out, indent=1, separators=(',', ': '))
+        with open(output_path, "w+") as out:
+            json.dump(soma_radius_dict, out, indent=1, separators=(",", ": "))

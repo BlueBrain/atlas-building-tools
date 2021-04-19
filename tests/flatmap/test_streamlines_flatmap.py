@@ -1,12 +1,11 @@
-'''test for streamlines_flatmap'''
+"""test for streamlines_flatmap"""
 
 import numpy as np
 import numpy.testing as npt
-
 from voxcell import VoxelData  # type: ignore
 
-from atlas_building_tools.flatmap.utils import reconstruct_surface_mesh
 import atlas_building_tools.flatmap.streamlines_flatmap as tested
+from atlas_building_tools.flatmap.utils import reconstruct_surface_mesh
 
 
 def get_layers():
@@ -16,7 +15,7 @@ def get_layers():
         layers[i * 5 : (i + 1) * 5, ...] = i + 1
 
     # The final shape is (24 ,7, 7)
-    return np.pad(layers, 2, 'constant', constant_values=0)
+    return np.pad(layers, 2, "constant", constant_values=0)
 
 
 def get_vector_field():
@@ -79,18 +78,15 @@ def test_find_closest_vertices():
     assert voxel_to_vertex_index_map[14, 1, 4] == -1
 
     delta = np.linalg.norm(
-        voxel_to_point_map[3, 3, 3]
-        - boundary_mesh.vertices[voxel_to_vertex_index_map[3, 3, 3]]
+        voxel_to_point_map[3, 3, 3] - boundary_mesh.vertices[voxel_to_vertex_index_map[3, 3, 3]]
     )
     assert delta <= 0.25
     delta = np.linalg.norm(
-        voxel_to_point_map[2, 4, 3]
-        - boundary_mesh.vertices[voxel_to_vertex_index_map[2, 4, 3]]
+        voxel_to_point_map[2, 4, 3] - boundary_mesh.vertices[voxel_to_vertex_index_map[2, 4, 3]]
     )
     assert delta <= 0.25
     delta = np.linalg.norm(
-        voxel_to_point_map[17, 3, 4]
-        - boundary_mesh.vertices[voxel_to_vertex_index_map[17, 3, 4]]
+        voxel_to_point_map[17, 3, 4] - boundary_mesh.vertices[voxel_to_vertex_index_map[17, 3, 4]]
     )
     assert delta <= 0.25
 
@@ -117,9 +113,7 @@ def test_compute_voxel_to_pixel_map():
 
 
 def test_compute_flatmap():
-    flatmap = tested.compute_flatmap(
-        get_layers(), get_vector_field(), 2, 3, resolution=25
-    )
+    flatmap = tested.compute_flatmap(get_layers(), get_vector_field(), 2, 3, resolution=25)
 
     assert np.all(flatmap[get_layers() > 0] >= 0)
     assert np.max(flatmap[..., 0]) <= 25

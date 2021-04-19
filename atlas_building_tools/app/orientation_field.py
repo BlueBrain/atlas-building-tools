@@ -1,4 +1,4 @@
-'''Turn direction vectors into quaternions interpreted as 3D orientations
+"""Turn direction vectors into quaternions interpreted as 3D orientations
 
 This command takes as input a field of 3D unit vectors and outputs a field of quaternions
 under the format (w, x, y, z) defined over the annotated volume.
@@ -16,40 +16,41 @@ the y-axis of q is directed along e. The latter is a requirement of the morpholo
 convention used by the placement algorithm, see
 https://bbpteam.epfl.ch/documentation/projects/placement-algorithm/latest/index.html.
 
-'''
+"""
 import logging
+
 import click
-
-
 import voxcell  # type: ignore
-from atlas_building_tools.direction_vectors.algorithms.utils import vector_to_quaternion
+
 from atlas_building_tools.app.utils import EXISTING_FILE_PATH, log_args
+from atlas_building_tools.direction_vectors.algorithms.utils import vector_to_quaternion
 
 L = logging.getLogger(__name__)
 
 
 @click.command()
 @click.option(
-    '--direction-vectors-path',
+    "--direction-vectors-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=(
-        'Path to an nrrd file containing a field of 3D unit vectors defined over a 3D volume.'
-    ),
+    help=("Path to an nrrd file containing a field of 3D unit vectors defined over a 3D volume."),
 )
 @click.option(
-    '--output-path',
+    "--output-path",
     type=str,
     required=True,
-    help='Path to the file where voxel orientations will be saved as a field of 4D vectors'
-    ' (w, x, y, z) over a 3D volume. A vector (w, x, y, z) represents a quaternion with '
-    'imaginary part (x, y, z). The nrrd data type is the same as the input type.'
-    'NaN vectors indicate out-of-domain voxels but also voxels for which an orientation could'
-    ' not be derived.',
+    help="Path to the file where voxel orientations will be saved as a field of 4D vectors"
+    " (w, x, y, z) over a 3D volume. A vector (w, x, y, z) represents a quaternion with "
+    "imaginary part (x, y, z). The nrrd data type is the same as the input type."
+    "NaN vectors indicate out-of-domain voxels but also voxels for which an orientation could"
+    " not be derived.",
 )
 @log_args(L)
-def cmd(direction_vectors_path: str, output_path: str,) -> None:
-    '''Turn direction vectors into quaternions interpreted as 3D orientations'''
+def cmd(
+    direction_vectors_path: str,
+    output_path: str,
+) -> None:
+    """Turn direction vectors into quaternions interpreted as 3D orientations"""
 
     direction_vectors = voxcell.VoxelData.load_nrrd(direction_vectors_path)
     quaternions = vector_to_quaternion(direction_vectors.raw)

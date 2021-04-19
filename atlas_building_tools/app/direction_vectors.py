@@ -1,19 +1,20 @@
-'''Generate and save the direction vectors for different regions of the mouse brain'''
+"""Generate and save the direction vectors for different regions of the mouse brain"""
 import logging
-import click  # type: ignore
 
+import click  # type: ignore
 import voxcell  # type: ignore
 
+from atlas_building_tools.app.utils import EXISTING_FILE_PATH  # type: ignore
+from atlas_building_tools.app.utils import log_args, set_verbose
 from atlas_building_tools.direction_vectors import cerebellum as cerebellum_  # type: ignore
 from atlas_building_tools.direction_vectors import isocortex as isocortex_  # type: ignore
 from atlas_building_tools.direction_vectors import thalamus as thalamus_  # type: ignore
-from atlas_building_tools.app.utils import log_args, EXISTING_FILE_PATH, set_verbose  # type: ignore
 
 L = logging.getLogger(__name__)
 
 
 @click.group()
-@click.option('-v', '--verbose', count=True)
+@click.option("-v", "--verbose", count=True)
 def app(verbose):
     """Run the different direction vectors CLI
 
@@ -31,15 +32,15 @@ def app(verbose):
 
 @app.command()
 @click.option(
-    '--annotation-path',
+    "--annotation-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('Path to the whole AIBS mouse brain annotation nrrd file.'),
+    help=("Path to the whole AIBS mouse brain annotation nrrd file."),
 )
 @click.option(
-    '--output-path',
+    "--output-path",
     required=True,
-    help='Path of file to write the direction vectors to.',
+    help="Path of file to write the direction vectors to.",
 )
 @log_args(L)
 def cerebellum(annotation_path, output_path):
@@ -65,18 +66,18 @@ def cerebellum(annotation_path, output_path):
 
 @app.command()
 @click.option(
-    '--annotation-path',
+    "--annotation-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('Path to the annotation nrrd file.'),
+    help=("Path to the annotation nrrd file."),
 )
 @click.option(
-    '--hierarchy-path',
+    "--hierarchy-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('Path to hierarchy.json or AIBS 1.json.'),
+    help=("Path to hierarchy.json or AIBS 1.json."),
 )
-@click.option('--output-path', required=True, help='Path of file to write.')
+@click.option("--output-path", required=True, help="Path of file to write.")
 @log_args(L)
 def isocortex(annotation_path, hierarchy_path, output_path):
     """Generate and save the direction vectors of the mouse isocortex
@@ -97,18 +98,18 @@ def isocortex(annotation_path, hierarchy_path, output_path):
 
 @app.command()
 @click.option(
-    '--annotation-path',
+    "--annotation-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('Path to the annotation nrrd file.'),
+    help=("Path to the annotation nrrd file."),
 )
 @click.option(
-    '--hierarchy-path',
+    "--hierarchy-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('Path to hierarchy.json or AIBS 1.json.'),
+    help=("Path to hierarchy.json or AIBS 1.json."),
 )
-@click.option('--output-path', required=True, help='Path of file to write.')
+@click.option("--output-path", required=True, help="Path of file to write.")
 @log_args(L)
 def thalamus(annotation_path, hierarchy_path, output_path):
     """Generate and save the direction vectors of the mouse thalamus

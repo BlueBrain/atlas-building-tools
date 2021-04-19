@@ -1,32 +1,32 @@
-'''Generic sript for the computation of voxel-to-layer distances wrt
+"""Generic sript for the computation of voxel-to-layer distances wrt
 to direction vectors, a.k.a placement hints, in a layered atlas.
-'''
+"""
 
-from typing import Dict, List, Optional, Tuple, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+
 from nptyping import NDArray  # type: ignore
 
-from atlas_building_tools.placement_hints.layered_atlas import (
-    compute_distances_to_layer_meshes,
-)
-
 from atlas_building_tools.distances.distances_to_meshes import (
-    report_distance_problems,
     interpolate_problematic_voxels,
+    report_distance_problems,
 )
+from atlas_building_tools.placement_hints.layered_atlas import compute_distances_to_layer_meshes
 
 if TYPE_CHECKING:  # pragma: no cover
+    from voxcell import RegionMap, VoxelData  # type: ignore
+
+    # pylint: disable=ungrouped-imports
     from atlas_building_tools.placement_hints.layered_atlas import LayeredAtlas
-    from voxcell import VoxelData, RegionMap  # type: ignore
 
 
-DistanceInfo = Dict[str, Union['LayeredAtlas', NDArray[float], NDArray[bool]]]
+DistanceInfo = Dict[str, Union["LayeredAtlas", NDArray[float], NDArray[bool]]]
 DistancesReport = Dict[str, float]
 
 
 # pylint: disable=too-many-arguments, too-many-locals
 def compute_placement_hints(
-    region_map: 'RegionMap',
-    annotation: 'VoxelData',
+    region_map: "RegionMap",
+    annotation: "VoxelData",
     region_acronym: str,
     layers_regexp: List[str],
     direction_vectors: NDArray[float],
@@ -51,10 +51,10 @@ def compute_placement_hints(
             This is required if direction vectors flaw from the top layer (shallowest) to the
             bottom layer (deepest). Otherwise, they are left unchanged. Defaults to false.
         has_hemispheres: (optional) If True, split the volume into halves along the z-axis and
-            handle each of theses 'hemispheres' separately. Otherwise the whole volume is handled.
-            Defaults to True.
+            handle each of theses 'hemispheres' separately. Otherwise the whole volume is
+            handled. Defaults to True.
 
-Returns:
+    Returns:
         Tuple with the following items.
         distances_info: dict with the following entries.
             layered_atlas: LayeredAtlas instance of the requested acronym.
@@ -70,11 +70,11 @@ Returns:
             neighbouring voxels.
             The corresponding values are dict with keys "report" and "volume".
             report:
-                the value associated to "report" is dict reporting the proportion of voxels subject
-                to each distance-related problem,
+                the value associated to "report" is dict reporting the proportion of voxels
+                subject to each distance-related problem,
                 see distances.distance_to_meshes.report_distance_problems doc.
-            volume: the value associated to "volume" is a 3D binary mask of the voxels with at least
-                one distance-related problem.
+            volume: the value associated to "volume" is a 3D binary mask of the voxels with at
+                least one distance-related problem.
                 See distances.distance_to_meshes.report_distance_problems doc.
     """
     distances_info = compute_distances_to_layer_meshes(
@@ -86,36 +86,36 @@ Returns:
         flip_direction_vectors=flip_direction_vectors,
         has_hemispheres=has_hemispheres,
     )
-    atlas = distances_info['layered_atlas']
-    distances_to_meshes = distances_info['distances_to_layer_meshes']
+    atlas = distances_info["layered_atlas"]
+    distances_to_meshes = distances_info["distances_to_layer_meshes"]
     tolerance = 2.0 * annotation.voxel_dimensions[0]
     distances_report, problematic_volume = report_distance_problems(
         distances_to_meshes,
-        distances_info['obtuse_angles'],
+        distances_info["obtuse_angles"],
         atlas.region,
         max_thicknesses=max_thicknesses,
-        tolerance=tolerance
+        tolerance=tolerance,
     )
     interpolate_problematic_voxels(
         distances_to_meshes,
         atlas.region.raw > 0,
         max_thicknesses=max_thicknesses,
-        tolerance=tolerance
+        tolerance=tolerance,
     )
-    interpolated_distances_report, filtered_problematic_volume = report_distance_problems(
+    (interpolated_distances_report, filtered_problematic_volume,) = report_distance_problems(
         distances_to_meshes,
-        distances_info['obtuse_angles'],
+        distances_info["obtuse_angles"],
         atlas.region,
         max_thicknesses=max_thicknesses,
     )
     problems = {
-        'before interpolation': {
-            'report': distances_report,
-            'volume': problematic_volume,
+        "before interpolation": {
+            "report": distances_report,
+            "volume": problematic_volume,
         },
-        'after interpolation': {
-            'report': interpolated_distances_report,
-            'volume': filtered_problematic_volume,
-        }
+        "after interpolation": {
+            "report": interpolated_distances_report,
+            "volume": filtered_problematic_volume,
+        },
     }
     return distances_info, problems

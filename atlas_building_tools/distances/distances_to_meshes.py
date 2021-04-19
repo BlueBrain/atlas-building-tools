@@ -1,29 +1,24 @@
-'''
+"""
 Module containing free functions for the computation of
 distances to boundary meshes with respect to voxels direction vectors.
-'''
+"""
 
 import logging
 import warnings
-
-from typing import Dict, List, Optional, TYPE_CHECKING, Tuple, Union
-
-from nptyping import NDArray  # type: ignore
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
-from scipy.interpolate import NearestNDInterpolator  # type: ignore
 import trimesh  # type: ignore
+from nptyping import NDArray  # type: ignore
+from scipy.interpolate import NearestNDInterpolator  # type: ignore
 
-
-from atlas_building_tools.utils import is_obtuse_angle
-from atlas_building_tools.distances.utils import memory_efficient_intersection
 from atlas_building_tools.direction_vectors.algorithms.utils import normalized
+from atlas_building_tools.distances.utils import memory_efficient_intersection
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
+from atlas_building_tools.utils import is_obtuse_angle
 
 if TYPE_CHECKING:  # pragma: no cover
-    from scipy.interpolate import (  # pylint: disable=ungrouped-imports
-        LinearNDInterpolator,
-    )
+    from scipy.interpolate import LinearNDInterpolator  # pylint: disable=ungrouped-imports
     from voxcell import VoxelData  # type: ignore
 
 
@@ -33,7 +28,7 @@ L = logging.getLogger(__name__)
 
 
 def distances_to_mesh_wrt_dir(
-    mesh: 'trimesh.TriMesh',
+    mesh: "trimesh.TriMesh",
     origins: NDArray[float],
     directions: NDArray[float],
     backward: bool = False,
@@ -66,9 +61,7 @@ def distances_to_mesh_wrt_dir(
     sign = -1 if backward else 1
 
     # If available, embree provides a significant speedup
-    ray = (
-        trimesh.ray.ray_pyembree if trimesh.ray.has_embree else trimesh.ray.ray_triangle
-    )
+    ray = trimesh.ray.ray_pyembree if trimesh.ray.has_embree else trimesh.ray.ray_triangle
 
     intersector = ray.RayMeshIntersector(mesh)
 
@@ -82,14 +75,10 @@ def distances_to_mesh_wrt_dir(
 
     if locations.shape[0] > 0:  # Non empty intersections
         dist[ray_ids] = sign * np.linalg.norm(locations - origins[ray_ids], axis=1)
-        wrong_side[ray_ids] = is_obtuse_angle(
-            directions[ray_ids], mesh.face_normals[triangle_ids]
-        )
+        wrong_side[ray_ids] = is_obtuse_angle(directions[ray_ids], mesh.face_normals[triangle_ids])
         # pylint: disable=logging-unsupported-format
         L.info(
-            'Proportion of intersecting rays: {:.3%}'.format(
-                ray_ids.shape[0] / number_of_voxels
-            )
+            "Proportion of intersecting rays: {:.3%}".format(ray_ids.shape[0] / number_of_voxels)
         )
     return dist, wrong_side
 
@@ -123,9 +112,7 @@ def _split_indices_along_layer(
             indices of the coordinate corresponding to the item index.
 
     """
-    below_indices = np.nonzero(
-        np.logical_and(layers_volume >= layer, valid_direction_vectors_mask)
-    )
+    below_indices = np.nonzero(np.logical_and(layers_volume >= layer, valid_direction_vectors_mask))
     above_mask = np.logical_and(layers_volume < layer, layers_volume > 0)
     above_indices = np.nonzero(np.logical_and(above_mask, valid_direction_vectors_mask))
     return below_indices, above_indices  # type: ignore
@@ -137,7 +124,7 @@ def _compute_distances_to_mesh(
     dists: NDArray[float],
     any_obtuse_intersection: NDArray[bool],
     voxel_indices: List[NDArray[int]],
-    mesh: 'trimesh.Trimesh',
+    mesh: "trimesh.Trimesh",
     index: int,
     backward: bool = False,
     rollback_distance: int = 4,
@@ -177,19 +164,15 @@ def _compute_distances_to_mesh(
 
     # Adjusted ray origin: voxel position  -  an added buffer along direction
     sign = -1 if backward else 1
-    origins = (
-        np.transpose(voxel_indices) + 0.5 - directions * (sign * rollback_distance)
-    )
+    origins = np.transpose(voxel_indices) + 0.5 - directions * (sign * rollback_distance)
     L.info(
-        'Computing distances for the %s mesh with index %d ...',
-        'lower' if backward is False else 'upper',
+        "Computing distances for the %s mesh with index %d ...",
+        "lower" if backward is False else "upper",
         index,
     )
-    dist, wrong = distances_to_mesh_wrt_dir(
-        mesh, origins, directions, backward=backward
-    )
+    dist, wrong = distances_to_mesh_wrt_dir(mesh, origins, directions, backward=backward)
     dist -= sign * rollback_distance
-    with np.errstate(invalid='ignore'):
+    with np.errstate(invalid="ignore"):
         dist[(dist * sign) < 0] = 0
 
     # Set distances
@@ -237,14 +220,12 @@ def distances_from_voxels_to_meshes_wrt_dir(
     if np.any(invalid_direction_vectors_mask):
         proportion = float(np.mean(invalid_direction_vectors_mask[layers_volume > 0]))
         warnings.warn(
-            'NaN direction vectors assigned to {:.5%} of the voxels.'
-            ' Consider interpolating invalid vectors beforehand.'.format(
-                proportion
-            ),
+            "NaN direction vectors assigned to {:.5%} of the voxels."
+            " Consider interpolating invalid vectors beforehand.".format(proportion),
             UserWarning,
         )
     valid_mask = ~invalid_direction_vectors_mask
-    L.info('Computing distances for each of the %d meshes', len(layer_meshes))
+    L.info("Computing distances for each of the %d meshes", len(layer_meshes))
     for mesh_index, mesh in enumerate(layer_meshes):
         below_indices, above_indices = _split_indices_along_layer(
             layers_volume, mesh_index + 1, valid_mask
@@ -280,7 +261,7 @@ def fix_disordered_distances(distances: NDArray[float]) -> None:
             (wrt to its direction vector) to a fixed layer mesh.
     """
     for layer, distance in enumerate(distances[1:], 1):
-        with np.errstate(invalid='ignore'):
+        with np.errstate(invalid="ignore"):
             previous_is_deeper = distances[layer - 1] < distance
             means = np.mean(
                 [
@@ -311,7 +292,7 @@ def get_thickness_excess_mask(
     """
     too_thick = np.zeros(distances[0].shape, dtype=bool)
     for i, max_thickness in enumerate(max_thicknesses):
-        with np.errstate(invalid='ignore'):
+        with np.errstate(invalid="ignore"):
             # distances[i] holds the non-negative distances wrt to direction vectors
             # from voxels to the top of layer i.
             # distances[i + 1] holds the non-positive distances wrt to direction vectors
@@ -325,10 +306,9 @@ def get_thickness_excess_mask(
 def report_distance_problems(
     distances: NDArray[float],
     obtuse_intersection: NDArray[bool],
-    voxel_data: 'VoxelData',
+    voxel_data: "VoxelData",
     max_thicknesses: Optional[NDArray[float]] = None,
-    tolerance: float = 0.0
-
+    tolerance: float = 0.0,
 ) -> Tuple[Dict[str, float], NDArray[bool]]:
     """
     Reports the proportions of voxels subject to some distance-related problem.
@@ -361,15 +341,15 @@ def report_distance_problems(
     region_mask = voxel_data.raw > 0
     do_not_intersect_bottom = np.logical_and(np.isnan(distances[-1]), region_mask)
     do_not_intersect_top = np.logical_and(np.isnan(distances[0]), region_mask)
+    report["Proportion of voxels whose rays do not intersect with the bottom mesh"] = float(
+        np.mean(do_not_intersect_bottom[region_mask])
+    )
+    report["Proportion of voxels whose rays do not intersect with the top mesh"] = float(
+        np.mean(do_not_intersect_top[region_mask])
+    )
     report[
-        'Proportion of voxels whose rays do not intersect with the bottom mesh'
-    ] = float(np.mean(do_not_intersect_bottom[region_mask]))
-    report[
-        'Proportion of voxels whose rays do not intersect with the top mesh'
-    ] = float(np.mean(do_not_intersect_top[region_mask]))
-    report[
-        'Proportion of voxels whose rays make an obtuse angle '
-        'with the mesh normal at the intersection point'
+        "Proportion of voxels whose rays make an obtuse angle "
+        "with the mesh normal at the intersection point"
     ] = float(np.mean(obtuse_intersection[region_mask]))
 
     nan_distances_mask = np.full(region_mask.shape, False)
@@ -377,18 +357,16 @@ def report_distance_problems(
         nan_distances_mask = np.logical_or(np.isnan(distance), nan_distances_mask)
     nan_distances_mask = np.logical_and(nan_distances_mask, region_mask)
     report[
-        'Proportion of voxels with a NaN distance with respect to at least one layer boundary'
-        'distinct from the top and the bottom boundaries of the region'
+        "Proportion of voxels with a NaN distance with respect to at least one layer boundary"
+        "distinct from the top and the bottom boundaries of the region"
     ] = float(np.mean(nan_distances_mask[region_mask]))
 
     too_thick = None
     if max_thicknesses is not None:
-        too_thick = get_thickness_excess_mask(
-            distances, max_thicknesses, tolerance
-        )
+        too_thick = get_thickness_excess_mask(distances, max_thicknesses, tolerance)
         report[
-            'Proportion of voxels with a distance gap greater than the maximum thickness '
-            '(NaN distances are ignored)'
+            "Proportion of voxels with a distance gap greater than the maximum thickness "
+            "(NaN distances are ignored)"
         ] = float(np.mean(too_thick[region_mask]))
 
     problematic_volume = np.full(region_mask.shape, False)
@@ -405,13 +383,14 @@ def report_distance_problems(
     for problem in problems:
         problematic_volume = np.logical_or(problematic_volume, problem)
 
-    report['Proportion of voxels with at least one distance-related problem'] \
-        = float(np.mean(problematic_volume[region_mask]))
+    report["Proportion of voxels with at least one distance-related problem"] = float(
+        np.mean(problematic_volume[region_mask])
+    )
 
     return report, problematic_volume
 
 
-Interpolator = Union[NearestNDInterpolator, 'LinearNDInterpolator']
+Interpolator = Union[NearestNDInterpolator, "LinearNDInterpolator"]
 
 
 def interpolate_volume(
@@ -440,7 +419,7 @@ def interpolate_volume(
     known_positions = np.transpose(np.asarray(nonzero_known_values))
     if len(known_positions) == 0:
         raise AtlasBuildingToolsError(
-            'known_values_mask is empty, no values to use for interpolation'
+            "known_values_mask is empty, no values to use for interpolation"
         )
     known_values = np.array(volume)[nonzero_known_values]
     interpolated_values = interpolator(known_positions, known_values)(
@@ -475,9 +454,7 @@ def interpolate_problematic_voxels(
         nan_distance = np.isnan(distance)
         valid = np.logical_and(region_mask, ~nan_distance)
         if max_thicknesses is not None and i != len(distances) - 1:
-            excess = (distances[i] - distances[i + 1]) > (
-                max_thicknesses[i] + tolerance
-            )
+            excess = (distances[i] - distances[i + 1]) > (max_thicknesses[i] + tolerance)
             valid = np.logical_and(valid, ~excess)
         problematic = np.logical_and(region_mask, ~valid)
         interpolated = interpolate_volume(distance, problematic, valid)

@@ -1,13 +1,13 @@
-import pytest
 import numpy as np
 import numpy.testing as npt
+import pytest
 
 from atlas_building_tools.direction_vectors.algorithms.blur_gradient import (
+    RegionShading,
+    compute_direction_vectors,
+    compute_initial_field,
     create_thick_boundary_mask,
     shading_from_boundary,
-    RegionShading,
-    compute_initial_field,
-    compute_direction_vectors,
 )
 
 
@@ -20,18 +20,12 @@ def test_create_thick_boundary_mask():
         create_thick_boundary_mask(input_mask, 1, 2, -1)
 
     assert np.all(~create_thick_boundary_mask(input_mask, 2, 3, 1))
-    npt.assert_array_equal(
-        create_thick_boundary_mask(input_mask, 2, 2, 1), (input_mask == 2)
-    )
+    npt.assert_array_equal(create_thick_boundary_mask(input_mask, 2, 2, 1), (input_mask == 2))
 
     expected_res = np.full(input_mask.shape, False)
     expected_res[2:4, 1:5, 1:5] = True
-    npt.assert_array_equal(
-        create_thick_boundary_mask(input_mask, 1, 2, 1), expected_res
-    )
-    npt.assert_array_equal(
-        create_thick_boundary_mask(input_mask, 1, 2, 2), (input_mask > 0)
-    )
+    npt.assert_array_equal(create_thick_boundary_mask(input_mask, 1, 2, 1), expected_res)
+    npt.assert_array_equal(create_thick_boundary_mask(input_mask, 1, 2, 2), (input_mask > 0))
     assert np.all(~create_thick_boundary_mask(input_mask, 1, 2, 70))
 
 
@@ -40,17 +34,13 @@ def test_shading_from_boundary():
     input_mask[1:3, 1:5, 1:5] = 1
     input_mask[3:5, 1:5, 1:5] = 2
     shading = RegionShading([0, 1], 1, 0, -1, invert=True)
-    assert np.all(
-        shading_from_boundary(input_mask, shading) == 0
-    )  # negative max distance
+    assert np.all(shading_from_boundary(input_mask, shading) == 0)  # negative max distance
     shading = RegionShading([0, 1], 1, 0, 0, invert=True)
     assert np.all(shading_from_boundary(input_mask, shading) == 0)
     shading = RegionShading([0, 3], 3, 0, 1, invert=True)
     assert np.all(shading_from_boundary(input_mask, shading) == 0)  # roi not present
     shading = RegionShading([0, 1, 2], 1, 0, 1, invert=True)
-    assert np.all(
-        shading_from_boundary(input_mask, shading) == 0
-    )  # all regions ignored
+    assert np.all(shading_from_boundary(input_mask, shading) == 0)  # all regions ignored
 
     expected_res = np.zeros(input_mask.shape, dtype=int)
     expected_res[3, 1:5, 1:5] = 1
@@ -180,8 +170,6 @@ def test_compute_direction_vectors():
     # Inside the regions of interest, the non-nan direction vectors
     # should be unit vectors.
     norm = np.linalg.norm(direction_vectors, axis=3)
-    npt.assert_array_equal(
-        norm[~np.isnan(norm)], np.full(raw.shape, 1.0)[~np.isnan(norm)]
-    )
+    npt.assert_array_equal(norm[~np.isnan(norm)], np.full(raw.shape, 1.0)[~np.isnan(norm)])
     # Direction vectors should flow along the positive x-axis
     assert np.all(direction_vectors[region_of_interest_mask, 0] > 0.0)

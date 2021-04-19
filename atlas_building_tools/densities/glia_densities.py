@@ -1,13 +1,14 @@
-'''Functions to compute glia cell densities.'''
+"""Functions to compute glia cell densities."""
 import logging
-from typing import Dict, Set, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Set
+
 import numpy as np
 from nptyping import NDArray  # type: ignore
 
 from atlas_building_tools.densities.utils import (
+    compensate_cell_overlap,
     constrain_cell_counts_per_voxel,
     get_group_ids,
-    compensate_cell_overlap,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -53,10 +54,10 @@ def compute_glia_cell_counts_per_voxel(  # pylint: disable=too-many-arguments
         layer).
     """
 
-    fiber_tracts_mask = np.isin(annotation, list(group_ids['Fiber tracts group']))
+    fiber_tracts_mask = np.isin(annotation, list(group_ids["Fiber tracts group"]))
     fiber_tracts_free_mask = np.isin(
         annotation,
-        list(group_ids['Purkinje layer']),
+        list(group_ids["Purkinje layer"]),
     )
 
     return constrain_cell_counts_per_voxel(
@@ -70,7 +71,7 @@ def compute_glia_cell_counts_per_voxel(  # pylint: disable=too-many-arguments
 
 
 def compute_glia_densities(  # pylint: disable=too-many-arguments
-    region_map: 'RegionMap',
+    region_map: "RegionMap",
     annotation: NDArray[int],
     voxel_volume: float,
     glia_cell_count: int,
@@ -131,22 +132,22 @@ def compute_glia_densities(  # pylint: disable=too-many-arguments
         glia_densities[glia_type] = np.asarray(glia_densities[glia_type], dtype=float)
     cell_density = np.asarray(cell_density, dtype=float)
 
-    glia_densities['glia'] = compensate_cell_overlap(
-        glia_densities['glia'], annotation, gaussian_filter_stdv=1.0, copy=False
+    glia_densities["glia"] = compensate_cell_overlap(
+        glia_densities["glia"], annotation, gaussian_filter_stdv=1.0, copy=False
     )
     L.info(
-        'Computing overall glia density field with a target cell count of %d ...',
+        "Computing overall glia density field with a target cell count of %d ...",
         glia_cell_count,
     )
 
-    glia_densities['glia'] = compute_glia_cell_counts_per_voxel(
+    glia_densities["glia"] = compute_glia_cell_counts_per_voxel(
         glia_cell_count,
         get_group_ids(region_map),
         annotation,
-        glia_densities['glia'],
+        glia_densities["glia"],
         cell_density * voxel_volume,
     )
-    for glia_type in ['astrocyte', 'oligodendrocyte']:
+    for glia_type in ["astrocyte", "oligodendrocyte"]:
         glia_densities[glia_type] = compensate_cell_overlap(
             glia_densities[glia_type],
             annotation,
@@ -155,23 +156,21 @@ def compute_glia_densities(  # pylint: disable=too-many-arguments
         )
         cell_count = glia_cell_count * float(glia_proportions[glia_type])
         L.info(
-            'Computing %s density field with a target cell count of %d ...',
+            "Computing %s density field with a target cell count of %d ...",
             glia_type,
             cell_count,
         )
         glia_densities[glia_type] = constrain_cell_counts_per_voxel(
             cell_count,
             glia_densities[glia_type],
-            glia_densities['glia'],
+            glia_densities["glia"],
             copy=copy,
         )
 
     # pylint: disable=fixme
     # FIXME(Luc): The microglia density can be negative.
-    glia_densities['microglia'] = (
-        glia_densities['glia']
-        - glia_densities['astrocyte']
-        - glia_densities['oligodendrocyte']
+    glia_densities["microglia"] = (
+        glia_densities["glia"] - glia_densities["astrocyte"] - glia_densities["oligodendrocyte"]
     )
     for glia_type, cell_counts_per_voxel in glia_densities.items():
         glia_densities[glia_type] = cell_counts_per_voxel / voxel_volume

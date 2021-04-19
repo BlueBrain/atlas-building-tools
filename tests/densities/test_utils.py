@@ -1,15 +1,16 @@
-'''
+"""
 Unit tests for densities utils
-'''
-import numpy as np
+"""
 from pathlib import Path
+
+import numpy as np
 import numpy.testing as npt
 import pytest
 from mock import patch
-
 from voxcell import RegionMap
-from atlas_building_tools.exceptions import AtlasBuildingToolsError
+
 import atlas_building_tools.densities.utils as tested
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 TESTS_PATH = Path(__file__).parent.parent
 
@@ -97,36 +98,30 @@ def test_compensate_cell_overlap():
 
 
 def test_get_group_ids():
-    region_map = RegionMap.load_json(Path(TESTS_PATH, '1.json'))
+    region_map = RegionMap.load_json(Path(TESTS_PATH, "1.json"))
     group_ids = tested.get_group_ids(region_map)
     for ids in group_ids.values():
         assert len(ids) > 0
-    assert len(group_ids['Molecular layer'] & group_ids['Purkinje layer']) == 0
-    assert len(group_ids['Cerebellum group'] & group_ids['Isocortex group']) == 0
-    assert len(group_ids['Cerebellum group'] & group_ids['Molecular layer']) > 0
-    assert len(group_ids['Cerebellum group'] & group_ids['Purkinje layer']) > 0
-    assert len(group_ids['Isocortex group'] & group_ids['Molecular layer']) > 0
-    assert len(group_ids['Isocortex group'] & group_ids['Purkinje layer']) == 0
-    assert group_ids['Cerebellar cortex'].issubset(group_ids['Cerebellum group'])
+    assert len(group_ids["Molecular layer"] & group_ids["Purkinje layer"]) == 0
+    assert len(group_ids["Cerebellum group"] & group_ids["Isocortex group"]) == 0
+    assert len(group_ids["Cerebellum group"] & group_ids["Molecular layer"]) > 0
+    assert len(group_ids["Cerebellum group"] & group_ids["Purkinje layer"]) > 0
+    assert len(group_ids["Isocortex group"] & group_ids["Molecular layer"]) > 0
+    assert len(group_ids["Isocortex group"] & group_ids["Purkinje layer"]) == 0
+    assert group_ids["Cerebellar cortex"].issubset(group_ids["Cerebellum group"])
 
 
 def test_get_region_masks():
-    region_map = RegionMap.load_json(Path(TESTS_PATH, '1.json'))
+    region_map = RegionMap.load_json(Path(TESTS_PATH, "1.json"))
     group_ids = tested.get_group_ids(region_map)
     annotation_raw = np.arange(27000).reshape(30, 30, 30)
     region_masks = tested.get_region_masks(group_ids, annotation_raw)
     brain_mask = np.logical_or(
-        np.logical_or(
-            region_masks['Cerebellum group'], region_masks['Isocortex group']
-        ),
-        region_masks['Rest'],
+        np.logical_or(region_masks["Cerebellum group"], region_masks["Isocortex group"]),
+        region_masks["Rest"],
     )
     npt.assert_array_equal(annotation_raw != 0, brain_mask)
-    np.all(
-        ~np.logical_and(
-            region_masks['Cerebellum group'], region_masks['Isocortex group']
-        )
-    )
+    np.all(~np.logical_and(region_masks["Cerebellum group"], region_masks["Isocortex group"]))
 
 
 def test_optimize_distance_to_line_2D():
@@ -251,7 +246,7 @@ def test_constrain_cell_counts_per_voxel_exceptions():
         zero_cell_counts_mask = np.array([[[True, True, False, False, False]]])
         max_cell_counts_mask = np.array([[[False, False, True, False, False]]])
         with patch(
-            'atlas_building_tools.densities.utils.optimize_distance_to_line',
+            "atlas_building_tools.densities.utils.optimize_distance_to_line",
             return_value=cell_counts,
         ):
             tested.constrain_cell_counts_per_voxel(

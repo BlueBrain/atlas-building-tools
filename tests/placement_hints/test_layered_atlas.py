@@ -1,18 +1,21 @@
-'''
+"""
 Unit tests for the layered_atlas module
-'''
+"""
 import tempfile
-from pathlib import Path
 import unittest
+from pathlib import Path
 from typing import Optional
-import numpy.testing as npt  # type: ignore
+
 import numpy as np  # type: ignore
-
+import numpy.testing as npt  # type: ignore
 from voxcell import VoxelData  # type: ignore
-from atlas_building_tools.placement_hints.layered_atlas import LayeredAtlas, DistanceProblem  # type: ignore
 
-from tests.placement_hints.mocking_tools import IsocortexMock
 import atlas_building_tools.placement_hints.layered_atlas as tested
+from atlas_building_tools.placement_hints.layered_atlas import (  # type: ignore
+    DistanceProblem,
+    LayeredAtlas,
+)
+from tests.placement_hints.mocking_tools import IsocortexMock
 
 
 class Test_Layered_Atlas(unittest.TestCase):
@@ -25,10 +28,10 @@ class Test_Layered_Atlas(unittest.TestCase):
             padding=20, layer_thickness=15, x_thickness=35, z_thickness=25
         )
         cls.layered_atlas = tested.LayeredAtlas(
-            'Isocortex',
+            "Isocortex",
             cls.isocortex_mock.annotation,
             cls.isocortex_mock.region_map,
-            ['@.*{}[ab]?$'.format(i) for i in range(1, 7)],
+            ["@.*{}[ab]?$".format(i) for i in range(1, 7)],
         )
 
     def test_region(self):
@@ -54,28 +57,25 @@ class Test_Layered_Atlas(unittest.TestCase):
             assert np.all(vertices[:, 1] >= 0.8 * self.isocortex_mock.padding)
             assert np.all(
                 vertices[:, 1]
-                <= 1.2 * self.isocortex_mock.padding
-                + (6 - i) * self.isocortex_mock.thickness
+                <= 1.2 * self.isocortex_mock.padding + (6 - i) * self.isocortex_mock.thickness
             )
 
     def test_compute_distances_to_layer_meshes(self):
-        direction_vectors = np.zeros(
-            self.isocortex_mock.annotation.raw.shape + (3,), dtype=float
-        )
+        direction_vectors = np.zeros(self.isocortex_mock.annotation.raw.shape + (3,), dtype=float)
         direction_vectors[self.isocortex_mock.annotation.raw > 0] = (0.0, 1.0, 0.0)
         distances = tested.compute_distances_to_layer_meshes(
-            'Isocortex',
+            "Isocortex",
             self.layered_atlas.annotation,
             self.layered_atlas.region_map,
             direction_vectors,
             self.layered_atlas.layer_regexps,
         )
-        atlas = distances['layered_atlas']
-        assert atlas.acronym == 'Isocortex'
+        atlas = distances["layered_atlas"]
+        assert atlas.acronym == "Isocortex"
         assert atlas.layer_regexps == self.layered_atlas.layer_regexps
         assert atlas.annotation == self.layered_atlas.annotation
 
-        dist_info = distances['distances_to_layer_meshes'][:-1]
+        dist_info = distances["distances_to_layer_meshes"][:-1]
         for i, ids in enumerate(self.isocortex_mock.layer_ids):
             layer_mask = np.isin(atlas.annotation.raw, ids)
             layer_index = 6 - i
@@ -89,8 +89,7 @@ class Test_Layered_Atlas(unittest.TestCase):
                 mask = layer_mask & (~np.isnan(dist_to_upper_boundary))
                 valid = np.count_nonzero(
                     dist_to_upper_boundary[mask]
-                    <= (layer_index - boundary_index + 1)
-                    * self.isocortex_mock.thickness
+                    <= (layer_index - boundary_index + 1) * self.isocortex_mock.thickness
                 )
                 # Check that distances are respected for at least 65% of the voxel of each layer
                 npt.assert_allclose(valid, np.count_nonzero(mask), rtol=0.35)
@@ -106,17 +105,15 @@ class Test_Layered_Atlas(unittest.TestCase):
             problematic_voxel_mask[0, 0, 0] = True
             problematic_voxel_mask[0, 1, 0] = True
             problems = {
-                'before interpolation': { 'volume': problematic_voxel_mask.copy()},
-                'after interpolation': {'volume': problematic_voxel_mask}
+                "before interpolation": {"volume": problematic_voxel_mask.copy()},
+                "after interpolation": {"volume": problematic_voxel_mask},
             }
             problematic_voxel_mask[0, 1, 0] = False
             expected_voxel_mask = np.full((2, 2, 2), np.uint8(DistanceProblem.NO_PROBLEM.value))
             expected_voxel_mask[0, 0, 0] = np.uint8(DistanceProblem.AFTER_INTERPOLATION.value)
             expected_voxel_mask[0, 1, 0] = np.uint8(DistanceProblem.BEFORE_INTERPOLATION.value)
 
-            tested.save_problematic_voxel_mask(
-                self.layered_atlas, problems, tempdir
-            )
-            volume_path = Path(tempdir, 'Isocortex_problematic_voxel_mask.nrrd')
+            tested.save_problematic_voxel_mask(self.layered_atlas, problems, tempdir)
+            volume_path = Path(tempdir, "Isocortex_problematic_voxel_mask.nrrd")
             voxel_data = VoxelData.load_nrrd(volume_path)
             npt.assert_almost_equal(voxel_data.raw, expected_voxel_mask)

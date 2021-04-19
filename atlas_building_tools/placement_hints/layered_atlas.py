@@ -1,37 +1,30 @@
-'''Module for the computation of
+"""Module for the computation of
 voxel-to-layer distances wrt to direction vectors in a laminar brain region.
 
 This module is used for the computation of placement hints in the mouse
 isocortex and in the mouse Hippocampus CA1 region.
-'''
-from enum import IntEnum
+"""
 import logging
 import os
+from enum import IntEnum
+from typing import TYPE_CHECKING, Dict, List, Union
 
-from typing import Dict, List, TYPE_CHECKING, Union
-from nptyping import NDArray  # type: ignore
-
-from tqdm import tqdm  # type: ignore
 import numpy as np  # type: ignore
 from cached_property import cached_property  # type: ignore
+from nptyping import NDArray  # type: ignore
+from tqdm import tqdm  # type: ignore
 
+from atlas_building_tools.distances.create_watertight_mesh import create_watertight_trimesh
 from atlas_building_tools.distances.distances_to_meshes import (
     distances_from_voxels_to_meshes_wrt_dir,
     fix_disordered_distances,
 )
-from atlas_building_tools.placement_hints.utils import layers_volume
-from atlas_building_tools.placement_hints.utils import centroid_outfacing_mesh
-from atlas_building_tools.utils import (
-    get_region_mask,
-    split_into_halves,
-)
-from atlas_building_tools.distances.create_watertight_mesh import (
-    create_watertight_trimesh,
-)
+from atlas_building_tools.placement_hints.utils import centroid_outfacing_mesh, layers_volume
+from atlas_building_tools.utils import get_region_mask, split_into_halves
 
 if TYPE_CHECKING:  # pragma: no cover
-    from voxcell import VoxelData, RegionMap  # type: ignore
     import trimesh  # type: ignore
+    from voxcell import RegionMap, VoxelData  # type: ignore
 
 logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
@@ -42,9 +35,10 @@ RIGHT = 1  # right hemisphere
 
 
 class DistanceProblem(IntEnum):
-    '''
+    """
     Enumerate distance-related problems detected after the computation of placement hints.
-    '''
+    """
+
     NO_PROBLEM = 0
     BEFORE_INTERPOLATION = 1  # NaN distance value or excessive layer thickness
     AFTER_INTERPOLATION = 2  # Excessive layer thickness only
@@ -61,8 +55,8 @@ class LayeredAtlas:
     def __init__(
         self,
         acronym: str,
-        annotation: 'VoxelData',
-        region_map: 'RegionMap',
+        annotation: "VoxelData",
+        region_map: "RegionMap",
         layer_regexps: List[str],
     ):
         """
@@ -79,16 +73,14 @@ class LayeredAtlas:
         self.layer_regexps = layer_regexps
 
     @cached_property
-    def region(self) -> 'VoxelData':
+    def region(self) -> "VoxelData":
         """
         Accessor of the layered atlas as a VoxelData object.
 
         Returns:
             VoxelData instance of the layered atlas.
         """
-        region_mask = get_region_mask(
-            self.acronym, self.annotation.raw, self.region_map
-        )
+        region_mask = get_region_mask(self.acronym, self.annotation.raw, self.region_map)
         return self.annotation.with_data(region_mask)
 
     @cached_property
@@ -102,7 +94,7 @@ class LayeredAtlas:
         """
         number_of_layers = len(self.layer_regexps)
         L.info(
-            'Creating a volume for each of the %d layers of %s ...',
+            "Creating a volume for each of the %d layers of %s ...",
             number_of_layers,
             self.acronym,
         )
@@ -114,9 +106,7 @@ class LayeredAtlas:
             region=self.region.raw,
         )
 
-    def create_layer_meshes(
-        self, layered_volume: NDArray[int]
-    ) -> List['trimesh.Trimesh']:
+    def create_layer_meshes(self, layered_volume: NDArray[int]) -> List["trimesh.Trimesh"]:
         """
         Create meshes representing the upper boundary of each layer
         in the laminar region volume, referred to as `layered_volume`.
@@ -143,11 +133,9 @@ class LayeredAtlas:
         layers_values = layers_values[layers_values > 0]
         assert len(layers_values) == len(
             self.layer_regexps
-        ), '{} layer indices, {} layer strings'.format(
-            len(layers_values), len(self.layer_regexps)
-        )
+        ), "{} layer indices, {} layer strings".format(len(layers_values), len(self.layer_regexps))
         L.info(
-            'Creating a watertight mesh for each of the %d layers of %s ...',
+            "Creating a watertight mesh for each of the %d layers of %s ...",
             len(layers_values),
             self.acronym,
         )
@@ -157,7 +145,7 @@ class LayeredAtlas:
             meshes.append(mesh)
 
         L.info(
-            'Trimming inward faces of the %d meshes of %s ...',
+            "Trimming inward faces of the %d meshes of %s ...",
             len(meshes),
             self.acronym,
         )
@@ -180,9 +168,7 @@ class LayeredAtlas:
         return meshes
 
 
-def save_problematic_voxel_mask(
-    layered_atlas: LayeredAtlas, problems: dict, output_dir: str
-):
+def save_problematic_voxel_mask(layered_atlas: LayeredAtlas, problems: dict, output_dir: str):
     """
     Save the problematic voxel mask to file.
 
@@ -204,24 +190,20 @@ def save_problematic_voxel_mask(
         output_dir: directory in which to save the problematic volume as an nrrd file.
     """
     problematic_volume_path = os.path.join(
-        output_dir, layered_atlas.acronym + '_problematic_voxel_mask.nrrd'
+        output_dir, layered_atlas.acronym + "_problematic_voxel_mask.nrrd"
     )
     L.info(
-        'Saving problematic volume of %s to file %s ...',
+        "Saving problematic volume of %s to file %s ...",
         layered_atlas.acronym,
         problematic_volume_path,
     )
-    voxel_mask = problems['before interpolation']['volume']
-    problematic_volume = np.full(
-        voxel_mask.shape, np.uint8(DistanceProblem.NO_PROBLEM.value)
-    )
+    voxel_mask = problems["before interpolation"]["volume"]
+    problematic_volume = np.full(voxel_mask.shape, np.uint8(DistanceProblem.NO_PROBLEM.value))
     problematic_volume[voxel_mask] = np.uint8(DistanceProblem.BEFORE_INTERPOLATION.value)
-    voxel_mask = problems['after interpolation']['volume']
+    voxel_mask = problems["after interpolation"]["volume"]
     problematic_volume[voxel_mask] = np.uint8(DistanceProblem.AFTER_INTERPOLATION.value)
 
-    layered_atlas.annotation.with_data(problematic_volume).save_nrrd(
-        problematic_volume_path
-    )
+    layered_atlas.annotation.with_data(problematic_volume).save_nrrd(problematic_volume_path)
 
 
 def _compute_dists_and_obtuse_angles(volume, layered_atlas, direction_vectors):
@@ -229,14 +211,10 @@ def _compute_dists_and_obtuse_angles(volume, layered_atlas, direction_vectors):
     # pylint: disable=fixme
     # TODO: compute max_smooth_error and use it as the value of rollback_distance
     # in the call of distances_from_voxels_to_meshes_wrt_dir()
-    return distances_from_voxels_to_meshes_wrt_dir(
-        volume, layer_meshes, direction_vectors
-    )
+    return distances_from_voxels_to_meshes_wrt_dir(volume, layer_meshes, direction_vectors)
 
 
-def _dists_and_obtuse_angles(
-    acronym, layered_atlas, direction_vectors, has_hemispheres=False
-):
+def _dists_and_obtuse_angles(acronym, layered_atlas, direction_vectors, has_hemispheres=False):
     if not has_hemispheres:
         return _compute_dists_and_obtuse_angles(
             layered_atlas.volume, layered_atlas, direction_vectors
@@ -246,11 +224,11 @@ def _dists_and_obtuse_angles(
     hemisphere_volumes = split_into_halves(layered_atlas.volume)
     hemisphere_obtuse_angles = []
     L.info(
-        'Computing distances from voxels to layers meshes ...',
+        "Computing distances from voxels to layers meshes ...",
     )
     for hemisphere in [LEFT, RIGHT]:
         L.info(
-            'Computing distances for the hemisphere %d of the %s region ...',
+            "Computing distances for the hemisphere %d of the %s region ...",
             hemisphere,
             acronym,
         )
@@ -259,9 +237,7 @@ def _dists_and_obtuse_angles(
         )
         hemisphere_distances.append(dists_to_layer_meshes)
         hemisphere_obtuse_angles.append(obtuse)
-    obtuse_angles = np.logical_or(
-        hemisphere_obtuse_angles[LEFT], hemisphere_obtuse_angles[RIGHT]
-    )
+    obtuse_angles = np.logical_or(hemisphere_obtuse_angles[LEFT], hemisphere_obtuse_angles[RIGHT])
     # Merging the distances arrays of the two hemispheres
     distances_to_layer_meshes = hemisphere_distances[LEFT]
     right_hemisphere_mask = hemisphere_volumes[RIGHT] > 0
@@ -273,8 +249,8 @@ def _dists_and_obtuse_angles(
 
 def compute_distances_to_layer_meshes(  # pylint: disable=too-many-arguments
     acronym: str,
-    annotation: 'VoxelData',
-    region_map: 'RegionMap',
+    annotation: "VoxelData",
+    region_map: "RegionMap",
     direction_vectors: NDArray[float],
     layer_regexps: List[str],
     has_hemispheres: bool = True,
@@ -322,11 +298,11 @@ def compute_distances_to_layer_meshes(  # pylint: disable=too-many-arguments
     distances_to_layer_meshes, obtuse_angles = _dists_and_obtuse_angles(
         acronym, layered_atlas, direction_vectors, has_hemispheres
     )
-    L.info('Fixing disordered distances ...')
+    L.info("Fixing disordered distances ...")
     fix_disordered_distances(distances_to_layer_meshes)
 
     return {
-        'layered_atlas': layered_atlas,
-        'distances_to_layer_meshes': distances_to_layer_meshes,
-        'obtuse_angles': obtuse_angles,
+        "layered_atlas": layered_atlas,
+        "distances_to_layer_meshes": distances_to_layer_meshes,
+        "obtuse_angles": obtuse_angles,
     }

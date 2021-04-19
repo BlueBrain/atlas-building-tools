@@ -1,4 +1,4 @@
-'''Generate and save cell densities
+"""Generate and save cell densities
 
 A density value is a non-negative float number corresponding to the number of cells in mm^3.
 A density field is a 3D volumetric array assigning to each voxel a density value, that is
@@ -24,7 +24,7 @@ of the soma density in a population of interest.
 
 It is assumed throughout that such intensities depend "almost" linearly on the cell density when
 restricted to a brain region, but we shall not give a precise meaning to the word "almost".
-'''
+"""
 
 import json
 import logging
@@ -33,12 +33,12 @@ from pathlib import Path
 
 import click
 import numpy as np
-from voxcell import RegionMap, VoxelData  # type: ignore
 from atlas_analysis.atlas import assert_properties
+from voxcell import RegionMap, VoxelData  # type: ignore
 
 from atlas_building_tools.app.utils import (
-    EXISTING_FILE_PATH,
     EXISTING_DIR_PATH,
+    EXISTING_FILE_PATH,
     log_args,
     set_verbose,
 )
@@ -48,22 +48,22 @@ from atlas_building_tools.densities.cell_counts import (
     inhibitory_data,
 )
 from atlas_building_tools.densities.cell_density import compute_cell_density
+from atlas_building_tools.densities.excel_reader import (
+    read_homogenous_neuron_type_regions,
+    read_measurements,
+)
 from atlas_building_tools.densities.glia_densities import compute_glia_densities
 from atlas_building_tools.densities.inhibitory_neuron_density import (
     compute_inhibitory_neuron_density,
 )
 from atlas_building_tools.densities.mtype_densities import DensityProfileCollection
-from atlas_building_tools.densities.excel_reader import (
-    read_measurements,
-    read_homogenous_neuron_type_regions,
-)
 
-DATA_PATH = Path(Path(__file__).parent, 'data')
+DATA_PATH = Path(Path(__file__).parent, "data")
 
 L = logging.getLogger(__name__)
 
 
-def _get_voxel_volume_in_mm3(voxel_data: 'VoxelData') -> float:
+def _get_voxel_volume_in_mm3(voxel_data: "VoxelData") -> float:
     """
     Returns the voxel volume of `voxel_data` in mm^3.
 
@@ -80,45 +80,45 @@ def _get_voxel_volume_in_mm3(voxel_data: 'VoxelData') -> float:
 
 
 @click.group()
-@click.option('-v', '--verbose', count=True)
+@click.option("-v", "--verbose", count=True)
 def app(verbose):
-    '''Run the cell densities CLI'''
+    """Run the cell densities CLI"""
     set_verbose(L, verbose)
 
 
 @app.command()
 @click.option(
-    '--annotation-path',
+    "--annotation-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('The path to the whole mouse brain annotation file.'),
+    help=("The path to the whole mouse brain annotation file."),
 )
 @click.option(
-    '--hierarchy-path',
+    "--hierarchy-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help='The path to the hierarchy file, i.e., AIBS 1.json.',
+    help="The path to the hierarchy file, i.e., AIBS 1.json.",
 )
 @click.option(
-    '--nissl-path',
+    "--nissl-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('The path to the AIBS Nissl stains nrrd file.'),
+    help=("The path to the AIBS Nissl stains nrrd file."),
 )
 @click.option(
-    '--output-path',
+    "--output-path",
     type=str,
     required=True,
-    help='Path where to write the output cell density nrrd file.'
-    'A voxel value is a number of cells per mm^3',
+    help="Path where to write the output cell density nrrd file."
+    "A voxel value is a number of cells per mm^3",
 )
 @click.option(
-    '--soma-radii',
+    "--soma-radii",
     type=EXISTING_FILE_PATH,
     required=False,
-    help='Optional path to the soma radii json file. If specified'
-    ', the input nissl stain intensity is adjusted by taking regions soma radii into account.'
-    ' See cell_detection module.',
+    help="Optional path to the soma radii json file. If specified"
+    ", the input nissl stain intensity is adjusted by taking regions soma radii into account."
+    " See cell_detection module.",
     default=None,
 )
 @log_args(L)
@@ -148,7 +148,7 @@ def cell_density(annotation_path, hierarchy_path, nissl_path, output_path, soma_
 
     region_map = RegionMap.load_json(hierarchy_path)
     if soma_radii is not None:
-        with open(soma_radii, 'r') as file_:
+        with open(soma_radii, "r") as file_:
             soma_radii = json.load(file_)
 
     overall_cell_density = compute_cell_density(
@@ -158,68 +158,66 @@ def cell_density(annotation_path, hierarchy_path, nissl_path, output_path, soma_
         nissl.raw,
         soma_radii,
     )
-    nissl.with_data(np.asarray(overall_cell_density, dtype=float)).save_nrrd(
-        output_path
-    )
+    nissl.with_data(np.asarray(overall_cell_density, dtype=float)).save_nrrd(output_path)
 
 
 @app.command()
 @click.option(
-    '--annotation-path',
+    "--annotation-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('The path to the whole mouse brain annotation file.'),
+    help=("The path to the whole mouse brain annotation file."),
 )
 @click.option(
-    '--hierarchy-path',
+    "--hierarchy-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help='The path to the hierarchy file, i.e., AIBS 1.json.',
+    help="The path to the hierarchy file, i.e., AIBS 1.json.",
 )
 @click.option(
-    '--cell-density-path',
+    "--cell-density-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('The path to the overall cell density nrrd file.'),
+    help=("The path to the overall cell density nrrd file."),
 )
 @click.option(
-    '--glia-density-path',
+    "--glia-density-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('The path to the unconstrained overall glia cell density nrrd file.'),
+    help=("The path to the unconstrained overall glia cell density nrrd file."),
 )
 @click.option(
-    '--astrocyte-density-path',
+    "--astrocyte-density-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('The path to the unconstrained astrocyte density nrrd file.'),
+    help=("The path to the unconstrained astrocyte density nrrd file."),
 )
 @click.option(
-    '--oligodendrocyte-density-path',
+    "--oligodendrocyte-density-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('The path to the unconstrained oligodendrocyte density nrrd file.'),
+    help=("The path to the unconstrained oligodendrocyte density nrrd file."),
 )
 @click.option(
-    '--microglia-density-path',
+    "--microglia-density-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('The path to the unconstrained microglia density nrrd file.'),
+    help=("The path to the unconstrained microglia density nrrd file."),
 )
 @click.option(
-    '--glia-proportions-path',
+    "--glia-proportions-path",
     type=EXISTING_FILE_PATH,
-    help='Path to the json file containing the different proportions of each glia type.'
-    'This file must hold a dictionary of the following form: '
+    help="Path to the json file containing the different proportions of each glia type."
+    "This file must hold a dictionary of the following form: "
     '{"astrocyte": <proportion>, "microglia": <proportion>, "oligodendrocyte": <proportion>,'
     ' "glia": 1.0}',
 )
 @click.option(
-    '--output-dir',
+    "--output-dir",
     type=str,
     required=True,
-    help='Path to the directory where to write the output cell density nrrd files.'
-    ' It will be created if it doesn\'t exist already.',
+    help="Path to the directory where to write the output cell density nrrd files."
+    " It will be created if it doesn't exist already.",
 )
 @log_args(L)
 def glia_cell_densities(
@@ -270,10 +268,10 @@ def glia_cell_densities(
     overall_cell_density = VoxelData.load_nrrd(cell_density_path)
 
     glia_densities = {
-        'glia': VoxelData.load_nrrd(glia_density_path),
-        'astrocyte': VoxelData.load_nrrd(astrocyte_density_path),
-        'oligodendrocyte': VoxelData.load_nrrd(oligodendrocyte_density_path),
-        'microglia': VoxelData.load_nrrd(microglia_density_path),
+        "glia": VoxelData.load_nrrd(glia_density_path),
+        "astrocyte": VoxelData.load_nrrd(astrocyte_density_path),
+        "oligodendrocyte": VoxelData.load_nrrd(oligodendrocyte_density_path),
+        "microglia": VoxelData.load_nrrd(microglia_density_path),
     }
 
     atlases = list(glia_densities.values)
@@ -281,12 +279,11 @@ def glia_cell_densities(
     assert_properties(atlases)
 
     region_map = RegionMap.load_json(hierarchy_path)
-    with open(glia_proportions_path, 'r') as file_:
+    with open(glia_proportions_path, "r") as file_:
         glia_proportions = json.load(file_)
 
     glia_densities = {
-        glia_cell_type: voxel_data.raw
-        for (glia_cell_type, voxel_data) in glia_densities.items()
+        glia_cell_type: voxel_data.raw for (glia_cell_type, voxel_data) in glia_densities.items()
     }
 
     glia_densities = compute_glia_densities(
@@ -303,66 +300,66 @@ def glia_cell_densities(
     if not Path(output_dir).exists():
         os.makedirs(output_dir)
 
-    neuron_density = overall_cell_density.raw - glia_densities['glia']
+    neuron_density = overall_cell_density.raw - glia_densities["glia"]
     annotation.with_data(np.asarray(neuron_density, dtype=float)).save_nrrd(
-        str(Path(output_dir, 'neuron_density.nrrd'))
+        str(Path(output_dir, "neuron_density.nrrd"))
     )
     for glia_type, density in glia_densities.items():
         annotation.with_data(np.asarray(density, dtype=float)).save_nrrd(
-            str(Path(output_dir, f'{glia_type}_density.nrrd'))
+            str(Path(output_dir, f"{glia_type}_density.nrrd"))
         )
 
 
 @app.command()
 @click.option(
-    '--annotation-path',
+    "--annotation-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('The path to the whole mouse brain annotation file.'),
+    help=("The path to the whole mouse brain annotation file."),
 )
 @click.option(
-    '--hierarchy-path',
+    "--hierarchy-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help='The path to the hierarchy file, i.e., AIBS 1.json.',
+    help="The path to the hierarchy file, i.e., AIBS 1.json.",
 )
 @click.option(
-    '--gad1-path',
+    "--gad1-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('The path to the GAD marker nrrd file.'),
+    help=("The path to the GAD marker nrrd file."),
 )
 @click.option(
-    '--nrn1-path',
+    "--nrn1-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('The path to Nrn1 marker nrrd file.'),
+    help=("The path to Nrn1 marker nrrd file."),
 )
 @click.option(
-    '--neuron-density-path',
+    "--neuron-density-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=('The path to the overall neuron cell density nrrd file.'),
+    help=("The path to the overall neuron cell density nrrd file."),
 )
 @click.option(
-    '--inhibitory-neuron-counts-path',
+    "--inhibitory-neuron-counts-path",
     type=EXISTING_FILE_PATH,
     required=False,
-    default=Path(Path(__file__).parent, 'data', 'mmc1.xlsx'),
+    default=Path(Path(__file__).parent, "data", "mmc1.xlsx"),
     help=(
-        'The path to the excel document mmc1.xlsx of the suplementary materials of '
+        "The path to the excel document mmc1.xlsx of the suplementary materials of "
         '"Brain-wide Maps Reveal Stereotyped Cell-Type- Based Cortical Architecture '
         'and Subcortical Sexual Dimorphism" by Kim et al., 2017. '
-        'https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc1.xlsx. '
-        'Defaults to atlas_building_tools/app/data/mmc1.xlsx.'
+        "https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc1.xlsx. "
+        "Defaults to atlas_building_tools/app/data/mmc1.xlsx."
     ),
 )
 @click.option(
-    '--output-dir',
+    "--output-dir",
     type=str,
     required=True,
-    help='Path to the directory where to write the output cell density nrrd files.'
-    ' It will be created if it doesn\'t exist already.',
+    help="Path to the directory where to write the output cell density nrrd files."
+    " It will be created if it doesn't exist already.",
 )
 @log_args(L)
 def inhibitory_neuron_densities(
@@ -421,54 +418,54 @@ def inhibitory_neuron_densities(
         os.makedirs(output_dir)
 
     annotation.with_data(np.asarray(inhibitory_neuron_density, dtype=float)).save_nrrd(
-        str(Path(output_dir, 'inhibitory_neuron_density.nrrd'))
+        str(Path(output_dir, "inhibitory_neuron_density.nrrd"))
     )
     excitatory_neuron_density = neuron_density - inhibitory_neuron_density
     annotation.with_data(np.asarray(excitatory_neuron_density, dtype=float)).save_nrrd(
-        str(Path(output_dir, 'excitatory_neuron_density.nrrd'))
+        str(Path(output_dir, "excitatory_neuron_density.nrrd"))
     )
 
 
 @app.command()
 @click.option(
-    '--excitatory-neuron-density-path',
+    "--excitatory-neuron-density-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help='Path to the excitatory neuron density nrrd file',
+    help="Path to the excitatory neuron density nrrd file",
 )
 @click.option(
-    '--inhibitory-neuron-density-path',
+    "--inhibitory-neuron-density-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help='Path to the inhibitory neuron density nrrd file',
+    help="Path to the inhibitory neuron density nrrd file",
 )
 @click.option(
-    '--placement-hints-config-path',
+    "--placement-hints-config-path",
     type=EXISTING_FILE_PATH,
-    help='Path to the placement hints config file (.yaml)',
+    help="Path to the placement hints config file (.yaml)",
 )
 @click.option(
-    '--layer-slices-path',
+    "--layer-slices-path",
     type=EXISTING_FILE_PATH,
-    default=Path(Path(__file__).parent, 'data', 'mtypes', 'meta', 'layers.tsv'),
-    help='Path to the layer slices file (.tsv).',
+    default=Path(Path(__file__).parent, "data", "mtypes", "meta", "layers.tsv"),
+    help="Path to the layer slices file (.tsv).",
 )
 @click.option(
-    '--mtype-to-profile-map-path',
+    "--mtype-to-profile-map-path",
     type=EXISTING_FILE_PATH,
-    default=Path(Path(__file__).parent, 'data', 'mtypes', 'meta', 'mapping.tsv'),
-    help='Path to the map which assigns a cell density profile to each mtype (.tsv)',
+    default=Path(Path(__file__).parent, "data", "mtypes", "meta", "mapping.tsv"),
+    help="Path to the map which assigns a cell density profile to each mtype (.tsv)",
 )
 @click.option(
-    '--density-profiles-dir',
+    "--density-profiles-dir",
     type=EXISTING_DIR_PATH,
-    default=Path(Path(__file__).parent, 'data', 'mtypes'),
-    help='Path to directory containing the cell density profiles',
+    default=Path(Path(__file__).parent, "data", "mtypes"),
+    help="Path to directory containing the cell density profiles",
 )
 @click.option(
-    '--output-dir',
+    "--output-dir",
     required=True,
-    help='Path to output directory. It will be created if it doesn\'t exist already.',
+    help="Path to output directory. It will be created if it doesn't exist already.",
 )
 @log_args(L)
 def mtype_densities(
@@ -504,13 +501,13 @@ def mtype_densities(
     atlas_building_tools/app/data/mtypes. This command uses the latter files used by default.
     """
 
-    L.info('Collecting density profiles ...')
+    L.info("Collecting density profiles ...")
 
     density_profile_collection = DensityProfileCollection.load(
         mtype_to_profile_map_path, layer_slices_path, density_profiles_dir
     )
 
-    L.info('Density profile collection successfully instantiated.')
+    L.info("Density profile collection successfully instantiated.")
 
     density_profile_collection.create_mtype_densities(
         excitatory_neuron_density_path,
@@ -522,15 +519,15 @@ def mtype_densities(
 
 @app.command()
 @click.option(
-    '--measurements-output-path',
+    "--measurements-output-path",
     required=True,
-    help='Path where the density-related measurement series will be written. CSV file whose columns'
-    ' are described in the main help section.',
+    help="Path where the density-related measurement series will be written. CSV file whose columns"
+    " are described in the main help section.",
 )
 @click.option(
-    '--homogenous-regions-output-path',
+    "--homogenous-regions-output-path",
     required=True,
-    help='Path where the list of AIBS brain regions with homogenous neuron type (e.g., inhibitory'
+    help="Path where the list of AIBS brain regions with homogenous neuron type (e.g., inhibitory"
     ' or excitatory) will be saved. CSV file with 2 columns: "brain region" and "cell type".',
 )
 @log_args(L)
@@ -589,22 +586,18 @@ def compile_measurements(
     should be added to the stored file (Nexus).
     """
 
-    L.info('Loading excel files ...')
-    region_map = RegionMap.load_json(
-        Path(DATA_PATH, '1.json')
-    )  # Unmodified AIBS 1.json
+    L.info("Loading excel files ...")
+    region_map = RegionMap.load_json(Path(DATA_PATH, "1.json"))  # Unmodified AIBS 1.json
     measurements = read_measurements(
         region_map,
-        Path(DATA_PATH, 'mmc3.xlsx'),
-        Path(DATA_PATH, 'gaba_papers.xlsx'),
+        Path(DATA_PATH, "mmc3.xlsx"),
+        Path(DATA_PATH, "gaba_papers.xlsx"),
         # The next measurement file has been obtained after manual extraction
         # of non-density measurements from the worksheets PV-SST-VIP and 'GAD67 densities'
         # of gaba_papers.xlsx.
-        Path(DATA_PATH, 'non_density_measurements.csv'),
+        Path(DATA_PATH, "non_density_measurements.csv"),
     )
-    homogenous_regions = read_homogenous_neuron_type_regions(
-        Path(DATA_PATH, 'gaba_papers.xlsx')
-    )
-    L.info('Saving to CSV files ...')
+    homogenous_regions = read_homogenous_neuron_type_regions(Path(DATA_PATH, "gaba_papers.xlsx"))
+    L.info("Saving to CSV files ...")
     measurements.to_csv(measurements_output_path, index=False)
     homogenous_regions.to_csv(homogenous_regions_output_path, index=False)

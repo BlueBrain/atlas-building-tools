@@ -1,33 +1,31 @@
-import pytest
 import numpy as np
 import numpy.testing as npt
+import pytest
 from mock import patch
 
 from atlas_building_tools.direction_vectors.algorithms import regiodesics as tested
-from atlas_building_tools.direction_vectors.algorithms.regiodesics import (
-    RegiodesicsLabels,
-)
+from atlas_building_tools.direction_vectors.algorithms.regiodesics import RegiodesicsLabels
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 
 @patch(
-    'atlas_building_tools.direction_vectors.algorithms.regiodesics.find_executable',
-    return_value='/home/software/Regiodesics/layer_segmenter',
+    "atlas_building_tools.direction_vectors.algorithms.regiodesics.find_executable",
+    return_value="/home/software/Regiodesics/layer_segmenter",
 )
 def test_find_regiodesics_exec_or_raise_found(_):
     assert (
-        tested.find_regiodesics_exec_or_raise('layer_segmenter')
-        == '/home/software/Regiodesics/layer_segmenter'
+        tested.find_regiodesics_exec_or_raise("layer_segmenter")
+        == "/home/software/Regiodesics/layer_segmenter"
     )
 
 
 @patch(
-    'atlas_building_tools.direction_vectors.algorithms.regiodesics.find_executable',
-    return_value='',
+    "atlas_building_tools.direction_vectors.algorithms.regiodesics.find_executable",
+    return_value="",
 )
 def test_find_regiodesics_exec_or_raise_raises(_):
     with pytest.raises(FileExistsError):
-        tested.find_regiodesics_exec_or_raise('geodesics')
+        tested.find_regiodesics_exec_or_raise("geodesics")
 
 
 def test_mark_with_regiodesics_labels():

@@ -1,21 +1,22 @@
-'''
+"""
 Utility functions to compute distances to boundaries.
-'''
-from typing import Tuple, TYPE_CHECKING
-from nptyping import NDArray  # type: ignore
+"""
+from typing import TYPE_CHECKING, Tuple
+
 import numpy as np  # type: ignore
+from nptyping import NDArray  # type: ignore
 
 if TYPE_CHECKING:
     import trimesh  # type: ignore
 
 
 def memory_efficient_intersection(
-    intersector: 'trimesh.ray.ray_triangle.RayMeshIntersector',
+    intersector: "trimesh.ray.ray_triangle.RayMeshIntersector",
     ray_origins: NDArray[int],
     ray_directions: NDArray[float],
     chunk_length: int = 100000,
 ) -> Tuple[NDArray[int], NDArray[int], NDArray[int]]:
-    '''
+    """
     Split the computations of ray intersections using several chunks of a
     specified length.
     It is slower than getting intersections directly but costs less memory.
@@ -31,7 +32,7 @@ def memory_efficient_intersection(
         locations: array (N, 3): locations of intersections.
         ray_ids: array (N, 1): ids of intersecting rays.
         tri_ids: array (N, 1): ids of mesh triangles intersecting a ray.
-    '''
+    """
 
     locations: NDArray[int] = np.array([[]], dtype=int)
     locations = np.reshape(locations, (0, 3))
@@ -44,9 +45,7 @@ def memory_efficient_intersection(
         np.array_split(ray_origins, split_count),
         np.array_split(ray_directions, split_count),
     ):
-        locs, rays, tris = intersector.intersects_location(
-            raypos, raydir, multiple_hits=False
-        )
+        locs, rays, tris = intersector.intersects_location(raypos, raydir, multiple_hits=False)
         rays = rays + ray_ids_offset
         locations = np.vstack([locations, locs])
         ray_ids = np.hstack([ray_ids, rays])

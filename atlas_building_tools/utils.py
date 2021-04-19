@@ -1,24 +1,20 @@
-'''Generic Atlas files tools'''
+"""Generic Atlas files tools"""
 
 from typing import Tuple, Union
 
-
 import numpy as np  # type: ignore
 from nptyping import NDArray  # type: ignore
-from scipy.signal import correlate  # type: ignore
 from scipy.ndimage.morphology import generate_binary_structure  # type: ignore
-
+from scipy.signal import correlate  # type: ignore
 from voxcell import RegionMap  # type: ignore
 
 # pylint: disable=invalid-name
-FloatArray = Union[
-    NDArray[float], NDArray[np.float16], NDArray[np.float32], NDArray[np.float64]
-]
+FloatArray = Union[NDArray[float], NDArray[np.float16], NDArray[np.float32], NDArray[np.float64]]
 NumericArray = Union[NDArray[bool], NDArray[int], NDArray[float]]
 
 
 def load_region_map(region_map: Union[str, dict, RegionMap]) -> RegionMap:
-    '''
+    """
     Load a RegionMap object specified in one of three possible ways.
 
     Args:
@@ -26,7 +22,7 @@ def load_region_map(region_map: Union[str, dict, RegionMap]) -> RegionMap:
 
     Returns:
         A true RegionMap object.
-    '''
+    """
     if isinstance(region_map, str):
         region_map = RegionMap.load_json(region_map)
     elif isinstance(region_map, dict):
@@ -34,14 +30,14 @@ def load_region_map(region_map: Union[str, dict, RegionMap]) -> RegionMap:
     elif isinstance(region_map, RegionMap):
         return region_map
     else:
-        raise TypeError('Cannot convert {} to RegionMap'.format(type(region_map)))
+        raise TypeError("Cannot convert {} to RegionMap".format(type(region_map)))
     return region_map
 
 
 def get_region_mask(
     acronym: str, annotation: NDArray[int], region_map: Union[str, dict, RegionMap]
 ) -> RegionMap:
-    '''
+    """
     Create a mask for the region defined by `acronym`.
 
     Args:
@@ -52,16 +48,17 @@ def get_region_mask(
     Returns:
        3D boolean array of the same shape as annotation.
 
-    '''
+    """
     region_map = load_region_map(region_map)
-    ids = list(region_map.find(acronym, 'acronym', with_descendants=True))
+    ids = list(region_map.find(acronym, "acronym", with_descendants=True))
     return np.isin(annotation, ids)
 
 
 def split_into_halves(
-    volume: NumericArray, halfway_offset: int = 0,
+    volume: NumericArray,
+    halfway_offset: int = 0,
 ) -> Tuple[NumericArray, NumericArray]:
-    '''
+    """
     Split input 3D volume into two halves along the z-axis.
 
     Args:
@@ -73,7 +70,7 @@ def split_into_halves(
         input volume. Each has the same shape as `volume`.
         Voxels are zeroed for the z-values above, respectively
         below, the half of the z-dimension.
-    '''
+    """
     z_halfway = volume.shape[2] // 2 + halfway_offset
     left_volume = volume.copy()
     left_volume[..., z_halfway:] = 0
@@ -82,10 +79,8 @@ def split_into_halves(
     return left_volume, right_volume
 
 
-def is_obtuse_angle(
-    vector_field_1: NumericArray, vector_field_2: NumericArray
-) -> NDArray[bool]:
-    '''
+def is_obtuse_angle(vector_field_1: NumericArray, vector_field_2: NumericArray) -> NDArray[bool]:
+    """
     Returns a mask indicating which vector pairs form an obtuse angle.
 
     Arguments:
@@ -96,12 +91,12 @@ def is_obtuse_angle(
     Returns:
        Binary mask of shape (M, N, ...) indicating which pairs of vectors
         form an obtuse angle.
-    '''
+    """
     return np.sum(vector_field_1 * vector_field_2, axis=-1) < 0
 
 
 def copy_array(array: NDArray, copy=True) -> NDArray:
-    '''
+    """
     Returns either `array` or a deep copy of `array` depending on `copy`.
 
     Args:
@@ -110,12 +105,12 @@ def copy_array(array: NDArray, copy=True) -> NDArray:
             returns `array` itself.
     Returns:
         a copy of `array` or `array` itself if `copy` is False.
-    '''
+    """
     return array.copy() if copy else array
 
 
 def compute_boundary(v_1, v_2):
-    '''Compute the boundary shared by two volumes.
+    """Compute the boundary shared by two volumes.
 
     The voxels of `v_1` (resp. of `v_2`) are labeled with the value 1 (resp. 8).
     We build the filter corresponding to the 6 neighbour voxels that share a face
@@ -134,9 +129,9 @@ def compute_boundary(v_1, v_2):
     Returns:
         shared_boundary(numpy.ndarray), 3D boolean array holding the mask of the boundary shared
         by `v_1` and `v_2`. This corresponds to a subset of `v_1`.
-    '''
+    """
 
     filter_ = generate_binary_structure(3, 1).astype(int)
-    full_volume = correlate(v_1 * 1 + v_2 * 8, filter_, mode='same')
+    full_volume = correlate(v_1 * 1 + v_2 * 8, filter_, mode="same")
 
     return np.logical_and(v_1, full_volume > 8)

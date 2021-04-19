@@ -1,39 +1,40 @@
-'''
+"""
 Unit tests for inhibitory cell density computation
-'''
-import numpy as np
+"""
 from pathlib import Path
-import numpy.testing as npt
-from mock import patch
-import pytest
 
+import numpy as np
+import numpy.testing as npt
+import pytest
+from mock import patch
 from voxcell import RegionMap
-from atlas_building_tools.exceptions import AtlasBuildingToolsError
+
 import atlas_building_tools.densities.inhibitory_neuron_density as tested
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 TESTS_PATH = Path(__file__).parent.parent
 
 
 def get_intensity_data():
     region_masks = {
-        'Cerebellum group': np.array([[[False, False, True, False, False]]]),
-        'Isocortex group': np.array([[[False, False, False, True, False]]]),
-        'Rest': np.array([[[False, False, False, False, True]]]),
+        "Cerebellum group": np.array([[[False, False, True, False, False]]]),
+        "Isocortex group": np.array([[[False, False, False, True, False]]]),
+        "Rest": np.array([[[False, False, False, False, True]]]),
     }
     inhibitory_data = {
-        'proportions': {
-            'Cerebellum group': 0.2,
-            'Isocortex group': 0.2,
-            'Rest': 0.6,
+        "proportions": {
+            "Cerebellum group": 0.2,
+            "Isocortex group": 0.2,
+            "Rest": 0.6,
         },
-        'neuron_count': 6,
-        'region_masks': region_masks,
+        "neuron_count": 6,
+        "region_masks": region_masks,
     }
     return {
-        'region_masks': region_masks,
-        'inhibitory_data': inhibitory_data,
-        'gad': np.array([[[0.0, 0.0, 0.5, 0.25, 0.25]]]),
-        'nrn1': np.array([[[0.0, 0.0, 0.4, 0.35, 0.25]]]),
+        "region_masks": region_masks,
+        "inhibitory_data": inhibitory_data,
+        "gad": np.array([[[0.0, 0.0, 0.5, 0.25, 0.25]]]),
+        "nrn1": np.array([[[0.0, 0.0, 0.4, 0.35, 0.25]]]),
     }
 
 
@@ -43,9 +44,9 @@ def test_compute_inhibitory_neuron_intensity():
     nrn1 = np.array([[[0.0, 0.0, 0.4, 0.6]]])
     expected = np.array([[[0.0, 0.0, 1.0, 23.0 / 27.0]]])
     inhibitory_data = {
-        'proportions': {'whole brain': 0.6},
-        'neuron_count': 10,
-        'region_masks': {'whole brain': np.ones((1, 1, 4), dtype=bool)},
+        "proportions": {"whole brain": 0.6},
+        "neuron_count": 10,
+        "region_masks": {"whole brain": np.ones((1, 1, 4), dtype=bool)},
     }
     actual = tested.compute_inhibitory_neuron_intensity(gad, nrn1, inhibitory_data)
     npt.assert_almost_equal(actual, expected)
@@ -53,9 +54,9 @@ def test_compute_inhibitory_neuron_intensity():
     # Inhibitory neuron proportions are provided for the 3 different groups
     data = get_intensity_data()
     actual = tested.compute_inhibitory_neuron_intensity(
-        data['gad'],
-        data['nrn1'],
-        inhibitory_data=data['inhibitory_data'],
+        data["gad"],
+        data["nrn1"],
+        inhibitory_data=data["inhibitory_data"],
     )
     expected = np.array([[[0.0, 0.0, 25.0 / 63.0, 25.0 / 99.0, 1.0]]])
     npt.assert_almost_equal(actual, expected)
@@ -66,38 +67,35 @@ def test_compute_inhibitory_neuron_density():
     voxel_volume = (25 ** 3) / 1e9  # mm^3
     neuron_density = np.array([[[0.0, 0.0, 4.0, 4.0, 2.0]]]) / voxel_volume
     group_ids = {
-        'Purkinje layer': set({1, 2}),
-        'Cerebellar cortex': set({1, 6}),
-        'Molecular layer': set({2, 6}),
+        "Purkinje layer": set({1, 2}),
+        "Cerebellar cortex": set({1, 6}),
+        "Molecular layer": set({2, 6}),
     }
     data = get_intensity_data()
 
     with patch(
-        'atlas_building_tools.densities.inhibitory_neuron_density.get_group_ids',
+        "atlas_building_tools.densities.inhibitory_neuron_density.get_group_ids",
         return_value=group_ids,
     ):
         with patch(
-            'atlas_building_tools.densities.inhibitory_neuron_density.get_region_masks',
-            return_value=data['region_masks'],
+            "atlas_building_tools.densities.inhibitory_neuron_density.get_region_masks",
+            return_value=data["region_masks"],
         ):
             with patch(
-                'atlas_building_tools.densities.inhibitory_neuron_density.compensate_cell_overlap',
-                side_effect=[data['gad'], data['nrn1']],
+                "atlas_building_tools.densities.inhibitory_neuron_density.compensate_cell_overlap",
+                side_effect=[data["gad"], data["nrn1"]],
             ):
                 region_map = {}  # Fake
                 inhibitory_neuron_density = tested.compute_inhibitory_neuron_density(
                     region_map,
                     annotation,
                     voxel_volume,
-                    data['gad'],
-                    data['nrn1'],
+                    data["gad"],
+                    data["nrn1"],
                     neuron_density,
-                    inhibitory_data=data['inhibitory_data'],
+                    inhibitory_data=data["inhibitory_data"],
                 )
-                expected = (
-                    np.array([[[0.0, 0.0, 4.0, 25.0 / 62.0, 99.0 / 62.0]]])
-                    / voxel_volume
-                )
+                expected = np.array([[[0.0, 0.0, 4.0, 25.0 / 62.0, 99.0 / 62.0]]]) / voxel_volume
                 npt.assert_almost_equal(inhibitory_neuron_density, expected)
 
 
@@ -112,12 +110,12 @@ def test_compute_inhibitory_neuron_density_exception():
             np.array([[[1]]], dtype=float),
             np.array([[[1]]], dtype=float),
         )
-    assert 'inhibitory_proportion' in str(error_)
-    assert 'inhibitory_data' in str(error_)
+    assert "inhibitory_proportion" in str(error_)
+    assert "inhibitory_data" in str(error_)
 
 
 def test_compute_inhibitory_density_large_input():
-    region_map = RegionMap.load_json(Path(TESTS_PATH, '1.json'))
+    region_map = RegionMap.load_json(Path(TESTS_PATH, "1.json"))
     shape = (20, 20, 20)
     annotation = np.arange(8000).reshape(shape)
     neuron_density = np.random.random_sample(annotation.shape).reshape(shape)
@@ -126,12 +124,12 @@ def test_compute_inhibitory_density_large_input():
     gad = np.random.random_sample(annotation.shape).reshape(shape)
     nrn1 = np.random.random_sample(annotation.shape).reshape(shape)
     inhibitory_data = {
-        'proportions': {
-            'Cerebellum group': 0.4,
-            'Isocortex group': 0.35,
-            'Rest': 0.25,
+        "proportions": {
+            "Cerebellum group": 0.4,
+            "Isocortex group": 0.35,
+            "Rest": 0.25,
         },
-        'neuron_count': 30000,
+        "neuron_count": 30000,
     }
     inhibitory_neuron_density = tested.compute_inhibitory_neuron_density(
         region_map,
@@ -144,7 +142,5 @@ def test_compute_inhibitory_density_large_input():
     )
 
     assert np.all(inhibitory_neuron_density <= neuron_density)
-    npt.assert_allclose(
-        np.sum(inhibitory_neuron_density) * voxel_volume, 30000, rtol=1e-3
-    )
+    npt.assert_allclose(np.sum(inhibitory_neuron_density) * voxel_volume, 30000, rtol=1e-3)
     assert inhibitory_neuron_density.dtype == np.float64

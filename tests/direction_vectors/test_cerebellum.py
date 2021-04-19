@@ -1,18 +1,16 @@
 import numpy as np
 import numpy.testing as npt
-
 from voxcell import VoxelData
+
 from atlas_building_tools.direction_vectors import cerebellum as tested
 
 
 def test_compute_cerebellum_direction_vectors():
     cerebellum_raw = np.zeros((8, 8, 8))
-    for x_index, region_id in enumerate(
-        [10707, 10692, 10706, 10691, 10705, 10690, 744, 728]
-    ):
+    for x_index, region_id in enumerate([10707, 10692, 10706, 10691, 10705, 10690, 744, 728]):
         cerebellum_raw[x_index, :, :] = region_id
     cerebellum_raw = np.pad(
-        cerebellum_raw, 2, 'constant', constant_values=0
+        cerebellum_raw, 2, "constant", constant_values=0
     )  # Add 2-voxel void margin around the positive annotations
 
     cerebellum = VoxelData(cerebellum_raw, (25.0, 25.0, 25.0), offset=(1.0, 2.0, 3.0))

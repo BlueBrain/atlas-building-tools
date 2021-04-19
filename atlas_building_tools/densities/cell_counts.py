@@ -1,16 +1,17 @@
-'''Utility functions to retrieve cell counts from the scientific literature.
+"""Utility functions to retrieve cell counts from the scientific literature.
 
 Lexicon: AIBS stands for Allen Institute for Brain Science
     https://alleninstitute.org/what-we-do/brain-science/
-'''
+"""
 
-from typing import Dict, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Dict, Union
+
 import numpy as np
 import pandas as pd
 
-
 if TYPE_CHECKING:  # pragme: no cover
     from pathlib import Path
+
     from voxcell import RegionMap, VoxelData  # type: ignore
 
 
@@ -38,16 +39,14 @@ def cell_counts() -> Dict[str, int]:
     """
     counts = {
         # Table 1 of Herculano-Houzel et al., 2011,
-        'Cerebellum group': 42220000
-        + 6950000,  # 'Cerebellar neurons' + 'Cerebellar other cells'
+        "Cerebellum group": 42220000 + 6950000,  # 'Cerebellar neurons' + 'Cerebellar other cells'
         # Table 1 of Herculano-Houzel et al., 2013, Line 'Total'
-        'Isocortex group': 2
-        * (5048837 + 6640234),  # 'neurons' + 'other cells', 2 hemispheres
+        "Isocortex group": 2 * (5048837 + 6640234),  # 'neurons' + 'other cells', 2 hemispheres
     }
     # Table 1 of Herculano-Houzel et al., 2011,
     # ('Brain neurons' + 'Brain other cells') + ('Olf bulb neurons' + 'Olf other cells')
     total = (67870000 + 33860000) + (3890000 + 5460000)
-    counts['Rest'] = total - sum(counts.values())
+    counts["Rest"] = total - sum(counts.values())
 
     return counts
 
@@ -76,14 +75,14 @@ def neuron_counts() -> Dict[str, int]:
     """
     counts = {
         # Table 1 of Herculano-Houzel et al., 2011,
-        'Cerebellum group': 42220000,  # 'Cerebellar neurons'
+        "Cerebellum group": 42220000,  # 'Cerebellar neurons'
         # Table 1 of Herculano-Houzel et al., 2013, Line 'Total'
-        'Isocortex group': 2 * 5048837,  # 'neurons', 2 hemispheres
+        "Isocortex group": 2 * 5048837,  # 'neurons', 2 hemispheres
     }
     # Table 1 of Herculano-Houzel et al., 2011,
     # ('Brain neurons' + 'Brain other cells') + ('Olf bulb neurons' + 'Olf other cells')
     total = 67870000 + 3890000
-    counts['Rest'] = total - sum(counts.values())
+    counts["Rest"] = total - sum(counts.values())
 
     return counts
 
@@ -105,13 +104,11 @@ def glia_cell_counts() -> Dict[str, int]:
             * 'Rest': rest of the mouse brain
         and whose values are the corresponding glia cell counts.
     """
-    return {
-        group: cell_counts()[group] - neuron_counts()[group] for group in cell_counts()
-    }
+    return {group: cell_counts()[group] - neuron_counts()[group] for group in cell_counts()}
 
 
 def inhibitory_neuron_counts(
-    inhibitory_neurons_dataframe: 'pd.DataFrame',
+    inhibitory_neurons_dataframe: "pd.DataFrame",
 ) -> Dict[str, int]:
     """Number of inhibitory neurons in the whole mouse brain.
 
@@ -127,27 +124,27 @@ def inhibitory_neuron_counts(
             * 'Rest': rest of the mouse brain
         and whose values are the corresponding inhibitory neuron cell counts.
     """
-    cerebellum_group_count = np.sum(inhibitory_neurons_dataframe.loc['CB'][1:])
+    cerebellum_group_count = np.sum(inhibitory_neurons_dataframe.loc["CB"][1:])
     isocortex_group_count = sum(
         [
             np.sum(inhibitory_neurons_dataframe.loc[acronym][1:])
-            for acronym in ['Isocortex', 'ENT', 'PIR']
+            for acronym in ["Isocortex", "ENT", "PIR"]
         ]
     )
     rest_count = (
-        np.sum(inhibitory_neurons_dataframe.loc['grey'][1:])
+        np.sum(inhibitory_neurons_dataframe.loc["grey"][1:])
         - cerebellum_group_count
         - isocortex_group_count
     )
     return {
-        'Cerebellum group': cerebellum_group_count,
-        'Isocortex group': isocortex_group_count,
-        'Rest': rest_count,
+        "Cerebellum group": cerebellum_group_count,
+        "Isocortex group": isocortex_group_count,
+        "Rest": rest_count,
     }
 
 
 def inhibitory_data(
-    inhibitory_neurons_dataframe: 'pd.DataFrame',
+    inhibitory_neurons_dataframe: "pd.DataFrame",
 ) -> Dict[str, Union[int, Dict[str, float]]]:
     """
     Number of inhibitory cells for different region groups of the mouse brain.
@@ -190,27 +187,25 @@ def inhibitory_data(
     """
 
     return {
-        'proportions': {
-            'Cerebellum group': inhibitory_neuron_counts(inhibitory_neurons_dataframe)[
-                'Cerebellum group'
+        "proportions": {
+            "Cerebellum group": inhibitory_neuron_counts(inhibitory_neurons_dataframe)[
+                "Cerebellum group"
             ]
-            / neuron_counts()['Cerebellum group'],
-            'Isocortex group': inhibitory_neuron_counts(inhibitory_neurons_dataframe)[
-                'Isocortex group'
+            / neuron_counts()["Cerebellum group"],
+            "Isocortex group": inhibitory_neuron_counts(inhibitory_neurons_dataframe)[
+                "Isocortex group"
             ]
-            / neuron_counts()['Isocortex group'],
-            'Rest': inhibitory_neuron_counts(inhibitory_neurons_dataframe)['Rest']
-            / neuron_counts()['Rest'],
+            / neuron_counts()["Isocortex group"],
+            "Rest": inhibitory_neuron_counts(inhibitory_neurons_dataframe)["Rest"]
+            / neuron_counts()["Rest"],
         },
-        'neuron_count': sum(
-            inhibitory_neuron_counts(inhibitory_neurons_dataframe).values()
-        ),
+        "neuron_count": sum(inhibitory_neuron_counts(inhibitory_neurons_dataframe).values()),
     }
 
 
 def extract_inhibitory_neurons_dataframe(
-    inhibitory_neuron_counts_path: Union[str, 'Path']
-) -> 'pd.DataFrame':
+    inhibitory_neuron_counts_path: Union[str, "Path"]
+) -> "pd.DataFrame":
     """
     Extract from excel file a pandas.DataFrame containing the counts of the cells reacting to
     PV, SST and VIP in every AIBS region of the mouse brain.
@@ -245,10 +240,10 @@ def extract_inhibitory_neurons_dataframe(
     """
     return pd.read_excel(
         str(inhibitory_neuron_counts_path),
-        sheet_name='count',
+        sheet_name="count",
         header=None,
-        names=['ROI', 'fullName', 'PV', 'SST', 'VIP'],
-        usecols='A,B,D,F,H',
+        names=["ROI", "fullName", "PV", "SST", "VIP"],
+        usecols="A,B,D,F,H",
         skiprows=[0, 1],
-        engine='openpyxl',
-    ).set_index('ROI')
+        engine="openpyxl",
+    ).set_index("ROI")

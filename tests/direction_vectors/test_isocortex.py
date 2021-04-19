@@ -1,23 +1,23 @@
-from pathlib import Path
 import warnings
+from pathlib import Path
+
 import numpy as np
 import numpy.testing as npt
-
-
 from voxcell import RegionMap, VoxelData
+
+import atlas_building_tools.direction_vectors.isocortex as tested
 from tests.direction_vectors.algorithms.test_layer_based_direction_vectors import (
     check_direction_vectors,
 )
-import atlas_building_tools.direction_vectors.isocortex as tested
 
 TEST_PATH = Path(Path(__file__).parent.parent)
-HIERARCHY_PATH = str(Path(TEST_PATH, '1.json'))
+HIERARCHY_PATH = str(Path(TEST_PATH, "1.json"))
 
 
 def test_get_isocortical_regions():
     hierarchy_json = HIERARCHY_PATH
     raw = np.arange(1, 35).reshape((1, 2, 17))
-    expected = ['SSp-m', 'SSp-tr', 'VISp']
+    expected = ["SSp-m", "SSp-tr", "VISp"]
     # Path to hierarchy.json
     regions = tested.get_isocortical_regions(raw, hierarchy_json)
     npt.assert_array_equal(regions, expected)
@@ -58,9 +58,7 @@ def test_compute_direction_vectors():
 
     voxel_data = VoxelData(raw, (1.0, 1.0, 1.0))
     direction_vectors = tested.compute_direction_vectors(HIERARCHY_PATH, voxel_data)
-    check_direction_vectors(
-        direction_vectors, raw > 0, {'opposite': 'target', 'strict': False}
-    )
+    check_direction_vectors(direction_vectors, raw > 0, {"opposite": "target", "strict": False})
 
 
 def test_compute_direction_vectors_with_missing_bottom():

@@ -1,4 +1,4 @@
-'''
+"""
 Cell detection module.
 
 Functions to detect cell somata and to estimate somata diameters by processing 2D images.
@@ -11,22 +11,21 @@ radius is determined experimentally.
 
 The mapping which assigns a soma center to an AIBS brain region is computed by means of companion
 svg files which annotate each greyscale image.
-'''
-from xml.dom import minidom  # type: ignore
-import re
-from collections import defaultdict
+"""
 import logging
+import re
 import warnings
+from collections import defaultdict
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from xml.dom import minidom  # type: ignore
 
-from typing import Dict, List, Optional, TYPE_CHECKING, Union
-from nptyping import NDArray  # type: ignore
-from cairosvg import svg2png  # type: ignore
 import numpy as np  # type: ignore
+from cairosvg import svg2png  # type: ignore
+from nptyping import NDArray  # type: ignore
 from PIL import Image  # type: ignore
-from scipy.optimize import curve_fit  # type: ignore
 from scipy.ndimage import filters  # type: ignore
+from scipy.optimize import curve_fit  # type: ignore
 from skimage import morphology  # type: ignore
-
 
 if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
@@ -39,7 +38,7 @@ FITTING_PARAMETERS = [10.0, 200.0, 0.0, 0.4]  # determined experimentally
 
 
 def remove_disk(coord: NDArray[int], radius: int, image: NDArray[float]) -> None:
-    '''
+    """
     Remove a disk of radius `radius` centered at `coord` from the input 2D `image`.
 
     The color of pixels lying inside the disk of radius `radius` centered at `coord`
@@ -50,7 +49,7 @@ def remove_disk(coord: NDArray[int], radius: int, image: NDArray[float]) -> None
             coordinates.
         radius: radius of the disk to be removed in number of pixels.
         image: 2D integer array.
-    '''
+    """
     bottom = np.max([coord - radius, [0, 0]], axis=0)
     top = np.min([coord + radius, np.array(image.shape) - 1], axis=0) + 1
     disk_bottom = bottom - coord + radius
@@ -60,10 +59,8 @@ def remove_disk(coord: NDArray[int], radius: int, image: NDArray[float]) -> None
     image[bottom[0] : top[0], bottom[1] : top[1]][disk_mask] = 0
 
 
-def find_spots(
-    image: NDArray[float], radius: int, epsilon: float = 0.1
-) -> NDArray[int]:
-    '''
+def find_spots(image: NDArray[float], radius: int, epsilon: float = 0.1) -> NDArray[int]:
+    """
     Find all the light spots of radius <= `radius` and whose intensity exceeds `epsilon`.
 
     A spot is centered at a pixel which maximizes the image intensity.
@@ -81,7 +78,7 @@ def find_spots(
         An integer array of shape (N, 2) containing the 2D integer coordinates of the N detected
         spots.
 
-    '''
+    """
     spots = []
     image = image.copy()
     while True:
@@ -95,7 +92,7 @@ def find_spots(
 
 
 def intensity_curve_fitting(curve: NDArray[float], delta: int) -> float:
-    '''
+    """
     Fit a bell-shaped curve to a function reaching its maximum at `delta`.
 
     Args:
@@ -110,22 +107,23 @@ def intensity_curve_fitting(curve: NDArray[float], delta: int) -> float:
         If the optimizatio process failed (scipy's RuntimeError) or if the returned optimal
         parameters are invalid (say, a non-positive radius), the return value is np.nan.
 
-    '''
+    """
     # pylint: disable=invalid-name
     def bell_shape(X: float, A: float, B: float, C: float, sigma: float) -> float:
-        '''
+        """
         Bell-shape curve generalizing the graph curve of a Gaussian kernel.
-        '''
+        """
         return A + B * np.exp(-sigma * (X - float(delta)) ** 2) + C * X
 
     try:
         optimal_parameters = curve_fit(
-            bell_shape, np.arange(len(curve)), curve, p0=np.array(FITTING_PARAMETERS),
+            bell_shape,
+            np.arange(len(curve)),
+            curve,
+            p0=np.array(FITTING_PARAMETERS),
         )
     except RuntimeError as error:
-        warnings.warn(
-            f'Curve fitting failed: {error}.\n' ' NaN radius is returned.', UserWarning
-        )
+        warnings.warn(f"Curve fitting failed: {error}.\n" " NaN radius is returned.", UserWarning)
         return np.nan
 
     sigma = optimal_parameters[0][3]
@@ -135,10 +133,8 @@ def intensity_curve_fitting(curve: NDArray[float], delta: int) -> float:
     return np.nan
 
 
-def _compute_spot_radius(
-    spot: NDArray[int], greyscale: NDArray[float], delta: int
-) -> float:
-    '''
+def _compute_spot_radius(spot: NDArray[int], greyscale: NDArray[float], delta: int) -> float:
+    """
     Compute the radius of a light spot based on intensity curve fitting.
 
     Spots are assumed to be round-shaped, centered around pixels with maximal intensity.
@@ -160,26 +156,28 @@ def _compute_spot_radius(
         float, an estimate of the spot radius.
         Note: if the optimization process failed to return a sensible radius value, the returned
         radius is np.nan.
-    '''
+    """
     bottom = np.max([spot - delta, [0, 0]], axis=0)
     top = np.min([spot + delta + 1, np.array(greyscale.shape) - 1], axis=0) + 1
     window = greyscale[bottom[0] : top[0], bottom[1] : top[1]]
     centred_spot = spot - bottom
-    return float(np.mean(
-        [
-            intensity_curve_fitting(window[:, centred_spot[1]], centred_spot[0]),
-            intensity_curve_fitting(window[centred_spot[0], :], centred_spot[1]),
-        ]
-    ))
+    return float(
+        np.mean(
+            [
+                intensity_curve_fitting(window[:, centred_spot[1]], centred_spot[0]),
+                intensity_curve_fitting(window[centred_spot[0], :], centred_spot[1]),
+            ]
+        )
+    )
 
 
 def _jpg_to_greyscale(
-    jpg_filename: Union[str, 'Path'],
+    jpg_filename: Union[str, "Path"],
     png: Image,
     gaussian_filter_stddev: float = 1.5,
     intensity_threshold: float = 0.1,
 ) -> NDArray[float]:
-    '''
+    """
     Convert a jpg image to a greyscale 2D array.
 
     The function applies the standard RGB-to-greyscale conversion of PIL,
@@ -204,14 +202,12 @@ def _jpg_to_greyscale(
     Returns:
         A 2D greyscale image.
 
-    '''
-    greyscale = np.asarray(Image.open(str(jpg_filename)).convert('L'))
+    """
+    greyscale = np.asarray(Image.open(str(jpg_filename)).convert("L"))
     greyscale = ~greyscale.copy()
-    png = np.asarray(png.convert('L'))
+    png = np.asarray(png.convert("L"))
     greyscale[png == 0.0] = 0.0  # removes out-of-brain intensity
-    greyscale = filters.gaussian_filter(
-        greyscale.astype(float), sigma=gaussian_filter_stddev
-    )
+    greyscale = filters.gaussian_filter(greyscale.astype(float), sigma=gaussian_filter_stddev)
     greyscale = greyscale / np.max(greyscale)
     greyscale[greyscale < intensity_threshold] = 0.0
 
@@ -220,12 +216,12 @@ def _jpg_to_greyscale(
 
 def compute_average_soma_radius(
     color_map: Dict[str, int],
-    jpg_filenames: Union[List[str], List['Path']],
+    jpg_filenames: Union[List[str], List["Path"]],
     delta: int = 16,
     max_radius: int = 10,
     intensity_threshold: float = 0.1,
 ) -> Dict[int, str]:
-    '''
+    """
     Compute the average soma radii of each brain region represented in the input jpg images.
 
     The algorithm first detects light spots based on maximal values of the image intensity.
@@ -252,22 +248,22 @@ def compute_average_soma_radius(
         max_radius: radius of the disk around a spot center that is removed once the spot has been
             detected. This radius is expressed in number of pixels.
         intensity_threshold: threshold below which the intensity of the image is zeroed.
-    '''
+    """
     jpg_filenames.sort()
     soma_radius_dict = defaultdict(list)
     for jpg_filename in jpg_filenames:
-        L.info('Processing file %s', jpg_filename)
-        png = Image.open(str(jpg_filename).replace('.jpg', '.png'))
+        L.info("Processing file %s", jpg_filename)
+        png = Image.open(str(jpg_filename).replace(".jpg", ".png"))
         greyscale = _jpg_to_greyscale(jpg_filename, png, 1.5, intensity_threshold)
-        L.info('Detecting spots of maximal intensity ...')
+        L.info("Detecting spots of maximal intensity ...")
         spots = find_spots(greyscale, max_radius, epsilon=intensity_threshold)
-        L.info('Computing spot radii ...')
+        L.info("Computing spot radii ...")
         png = np.asarray(png)
         for spot in spots:
             radius: float = _compute_spot_radius(spot, greyscale, delta)
             if not np.isnan(radius):
                 rgb = tuple(png[tuple(spot)])
-                hexa_color_code = '#%02x%02x%02x' % rgb[:3]
+                hexa_color_code = "#%02x%02x%02x" % rgb[:3]
                 # The svg-to-png conversion has created unregistered shades on region boundaries.
                 # These new colors without entries in the color map represent < 2 percents
                 # of the colored pixels. We just skip them if they happen to be spot centers.
@@ -282,11 +278,11 @@ def compute_average_soma_radius(
 
 
 def svg_to_png(
-    svg_filename: Union[str, 'Path'],
-    output_name: Optional[Union[str, 'Path']] = None,
+    svg_filename: Union[str, "Path"],
+    output_name: Optional[Union[str, "Path"]] = None,
     remove_strokes: bool = False,
 ) -> None:
-    '''
+    """
     Convert a svg file to a png file using cairosvg.svg2png.
 
     Strokes are optionally removed.
@@ -296,9 +292,9 @@ def svg_to_png(
         output_name: name of the file to save (png).
         remove_strokes: Optional. If True, black are removed from the input svg file before
             conversion.
-    '''
-    svg_str = ''
-    with open(svg_filename, 'r') as file_:
+    """
+    svg_str = ""
+    with open(svg_filename, "r") as file_:
         svg_str = file_.read()
         if remove_strokes:
             for regexp in [
@@ -309,16 +305,16 @@ def svg_to_png(
                 r'(stroke-opacity:[^;"]+)";',
                 r'(stroke-width:[^;"]+)"',
             ]:
-                svg_str = re.sub(regexp, '', svg_str, flags=re.MULTILINE)
+                svg_str = re.sub(regexp, "", svg_str, flags=re.MULTILINE)
 
     if output_name is None:
-        output_name = str(svg_filename).replace('.svg', '.png')
+        output_name = str(svg_filename).replace(".svg", ".png")
 
-    svg2png(bytestring=bytes(svg_str, 'UTF-8'), write_to=open(str(output_name), 'wb'))
+    svg2png(bytestring=bytes(svg_str, "UTF-8"), write_to=open(str(output_name), "wb"))
 
 
-def extract_color_map(svg_filename: Union[str, 'Path']) -> Dict[str, int]:
-    '''
+def extract_color_map(svg_filename: Union[str, "Path"]) -> Dict[str, int]:
+    """
     Extract from svg file the map binding hexadecimal colors to AIBS structure IDs.
 
     Args:
@@ -330,13 +326,13 @@ def extract_color_map(svg_filename: Union[str, 'Path']) -> Dict[str, int]:
         A dict whose keys are hexadecimal strings of length 6 and whose values are
         StructureGraphIDs, i.e., integer region identifiers (uint32).
 
-    '''
+    """
     color_map = {}
     doc = minidom.parse(str(svg_filename))
-    regexp = re.compile(r'fill:(#([0-9a-f]{6}))')
-    for path in doc.getElementsByTagName('path'):
-        style = str(path.getAttribute('style'))
-        structure_id = int(path.getAttribute('structure_id'))
+    regexp = re.compile(r"fill:(#([0-9a-f]{6}))")
+    for path in doc.getElementsByTagName("path"):
+        style = str(path.getAttribute("style"))
+        structure_id = int(path.getAttribute("structure_id"))
         search = regexp.search(style)
         if search is not None:
             hexadecimal_color = search.group(1)

@@ -1,4 +1,4 @@
-'''
+"""
 Module performing the combination of several genetic marker datasets based on literature estimates.
 
 This module implements the glia differentiation process of 'A Cell Atlas for the Mouse Brain' by
@@ -16,25 +16,25 @@ density of marked cells.
 Note: the output glia intensities will be further constrained to derive the final glia densities
 in a subsequent step, see cell_density module.
 
-'''
+"""
 
 from typing import TYPE_CHECKING
-import numpy as np  # type: ignore
-from nptyping import NDArray  # type: ignore
-import pandas as pd  # type: ignore
 
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+from nptyping import NDArray  # type: ignore
 
 if TYPE_CHECKING:
     from voxcell import RegionMap, VoxelData  # type: ignore
 
 
 def combine(
-    region_map: 'RegionMap',
+    region_map: "RegionMap",
     annotation_raw: NDArray[int],
-    glia_celltype_densities: 'pd.DataFrame',
-    combination_data: 'pd.DataFrame',
-) -> 'pd.DataFrame':
-    '''
+    glia_celltype_densities: "pd.DataFrame",
+    combination_data: "pd.DataFrame",
+) -> "pd.DataFrame":
+    """
     Average the glia marker intensities based on ratios from the scientific literature.
 
     Group the respective markers of astrocytes, oligodendrocytes and microglia and average each
@@ -104,10 +104,12 @@ def combine(
         are referred to as the cell type global scaling factors (S_celltype) in
         'A Cell Atlas for the Mouse Brain', see 'Glia differentiation section'.
          https://www.frontiersin.org/articles/10.3389/fninf.2018.00084/full.
-    '''
+    """
 
-    def compute_voxel_count(region_name: str,) -> int:
-        '''
+    def compute_voxel_count(
+        region_name: str,
+    ) -> int:
+        """
         Compute the voxel count of `region_name`.
 
         Args:
@@ -115,41 +117,33 @@ def combine(
 
         Returns:
             voxel count of `region_name`.
-        '''
+        """
         ids = list(
-            region_map.find(
-                region_name, attr='name', with_descendants=True, ignore_case=True
-            )
+            region_map.find(region_name, attr="name", with_descendants=True, ignore_case=True)
         )
         return np.count_nonzero(np.isin(annotation_raw, ids))
 
     glia_celltype_densities.sort_index(inplace=True)
-    weights = [
-        compute_voxel_count(region) for region in glia_celltype_densities.columns
-    ]
-    average_densities = np.average(
-        glia_celltype_densities, weights=weights, axis=1
-    )
+    weights = [compute_voxel_count(region) for region in glia_celltype_densities.columns]
+    average_densities = np.average(glia_celltype_densities, weights=weights, axis=1)
     proportions = average_densities / average_densities.sum()
 
     # We diverge from the formula of the 'Glia Differentiation' section in
     # 'A Cell Atlas for the Mouse Brain' in that we use the weights 1.0 / E_marker normalized by
     # their sums instead of the coefficients C_marker = 1.0 / (E_marker * N_marker).
     combination_data.sort_index(inplace=True)
-    intensities = combination_data.groupby('cellType').apply(
+    intensities = combination_data.groupby("cellType").apply(
         lambda x: np.average(
             np.array(list(x.volume)),
-            weights=1.0 / np.array(list(x['averageExpressionIntensity'])),
+            weights=1.0 / np.array(list(x["averageExpressionIntensity"])),
             axis=0,
         )
     )
-    intensities = pd.DataFrame(intensities, columns=['intensity'])
-    intensities['proportion'] = proportions
+    intensities = pd.DataFrame(intensities, columns=["intensity"])
+    intensities["proportion"] = proportions
 
     # Average overall glia intensity
-    glia = np.average(
-        np.array(list(intensities.intensity)), axis=0, weights=proportions
-    )
-    intensities.loc['glia'] = [glia, 1.0]
+    glia = np.average(np.array(list(intensities.intensity)), axis=0, weights=proportions)
+    intensities.loc["glia"] = [glia, 1.0]
 
     return intensities

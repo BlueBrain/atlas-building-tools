@@ -1,19 +1,17 @@
-'''Generate direction vectors using the normalized gradient of a Gaussian blur.
+"""Generate direction vectors using the normalized gradient of a Gaussian blur.
 
 The source and target regions of fibers are assigned respectively
 a low and a high weight value. A Gaussian blur is applied to generate a smooth scalar field
 on the volume of interest. The algorithm returns the normalized gradient of this field.
 
 This algorithm can be used for laminar regions such as the isocortex.
-'''
+"""
 
 import numpy as np  # type: ignore
 import numpy.testing as npt  # type: ignore
 from nptyping import NDArray  # type: ignore
 
-from atlas_building_tools.direction_vectors.algorithms.utils import (
-    compute_blur_gradient,
-)
+from atlas_building_tools.direction_vectors.algorithms.utils import compute_blur_gradient
 
 
 def compute_direction_vectors(
@@ -22,9 +20,9 @@ def compute_direction_vectors(
     target: NDArray[bool],
     sigma: float = 10.0,
     source_weight: float = -1.0,
-    target_weight: float = 1.0
+    target_weight: float = 1.0,
 ) -> NDArray[np.float32]:
-    '''
+    """
     Compute direction vectors in the `inside` volume.
 
     The `source` and `target` regions are assigned respectively the weights `source_weight` and
@@ -51,7 +49,7 @@ def compute_direction_vectors(
         Array holding a vector field of unit vectors defined on the `inside` 3D volume. The shape
         of this array is (W, L, D, 3) if the shape of `inside` is (W, L, D). Outside the `inside`
         volume, the returned direction vectors have np.nan coordinates.
-    '''
+    """
     npt.assert_array_equal(source.shape, inside.shape)
     npt.assert_array_equal(inside.shape, target.shape)
 

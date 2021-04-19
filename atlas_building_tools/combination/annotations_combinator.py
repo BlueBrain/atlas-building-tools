@@ -1,4 +1,4 @@
-'''
+"""
 Module responsible for the combination of different annotation files.
 
 An annotation file is a volumetric nrrd file (voxellized 3D image) whose
@@ -14,7 +14,7 @@ in the more recent file.
 Annotations combination was introduced when AIBS released their CCF v3 Mouse Atlas in 2017,
 whose annotation file has missing regions with respect to the CCF v2 Mouse Atlas of 2011.
 So far, annotations combination handles only to this use case.
-'''
+"""
 import itertools
 import logging
 from typing import TYPE_CHECKING
@@ -31,11 +31,11 @@ L = logging.getLogger(__name__)
 
 
 def is_ancestor(
-    region_map: 'voxcell.RegionMap',
+    region_map: "voxcell.RegionMap",
     annotation_1: NDArray[int],
     annotation_2: NDArray[int],
 ) -> NDArray[bool]:
-    '''
+    """
     Returns a binary mask encoding the is-ancestor relationship between two annotated arrays.
 
     Args:
@@ -47,13 +47,11 @@ def is_ancestor(
       A boolean array of the same shape as `annotation_1`
       and `annotation_2` encoding the is-ancestor relationship.
 
-    '''
-    ids = region_map.find('root', 'acronym', with_descendants=True)
-    ancestors = {id_: region_map.get(id_, 'id', with_ascendants=True) for id_ in ids}
+    """
+    ids = region_map.find("root", "acronym", with_descendants=True)
+    ancestors = {id_: region_map.get(id_, "id", with_ascendants=True) for id_ in ids}
     is_ancestor_set = set(
-        (id_1, id_2)
-        for id_1, id_2 in itertools.product(ids, ids)
-        if id_1 in ancestors[id_2]
+        (id_1, id_2) for id_1, id_2 in itertools.product(ids, ids) if id_1 in ancestors[id_2]
     )
 
     def is_ancestor_(id_1: int, id_2: int) -> bool:
@@ -63,12 +61,12 @@ def is_ancestor(
 
 
 def combine_annotations(
-    region_map: 'voxcell.RegionMap',
-    brain_annotation_ccfv2: 'voxcell.VoxelData',
-    fiber_annotation_ccfv2: 'voxcell.VoxelData',
-    brain_annotation_ccfv3: 'voxcell.VoxelData',
+    region_map: "voxcell.RegionMap",
+    brain_annotation_ccfv2: "voxcell.VoxelData",
+    fiber_annotation_ccfv2: "voxcell.VoxelData",
+    brain_annotation_ccfv3: "voxcell.VoxelData",
 ):
-    '''Combine `brain_annotation_ccfv2` with `brain_annotation_ccfv3` to reinstate missing regions.
+    """Combine `brain_annotation_ccfv2` with `brain_annotation_ccfv3` to reinstate missing regions.
 
     The ccfv2 brain annotation file contains the most complete set
     of brain regions while the ccfv3 brain annotation file is a more recent version
@@ -92,7 +90,7 @@ def combine_annotations(
 
     Returns:
         VoxelData object holding the combined annotation 3D array.
-    '''
+    """
     fiber_mask = fiber_annotation_ccfv2.raw > 0
     brain_annotation_ccfv2.raw[fiber_mask] = fiber_annotation_ccfv2.raw[fiber_mask]
     brain_annotation_ccfv3_mask = brain_annotation_ccfv3.raw > 0
@@ -101,7 +99,9 @@ def combine_annotations(
     diff = (brain_annotation_ccfv2.raw != brain_annotation_ccfv3.raw) & missing_ids
     v3_is_ancestor_of_v2 = brain_annotation_ccfv3_mask.copy()
     v3_is_ancestor_of_v2[diff] = is_ancestor(
-        region_map, brain_annotation_ccfv3.raw[diff], brain_annotation_ccfv2.raw[diff],
+        region_map,
+        brain_annotation_ccfv3.raw[diff],
+        brain_annotation_ccfv2.raw[diff],
     )
     combination_mask = missing_ids & v3_is_ancestor_of_v2
     raw = brain_annotation_ccfv3.raw.copy()

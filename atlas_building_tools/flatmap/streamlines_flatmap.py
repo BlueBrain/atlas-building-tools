@@ -1,6 +1,6 @@
-'''
+"""
 Functions to flatten a laminar brain region by contracting along streamlines.
-'''
+"""
 import logging
 from typing import TYPE_CHECKING
 
@@ -21,7 +21,7 @@ L = logging.getLogger(__name__)
 
 def compute_streamlines_intersections(
     layers: NDArray[np.uint8],
-    direction_vectors: 'VoxelData',
+    direction_vectors: "VoxelData",
     first_layer: np.uint8,
     second_layer: np.uint8,
 ):
@@ -72,7 +72,7 @@ def compute_streamlines_intersections(
 def find_closest_vertices(
     volume_mask: NDArray[bool],
     voxel_to_point_map: NDArray[np.float32],
-    boundary_mesh: 'trimesh.Trimesh',
+    boundary_mesh: "trimesh.Trimesh",
 ) -> NDArray[int]:
     """
     Compute for each voxel in `volume_mask` the closest vertex in `boundary_mesh`.
@@ -109,7 +109,7 @@ def find_closest_vertices(
 def compute_voxel_to_pixel_map(
     volume_mask: NDArray[bool],
     voxel_to_vertex_index_map: NDArray[int],
-    boundary_mesh: 'trimesh.Trimesh',
+    boundary_mesh: "trimesh.Trimesh",
     resolution: int = 500,
 ):
     """
@@ -145,16 +145,12 @@ def compute_voxel_to_pixel_map(
         different for some pathological edge cases.
     """
     flat_mesh = cgal_pybind.SurfaceMesh()
-    flat_mesh.add_vertices(
-        [cgal_pybind.Point_3(v[0], v[1], v[2]) for v in boundary_mesh.vertices]
-    )
+    flat_mesh.add_vertices([cgal_pybind.Point_3(v[0], v[1], v[2]) for v in boundary_mesh.vertices])
     flat_mesh.add_faces([tuple(f) for f in boundary_mesh.faces])
     vertices = np.array(flat_mesh.authalic()[0])
 
     # Re-center and re-scale 2D vertex coordinates to sit in [0, 1] x [0, aspect_ratio]
-    vertices = vertices - np.min(
-        vertices, axis=0
-    )  # Make (0, 0) the bottom left-hand corner
+    vertices = vertices - np.min(vertices, axis=0)  # Make (0, 0) the bottom left-hand corner
     vertices = vertices / np.max(vertices[:, 0])  # Rescale along the x-axis
 
     flatmap = np.full(volume_mask.shape + (2,), -1.0, dtype=float)
@@ -168,7 +164,7 @@ def compute_voxel_to_pixel_map(
         flatmap,
         unknown_values_mask,
         known_values_mask,
-        interpolator='nearest-neighbour',
+        interpolator="nearest-neighbour",
     )
 
     return np.round(resolution * flatmap).astype(int)
@@ -176,7 +172,7 @@ def compute_voxel_to_pixel_map(
 
 def compute_flatmap(
     layers: NDArray[np.uint8],
-    direction_vectors: 'VoxelData',
+    direction_vectors: "VoxelData",
     first_layer: int,
     second_layer: int,
     resolution: int = 500,
@@ -218,30 +214,28 @@ def compute_flatmap(
         edge cases.
 
     """
-    L.info('Computing streamlines intersections ...')
+    L.info("Computing streamlines intersections ...")
     voxel_to_point_map = compute_streamlines_intersections(
         layers, direction_vectors, np.uint8(first_layer), np.uint8(second_layer)
     )
     L.info(
-        'Finding the boundary voxels between the layers with index %s and %s',
+        "Finding the boundary voxels between the layers with index %s and %s",
         first_layer,
         second_layer,
     )
     boundary_mask = compute_boundary(
         layers == np.uint8(first_layer), layers == np.uint8(second_layer)
     )
-    L.info('Reconstructing a surface mesh from boundary voxels ...')
+    L.info("Reconstructing a surface mesh from boundary voxels ...")
     boundary_mesh = (
-        reconstruct_surface_mesh(boundary_mask, direction_vectors)
-        .subdivide()
-        .subdivide()
+        reconstruct_surface_mesh(boundary_mask, direction_vectors).subdivide().subdivide()
     )
     volume_mask = layers > 0
-    L.info('Finding the closest vertices on the reconstructed mesh ...')
+    L.info("Finding the closest vertices on the reconstructed mesh ...")
     voxel_to_vertex_index_map = find_closest_vertices(
         volume_mask, voxel_to_point_map, boundary_mesh
     )
-    L.info('Applying the CGAL authalic map ...')
+    L.info("Applying the CGAL authalic map ...")
     return compute_voxel_to_pixel_map(
         volume_mask, voxel_to_vertex_index_map, boundary_mesh, resolution
     )

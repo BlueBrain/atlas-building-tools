@@ -1,12 +1,11 @@
-import trimesh
 import numpy as np
-import pytest as pyt
-
 import numpy.testing as npt
-
+import pytest as pyt
+import trimesh
 import voxcell
-from atlas_building_tools.exceptions import AtlasBuildingToolsError
+
 import atlas_building_tools.distances.distances_to_meshes as tested
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 
 class Test_distances_to_mesh_wrt_dir:
@@ -192,7 +191,7 @@ class Test_distances_from_voxels_to_meshes_wrt_dir:
             ]
         )
 
-        with pyt.warns(UserWarning, match='NaN direction vectors'):
+        with pyt.warns(UserWarning, match="NaN direction vectors"):
             principal_axes[0, 1, 0] = nanvec
             tested.distances_from_voxels_to_meshes_wrt_dir(
                 test_layervol, [top_mesh, bot_mesh], principal_axes
@@ -366,32 +365,23 @@ class Test_report_distance_problems:
             distances, obtuse, voxel_data, max_thicknesses=[0.5], tolerance=2.0
         )
         assert (
-            report[
-                'Proportion of voxels whose rays do not intersect with the bottom mesh'
-            ]
-            == 0.1
+            report["Proportion of voxels whose rays do not intersect with the bottom mesh"] == 0.1
         )
-        assert (
-            report['Proportion of voxels whose rays do not intersect with the top mesh']
-            == 0.2
-        )
+        assert report["Proportion of voxels whose rays do not intersect with the top mesh"] == 0.2
         assert (
             report[
-                'Proportion of voxels whose rays make an obtuse angle with the mesh normal at the intersection point'
+                "Proportion of voxels whose rays make an obtuse angle with the mesh normal at the intersection point"
             ]
             == 0.2
         )
         assert (
             report[
-                'Proportion of voxels with a distance gap greater than the maximum thickness '
-                '(NaN distances are ignored)'
+                "Proportion of voxels with a distance gap greater than the maximum thickness "
+                "(NaN distances are ignored)"
             ]
             == 0.2
         )
-        assert (
-            report['Proportion of voxels with at least one distance-related problem']
-            == 0.6
-        )
+        assert report["Proportion of voxels with at least one distance-related problem"] == 0.6
         expected_problematic_volume = [
             [
                 [True, False, False, False, False],
@@ -407,31 +397,23 @@ class Test_report_distance_problems:
 class Test_interpolate_volume:
     def test_no_known_values(self):
         with pyt.raises(AtlasBuildingToolsError):
-            tested.interpolate_volume(
-                [[[1, 2, 3, 4]]], [[[1, 0, 1, 1]]], [[[0, 0, 0, 0]]]
-            )
+            tested.interpolate_volume([[[1, 2, 3, 4]]], [[[1, 0, 1, 1]]], [[[0, 0, 0, 0]]])
 
     def test_no_target_values(self):
         npt.assert_array_equal(
-            tested.interpolate_volume(
-                [[[1, 2, 3, 4]]], [[[0, 0, 0, 0]]], [[[1, 1, 1, 0]]]
-            ),
+            tested.interpolate_volume([[[1, 2, 3, 4]]], [[[0, 0, 0, 0]]], [[[1, 1, 1, 0]]]),
             [],
         )
 
     def test_known_and_target_uses_nearest(self):
         npt.assert_array_equal(
-            tested.interpolate_volume(
-                [[[1, 2, 3, 4]]], [[[0, 1, 1, 0]]], [[[1, 0, 0, 1]]]
-            ),
+            tested.interpolate_volume([[[1, 2, 3, 4]]], [[[0, 1, 1, 0]]], [[[1, 0, 0, 1]]]),
             [1, 4],
         )
 
     def test_voxel_in_known_and_target_is_unchanged(self):
         npt.assert_array_equal(
-            tested.interpolate_volume(
-                [[[1, 2, 1, 1]]], [[[0, 1, 0, 0]]], [[[0, 1, 0, 0]]]
-            ),
+            tested.interpolate_volume([[[1, 2, 1, 1]]], [[[0, 1, 0, 0]]], [[[0, 1, 0, 0]]]),
             [2],
         )
 
@@ -447,7 +429,6 @@ class Test_interpolate_problematics_voxels:
                 np.array([[[0, 0, 0, 0]]]).astype(bool),
             )
 
-
     def test_nans_in_mask_corrected_with_neighbors(self):
         distance = np.array([[[[10000, -1, np.nan, -1]]]])
         tested.interpolate_problematic_voxels(
@@ -459,8 +440,6 @@ class Test_interpolate_problematics_voxels:
     def test_invalid_non_nan_in_mask_corrected_with_neighbors(self):
         distance = np.array([[[[100, -1, 9000, -1]]], [[[100, -1, -9000, 1]]]])
         tested.interpolate_problematic_voxels(
-            distance,
-            np.array([[[0, 1, 1, 1]]]).astype(bool),
-            max_thicknesses=[900]
+            distance, np.array([[[0, 1, 1, 1]]]).astype(bool), max_thicknesses=[900]
         )
         npt.assert_array_equal(distance, np.array([[[[100, -1, -1, -1]]], [[[100, -1, -9000, 1]]]]))

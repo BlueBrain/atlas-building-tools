@@ -1,17 +1,17 @@
 """
 Unit tests for the creation of the thalamus direction vectors
 """
-from pathlib import Path
 import warnings
+from pathlib import Path
+
 import numpy as np
 import numpy.testing as npt
-
-
 from voxcell import VoxelData
+
 import atlas_building_tools.direction_vectors.thalamus as tested
 
 TEST_PATH = Path(Path(__file__).parent.parent)
-HIERARCHY_PATH = str(Path(TEST_PATH, '1.json'))
+HIERARCHY_PATH = str(Path(TEST_PATH, "1.json"))
 
 
 def create_voxeldata(th_id_1: int, th_id_2: int):
@@ -34,7 +34,7 @@ def create_voxeldata(th_id_1: int, th_id_2: int):
     raw[1, :, :] = 0
     raw[0, :, :] = 262  # RT, Reticular nucleus of the thalamus
     # The final array shape is (12, 12, 12)
-    raw = np.pad(raw, 1, 'constant', constant_values=0)  #  1-voxel of padding
+    raw = np.pad(raw, 1, "constant", constant_values=0)  #  1-voxel of padding
 
     return VoxelData(raw, (2, 2, 2))
 
@@ -46,8 +46,8 @@ def test_get_common_outer_boundary():
     sub_mask[1, ...] = True
 
     # The final array shape is (7, 7, 7)
-    mask = np.pad(mask, 1, 'constant', constant_values=False)
-    sub_mask = np.pad(sub_mask, 1, 'constant', constant_values=False)
+    mask = np.pad(mask, 1, "constant", constant_values=False)
+    sub_mask = np.pad(sub_mask, 1, "constant", constant_values=False)
 
     expected = np.zeros_like(mask)
     expected[3, 1:6, 1:6] = True

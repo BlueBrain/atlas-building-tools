@@ -1,22 +1,23 @@
-'''Functions to compute the overall mouse brain cell density.
-'''
+"""Functions to compute the overall mouse brain cell density.
+"""
 
 from typing import Dict, Optional
+
 import numpy as np
 from nptyping import NDArray  # type: ignore
-
 from voxcell import RegionMap  # type: ignore
+
 from atlas_building_tools.densities.cell_counts import cell_counts
+from atlas_building_tools.densities.soma_radius import apply_soma_area_correction
 from atlas_building_tools.densities.utils import (
     compensate_cell_overlap,
     get_group_ids,
     get_region_masks,
 )
-from atlas_building_tools.densities.soma_radius import apply_soma_area_correction
 
 
 def fix_purkinje_layer_intensity(
-    region_map: 'RegionMap',
+    region_map: "RegionMap",
     annotation: NDArray[int],
     region_masks: Dict[str, NDArray[bool]],
     cell_intensity: NDArray[float],
@@ -40,22 +41,22 @@ def fix_purkinje_layer_intensity(
     """
 
     group_ids = get_group_ids(region_map)
-    purkinje_layer_mask = np.isin(annotation, list(group_ids['Purkinje layer']))
+    purkinje_layer_mask = np.isin(annotation, list(group_ids["Purkinje layer"]))
     # Force Purkinje Layer regions of the Cerebellum group to have a constant intensity
     # equal to the average intensity of the complement.
     # pylint: disable=fixme
     # TODO: The Purkinje cell diameter is 25um. A correction of cell densities is required for the
     #  10um resolution.
     cerebellum_purkinje_layer_mask = np.logical_and(
-        region_masks['Cerebellum group'], purkinje_layer_mask
+        region_masks["Cerebellum group"], purkinje_layer_mask
     )
     cerebellum_wo_purkinje_layer_mask = np.logical_and(
-        region_masks['Cerebellum group'], ~purkinje_layer_mask
+        region_masks["Cerebellum group"], ~purkinje_layer_mask
     )
     purkinje_layer_count = np.count_nonzero(cerebellum_purkinje_layer_mask)
     cell_intensity[cerebellum_purkinje_layer_mask] = np.sum(
         cell_intensity[cerebellum_wo_purkinje_layer_mask]
-    ) / (cell_counts()['Cerebellum group'] - purkinje_layer_count)
+    ) / (cell_counts()["Cerebellum group"] - purkinje_layer_count)
 
 
 def compute_cell_density(
@@ -104,9 +105,7 @@ def compute_cell_density(
         layer constraint of a constant number of cells per voxel.
     """
 
-    nissl = compensate_cell_overlap(
-        nissl, annotation, gaussian_filter_stdv=1.0, copy=False
-    )
+    nissl = compensate_cell_overlap(nissl, annotation, gaussian_filter_stdv=1.0, copy=False)
 
     if soma_radii:
         apply_soma_area_correction(region_map, annotation, nissl, soma_radii)

@@ -1,44 +1,40 @@
-'''app utils'''
-import os
-import logging
+"""app utils"""
 import inspect
-from datetime import datetime
+import logging
+import os
 from collections import OrderedDict
+from datetime import datetime
 from functools import wraps
+
 import click
 
-
-EXISTING_FILE_PATH = click.Path(
-    exists=True, readable=True, dir_okay=False, resolve_path=True
-)
-EXISTING_DIR_PATH = click.Path(
-    exists=True, readable=True, dir_okay=True, resolve_path=True
-)
-LOG_DIRECTORY = '.'
+EXISTING_FILE_PATH = click.Path(exists=True, readable=True, dir_okay=False, resolve_path=True)
+EXISTING_DIR_PATH = click.Path(exists=True, readable=True, dir_okay=True, resolve_path=True)
+LOG_DIRECTORY = "."
 
 
 def set_verbose(logger, verbose):
-    ''' Set the verbose level for the cli '''
+    """ Set the verbose level for the cli """
     logger.setLevel((logging.WARNING, logging.INFO, logging.DEBUG)[min(verbose, 2)])
 
 
 class ParameterContainer(OrderedDict):
-    ''' A dict class used to contain and display the parameters '''
+    """ A dict class used to contain and display the parameters """
 
     def __repr__(self):
-        ''' Better printing than the normal OrderedDict '''
-        return ', '.join(str(key) + ':' + str(val) for key, val in self.items())
+        """ Better printing than the normal OrderedDict """
+        return ", ".join(str(key) + ":" + str(val) for key, val in self.items())
 
     __str__ = __repr__
 
 
 def log_args(logger, handler_path=None):
-    ''' A decorator used to redirect logger and log arguments '''
+    """ A decorator used to redirect logger and log arguments """
 
     def set_logger(file_, logger_path=handler_path):
 
         if handler_path is None:
-            logger_path = os.path.join(LOG_DIRECTORY, file_.__name__ + '.log')
+            logger_path = os.path.join(LOG_DIRECTORY, file_.__name__ + ".log")
 
         @wraps(file_)
         def wrapper(*args, **kw):
@@ -48,8 +44,8 @@ def log_args(logger, handler_path=None):
                 param[name] = arg
             for key, value in kw.items():
                 param[key] = value
-            date_str = datetime.now().strftime('[%Y-%m-%d %H:%M:%S]')
-            logger.info(f'{date_str}:{file_.__name__} args:[{param}]')
+            date_str = datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+            logger.info(f"{date_str}:{file_.__name__} args:[{param}]")
             file_(*args, **kw)
 
         return wrapper

@@ -1,1 +1,1 @@
-'''atlas_building_tools application'''
+"""atlas_building_tools application"""

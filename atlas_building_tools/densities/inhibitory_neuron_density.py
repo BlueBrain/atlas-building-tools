@@ -1,16 +1,17 @@
-'''Functions to compute inhibitory neuron density.'''
+"""Functions to compute inhibitory neuron density."""
 
-from typing import Dict, Optional, TYPE_CHECKING, Tuple, Union
+from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
+
 import numpy as np
 from nptyping import NDArray
 
-from atlas_building_tools.exceptions import AtlasBuildingToolsError
 from atlas_building_tools.densities.utils import (
-    constrain_cell_counts_per_voxel,
     compensate_cell_overlap,
+    constrain_cell_counts_per_voxel,
     get_group_ids,
     get_region_masks,
 )
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 if TYPE_CHECKING:
     from voxcell import RegionMap  # type: ignore
@@ -61,14 +62,14 @@ def compute_inhibitory_neuron_intensity(
     excitatory_neuron_counts_per_voxel = nrn1 / np.mean(nrn1)
 
     marker_sum = np.zeros_like(inhibitory_neuron_intensity)
-    for group, mask in inhibitory_data['region_masks'].items():  # type: ignore
-        inhibitory_proportion = inhibitory_data['proportions'][group]  # type: ignore
+    for group, mask in inhibitory_data["region_masks"].items():  # type: ignore
+        inhibitory_proportion = inhibitory_data["proportions"][group]  # type: ignore
         inhibitory_neuron_intensity[mask] = (
             inhibitory_neuron_intensity[mask] * inhibitory_proportion
         )
-        marker_sum[mask] = inhibitory_neuron_intensity[
+        marker_sum[mask] = inhibitory_neuron_intensity[mask] + excitatory_neuron_counts_per_voxel[
             mask
-        ] + excitatory_neuron_counts_per_voxel[mask] * (1.0 - inhibitory_proportion)
+        ] * (1.0 - inhibitory_proportion)
 
     inhibitory_neuron_intensity[marker_sum > 0.0] /= marker_sum[marker_sum > 0.0]
     inhibitory_neuron_intensity /= np.max(inhibitory_neuron_intensity)
@@ -80,7 +81,7 @@ InhibitoryData = Dict[str, Union[int, Dict[str, float]]]
 
 
 def compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
-    region_map: 'RegionMap',
+    region_map: "RegionMap",
     annotation: NDArray[int],
     voxel_volume: float,
     gad1: NDArray[float],
@@ -134,20 +135,19 @@ def compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
     if inhibitory_proportion is None:
         if inhibitory_data is None:
             raise AtlasBuildingToolsError(
-                'Either inhibitory_proportion or inhibitory_data should be provided'
-                '. Both are None.'
+                "Either inhibitory_proportion or inhibitory_data should be provided"
+                ". Both are None."
             )
         group_ids = get_group_ids(region_map)
-        inhibitory_data['region_masks'] = get_region_masks(group_ids, annotation)
+        inhibitory_data["region_masks"] = get_region_masks(group_ids, annotation)
     else:
         inhibitory_data = {
-            'proportions': {'whole brain': inhibitory_proportion},
-            'neuron_count': int(
-                np.sum(neuron_density) * voxel_volume * inhibitory_proportion
-            ),
+            "proportions": {"whole brain": inhibitory_proportion},
+            "neuron_count": int(np.sum(neuron_density) * voxel_volume * inhibitory_proportion),
         }
-        inhibitory_data['region_masks'] \
-            = {'whole brain': np.ones(annotation.shape, dtype=bool)}  # type: ignore
+        inhibitory_data["region_masks"] = {
+            "whole brain": np.ones(annotation.shape, dtype=bool)
+        }  # type: ignore
 
     inhibitory_neuron_intensity = compute_inhibitory_neuron_intensity(
         compensate_cell_overlap(gad1, annotation, gaussian_filter_stdv=1.0),
@@ -157,21 +157,21 @@ def compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
 
     inhibitory_neurons_mask = np.isin(
         annotation,
-        list(group_ids['Purkinje layer']),
+        list(group_ids["Purkinje layer"]),
     )
     inhibitory_neurons_mask = np.logical_or(
         inhibitory_neurons_mask,
         np.isin(
             annotation,
-            list(group_ids['Cerebellar cortex'] & group_ids['Molecular layer']),
+            list(group_ids["Cerebellar cortex"] & group_ids["Molecular layer"]),
         ),
     )
 
-    assert isinstance(inhibitory_data['neuron_count'], int)
+    assert isinstance(inhibitory_data["neuron_count"], int)
 
     return (
         constrain_cell_counts_per_voxel(
-            inhibitory_data['neuron_count'],
+            inhibitory_data["neuron_count"],
             inhibitory_neuron_intensity,
             neuron_density * voxel_volume,
             max_cell_counts_mask=inhibitory_neurons_mask,

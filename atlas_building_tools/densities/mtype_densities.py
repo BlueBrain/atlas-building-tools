@@ -29,24 +29,22 @@ Lexicon:
         a layer, orthogonal to the "cortical depth axis".
 
 """
-from pathlib import Path
 import logging
 import warnings
-
+from pathlib import Path
 from typing import Dict, List, Tuple, Union
-from nptyping import NDArray  # type: ignore
-import yaml
-from tqdm import tqdm
 
 import numpy as np
 import pandas as pd
-
+import yaml
+from nptyping import NDArray  # type: ignore
+from tqdm import tqdm
 from voxcell import VoxelData
 
 VoxelIndices = Tuple[NDArray[int], NDArray[int], NDArray[int]]
 logging.basicConfig(level=logging.INFO)
 logging.captureWarnings(True)
-L = logging.getLogger('mtype_densities')
+L = logging.getLogger("mtype_densities")
 
 
 class DensityProfileCollection:
@@ -110,9 +108,7 @@ class DensityProfileCollection:
         self.layer_slices_map = layer_slices_map
 
         # Find the layer with the highest slice indices
-        self.stop_layer = max(
-            layer_slices_map, key=lambda key: layer_slices_map[key].stop
-        )
+        self.stop_layer = max(layer_slices_map, key=lambda key: layer_slices_map[key].stop)
 
         self.density_profiles = density_profiles
         self.excitatory_mtypes: List[str] = []
@@ -162,31 +158,27 @@ class DensityProfileCollection:
         9% of the cells in the slice 60 (layer 4) are cells of mtype L4_SSC.
         The sum over each line should be 1.0.
         """
-        L.info('Collecting density profiles ...')
+        L.info("Collecting density profiles ...")
         self.profile_data = {
-            layer: {'excitatory': pd.DataFrame(), 'inhibitory': pd.DataFrame()}
+            layer: {"excitatory": pd.DataFrame(), "inhibitory": pd.DataFrame()}
             for layer in self.layer_slices_map
         }
         for _, row in self.mtype_to_profile_map.iterrows():
-            for layer_index in row.layer.split(
-                ","
-            ):  # handle the special case of layer 2/3: '2,3'
-                layer = 'layer_' + str(layer_index)
+            for layer_index in row.layer.split(","):  # handle the special case of layer 2/3: '2,3'
+                layer = "layer_" + str(layer_index)
                 range_ = self.layer_slices_map[layer]
-                if row.synapse_class == 'excitatory':
+                if row.synapse_class == "excitatory":
                     self.excitatory_mtypes.append(row.mtype)
-                elif row.synapse_class == 'inhibitory':
+                elif row.synapse_class == "inhibitory":
                     self.inhibitory_mtypes.append(row.mtype)
-                self.profile_data[layer][row.synapse_class][
-                    row.mtype
-                ] = self.density_profiles[row.profile_name][
-                    slice(range_.start, range_.stop)
-                ]
+                self.profile_data[layer][row.synapse_class][row.mtype] = self.density_profiles[
+                    row.profile_name
+                ][slice(range_.start, range_.stop)]
 
         # Set DataDrame index with layer slice indices and normalize rows to
         # get mtype proportions for each layer slice
         for layer, range_ in self.layer_slices_map.items():
-            for synapse_class in ['excitatory', 'inhibitory']:
+            for synapse_class in ["excitatory", "inhibitory"]:
                 data_frame = self.profile_data[layer][synapse_class]
                 if data_frame.empty:
                     continue
@@ -195,12 +187,10 @@ class DensityProfileCollection:
                     data_frame.sum(axis=1), axis=0
                 ).fillna(0.0)
                 # Check for each slice if there are cells from at least one mtype
-                for row_index, row in self.profile_data[layer][
-                    synapse_class
-                ].iterrows():
+                for row_index, row in self.profile_data[layer][synapse_class].iterrows():
                     if np.sum(row) == 0.0:
                         warnings.warn(
-                            f'No {synapse_class} cells assigned to slice {row_index} of {layer}'
+                            f"No {synapse_class} cells assigned to slice {row_index} of {layer}"
                         )
 
     @classmethod
@@ -209,7 +199,7 @@ class DensityProfileCollection:
         mtype_to_profile_map_path: Union[str, Path],
         layer_slices_path: Union[str, Path],
         density_profiles_dirpath: Union[str, Path],
-    ) -> 'DensityProfileCollection':
+    ) -> "DensityProfileCollection":
         # fmt: off
         '''
         Load data files, build and return a DensityProfileCollection
@@ -247,44 +237,40 @@ class DensityProfileCollection:
                 DensityProfileCollection object.
         '''
         # fmt: on
-        mtype_to_profile_map = pd.read_csv(str(mtype_to_profile_map_path), sep=r'\s+')
+        mtype_to_profile_map = pd.read_csv(str(mtype_to_profile_map_path), sep=r"\s+")
 
         def _get_synapse_class_longname(short_name: str) -> str:
-            if short_name == 'EXC':
-                return 'excitatory'
-            if short_name == 'INH':
-                return 'inhibitory'
-            raise AssertionError(f'Unrecognized synapse class {short_name}')
+            if short_name == "EXC":
+                return "excitatory"
+            if short_name == "INH":
+                return "inhibitory"
+            raise AssertionError(f"Unrecognized synapse class {short_name}")
 
-        L.info('Loading density profiles from files ...')
+        L.info("Loading density profiles from files ...")
         mtype_to_profile_map = mtype_to_profile_map.rename(
-            columns={'sclass': 'synapse_class', 'file': 'profile_name'}
+            columns={"sclass": "synapse_class", "file": "profile_name"}
         )
-        mtype_to_profile_map['synapse_class'] = list(
-            map(_get_synapse_class_longname, mtype_to_profile_map['synapse_class'])
+        mtype_to_profile_map["synapse_class"] = list(
+            map(_get_synapse_class_longname, mtype_to_profile_map["synapse_class"])
         )
         # Get a list of profile names without duplicates
-        density_profile_filenames = list(
-            dict.fromkeys(mtype_to_profile_map['profile_name'])
-        )
+        density_profile_filenames = list(dict.fromkeys(mtype_to_profile_map["profile_name"]))
         density_profiles = {
-            filename: np.loadtxt(Path(density_profiles_dirpath, filename + '.dat'))
+            filename: np.loadtxt(Path(density_profiles_dirpath, filename + ".dat"))
             for filename in density_profile_filenames
         }
 
-        L.info('Loading layer slice ranges from file %s ...', layer_slices_path)
-        layer_slices_df = pd.read_csv(str(layer_slices_path), sep=r'\s+')
+        L.info("Loading layer slice ranges from file %s ...", layer_slices_path)
+        layer_slices_df = pd.read_csv(str(layer_slices_path), sep=r"\s+")
         layer_slices_map = {
-            f"layer_{str(row['layer'])}": range(row['from'], row['upto'])
+            f"layer_{str(row['layer'])}": range(row["from"], row["upto"])
             for _, row in layer_slices_df.iterrows()
         }
 
         return cls(mtype_to_profile_map, layer_slices_map, density_profiles)
 
     @staticmethod
-    def load_placement_hints(
-        placement_hints_paths: Dict[str, str]
-    ) -> Dict[str, 'VoxelData']:
+    def load_placement_hints(placement_hints_paths: Dict[str, str]) -> Dict[str, "VoxelData"]:
         """
         Load placement hints nrrd files.
 
@@ -307,12 +293,12 @@ class DensityProfileCollection:
             (W, H, D) is the shape of the underlying annotated volume).
 
         """
-        L.info('Loading placement hints nrrd files ...')
+        L.info("Loading placement hints nrrd files ...")
         placement_hints = {
             name: VoxelData.load_nrrd(filepath).raw
             for (name, filepath) in placement_hints_paths.items()
         }
-        L.info('Placement hints loaded.')
+        L.info("Placement hints loaded.")
 
         return placement_hints
 
@@ -345,9 +331,9 @@ class DensityProfileCollection:
         """
         placement_hints = self.load_placement_hints(placement_hints_paths)
 
-        L.info('Computing the voxel indices of each layer slice ...')
+        L.info("Computing the voxel indices of each layer slice ...")
         layer_slice_voxel_indices: Dict[int, VoxelIndices] = {}
-        phy = placement_hints['y']
+        phy = placement_hints["y"]
         for layer, range_ in tqdm(self.layer_slices_map.items()):
             phy1 = placement_hints[layer][..., 1]
             phy0 = placement_hints[layer][..., 0]
@@ -401,7 +387,7 @@ class DensityProfileCollection:
                     )
 
         synapse_class_density.with_data(density).save_nrrd(
-            str(Path(output_dirpath, mtype + '_density.nrrd'))
+            str(Path(output_dirpath, mtype + "_density.nrrd"))
         )
 
     def create_mtype_densities(
@@ -434,42 +420,36 @@ class DensityProfileCollection:
             output_dirpath: directory path where to save the created density files.
         """
 
-        config = yaml.load(
-            open(str(placement_hints_config_path)), Loader=yaml.FullLoader
-        )
+        config = yaml.load(open(str(placement_hints_config_path)), Loader=yaml.FullLoader)
         layer_slice_voxel_indices = self.compute_layer_slice_voxel_indices(
-            config['layerPlacementHintsPaths']
+            config["layerPlacementHintsPaths"]
         )
-        excitatory_neuron_density = VoxelData.load_nrrd(
-            str(excitatory_neuron_density_path)
-        )
-        inhibitory_neuron_density = VoxelData.load_nrrd(
-            str(inhibitory_neuron_density_path)
-        )
+        excitatory_neuron_density = VoxelData.load_nrrd(str(excitatory_neuron_density_path))
+        inhibitory_neuron_density = VoxelData.load_nrrd(str(inhibitory_neuron_density_path))
 
         Path(output_dirpath).mkdir(exist_ok=True)
 
         L.info(
-            'Creating density files for the %d excitatory mtypes ...',
+            "Creating density files for the %d excitatory mtypes ...",
             len(self.excitatory_mtypes),
         )
         for mtype in tqdm(self.excitatory_mtypes):
             self.create_density(
                 mtype,
-                'excitatory',
+                "excitatory",
                 excitatory_neuron_density,
                 layer_slice_voxel_indices,
                 output_dirpath,
             )
 
         L.info(
-            'Creating density files for the %d inhibitory mtype ...',
+            "Creating density files for the %d inhibitory mtype ...",
             len(self.inhibitory_mtypes),
         )
         for mtype in tqdm(self.inhibitory_mtypes):
             self.create_density(
                 mtype,
-                'inhibitory',
+                "inhibitory",
                 inhibitory_neuron_density,
                 layer_slice_voxel_indices,
                 output_dirpath,
