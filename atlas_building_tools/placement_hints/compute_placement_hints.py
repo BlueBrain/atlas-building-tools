@@ -10,11 +10,8 @@ from atlas_building_tools.distances.distances_to_meshes import (
     interpolate_problematic_voxels,
     report_distance_problems,
 )
-from atlas_building_tools.placement_hints.layered_atlas import compute_distances_to_layer_meshes
 
 if TYPE_CHECKING:  # pragma: no cover
-    from voxcell import RegionMap, VoxelData  # type: ignore
-
     # pylint: disable=ungrouped-imports
     from atlas_building_tools.placement_hints.layered_atlas import LayeredAtlas
 
@@ -25,70 +22,58 @@ DistancesReport = Dict[str, float]
 
 # pylint: disable=too-many-arguments, too-many-locals
 def compute_placement_hints(
-    region_map: "RegionMap",
-    annotation: "VoxelData",
-    region_acronym: str,
-    layers_regexp: List[str],
+    atlas: "LayeredAtlas",
     direction_vectors: NDArray[float],
     max_thicknesses: Optional[List[float]] = None,
     flip_direction_vectors: bool = False,
     has_hemispheres: bool = True,
 ) -> Tuple[DistanceInfo, Dict]:
     """
-    Compute the placement hints for a laminar region of the mouse brain.
+        Compute the placement hints for a laminar region of the mouse brain.
 
-    Args:
-        region_map: object to navigate brain regions hierarchy.
-        region_acronym: acronym of the region for which the computation is requested.
-            Example: 'CA1', 'Isocortex'.
-        layer_regexps: list of regular expressions defining the layers of `region_acronym`.
-        annotation: annotated 3D volume holding the full mouse brain atlas.
-        direction_vectors: unit vector field of shape (W, H, D, 3) if `annotation`'s array
-            is of shape (W, H, D).
-        max_thicknesses: (optional) thicknesses of `region_acronym` layers.
-            Defaults to None, i.e., there will be no validity check with input from literature.
-        flip_direction_vectors: If True, the input direction vectors are negated before use.
-            This is required if direction vectors flaw from the top layer (shallowest) to the
-            bottom layer (deepest). Otherwise, they are left unchanged. Defaults to false.
-        has_hemispheres: (optional) If True, split the volume into halves along the z-axis and
-            handle each of theses 'hemispheres' separately. Otherwise the whole volume is
-            handled. Defaults to True.
+        Args:
+            atlas: layered atlas for which the placement hints are computed.
+            direction_vectors: unit vector field of shape (W, H, D, 3) if `annotation`'s array
+                is of shape (W, H, D).
+            max_thicknesses: (optional) thicknesses of `region_acronym` layers.
+                Defaults to None, i.e., there will be no validity check with input from literature.
+            flip_direction_vectors: If True, the input direction vectors are negated before use.
+                This is required if direction vectors flaw from the top layer (shallowest) to the
+                bottom layer (deepest). Otherwise, they are left unchanged. Defaults to false.
+            has_hemispheres: (optional) If True, split the volume into halves along the z-axis and
+                handle each of theses 'hemispheres' separately. Otherwise the whole volume is
+                handled. Defaults to True.
 
     Returns:
-        Tuple with the following items.
-        distances_info: dict with the following entries.
-            layered_atlas: LayeredAtlas instance of the requested acronym.
-            obtuse_angles: 3D binary mask indicating which voxels have rays
-                intersecting a layer boundary with an obtuse angle. The direction vectors
-                of such voxels are considered as problematic.
-            distances_to_layer_meshes(numpy.ndarray): 4D float array of shape
-                (number of layers + 1, W, H, D) holding the distances from
-                voxel centers to the upper boundaries of layers wrt to voxel direction vectors.
-        problems: dict with two keys, "before interpolation" and "after interpolation".
-            The amount of distance problems are expected to decrease after interpolation of
-            invalid distance information (NaN or thickness excess) by valid information of
-            neighbouring voxels.
-            The corresponding values are dict with keys "report" and "volume".
-            report:
-                the value associated to "report" is dict reporting the proportion of voxels
-                subject to each distance-related problem,
-                see distances.distance_to_meshes.report_distance_problems doc.
-            volume: the value associated to "volume" is a 3D binary mask of the voxels with at
-                least one distance-related problem.
-                See distances.distance_to_meshes.report_distance_problems doc.
+            Tuple with the following items.
+            distances_info: dict with the following entries.
+                obtuse_angles: 3D binary mask indicating which voxels have rays
+                    intersecting a layer boundary with an obtuse angle. The direction vectors
+                    of such voxels are considered as problematic.
+                distances_to_layer_meshes(numpy.ndarray): 4D float array of shape
+                    (number of layers + 1, W, H, D) holding the distances from
+                    voxel centers to the upper boundaries of layers wrt to voxel direction vectors.
+            problems: dict with two keys, "before interpolation" and "after interpolation".
+                The amount of distance problems are expected to decrease after interpolation of
+                invalid distance information (NaN or thickness excess) by valid information of
+                neighbouring voxels.
+                The corresponding values are dict with keys "report" and "volume".
+                report:
+                    the value associated to "report" is dict reporting the proportion of voxels
+                    subject to each distance-related problem,
+                    see distances.distance_to_meshes.report_distance_problems doc.
+                volume: the value associated to "volume" is a 3D binary mask of the voxels with at
+                    least one distance-related problem.
+                    See distances.distance_to_meshes.report_distance_problems doc.
     """
-    distances_info = compute_distances_to_layer_meshes(
-        region_acronym,
-        annotation,
-        region_map,
+    distances_info = atlas.compute_distances_to_layer_meshes(
         direction_vectors,
-        layers_regexp,
         flip_direction_vectors=flip_direction_vectors,
         has_hemispheres=has_hemispheres,
     )
-    atlas = distances_info["layered_atlas"]
+
     distances_to_meshes = distances_info["distances_to_layer_meshes"]
-    tolerance = 2.0 * annotation.voxel_dimensions[0]
+    tolerance = 2.0 * atlas.region.voxel_dimensions[0]
     distances_report, problematic_volume = report_distance_problems(
         distances_to_meshes,
         distances_info["obtuse_angles"],
@@ -118,4 +103,5 @@ def compute_placement_hints(
             "volume": filtered_problematic_volume,
         },
     }
+
     return distances_info, problems

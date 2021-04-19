@@ -14,8 +14,9 @@ import atlas_building_tools.placement_hints.layered_atlas as tested
 from atlas_building_tools.placement_hints.layered_atlas import (  # type: ignore
     DistanceProblem,
     LayeredAtlas,
+    ThalamusAtlas,
 )
-from tests.placement_hints.mocking_tools import IsocortexMock
+from tests.placement_hints.mocking_tools import IsocortexMock, ThalamusMock
 
 
 class Test_Layered_Atlas(unittest.TestCase):
@@ -63,21 +64,11 @@ class Test_Layered_Atlas(unittest.TestCase):
     def test_compute_distances_to_layer_meshes(self):
         direction_vectors = np.zeros(self.isocortex_mock.annotation.raw.shape + (3,), dtype=float)
         direction_vectors[self.isocortex_mock.annotation.raw > 0] = (0.0, 1.0, 0.0)
-        distances = tested.compute_distances_to_layer_meshes(
-            "Isocortex",
-            self.layered_atlas.annotation,
-            self.layered_atlas.region_map,
-            direction_vectors,
-            self.layered_atlas.layer_regexps,
-        )
-        atlas = distances["layered_atlas"]
-        assert atlas.acronym == "Isocortex"
-        assert atlas.layer_regexps == self.layered_atlas.layer_regexps
-        assert atlas.annotation == self.layered_atlas.annotation
+        distances = self.layered_atlas.compute_distances_to_layer_meshes(direction_vectors)
 
         dist_info = distances["distances_to_layer_meshes"][:-1]
         for i, ids in enumerate(self.isocortex_mock.layer_ids):
-            layer_mask = np.isin(atlas.annotation.raw, ids)
+            layer_mask = np.isin(self.layered_atlas.annotation.raw, ids)
             layer_index = 6 - i
             for j, dist_to_upper_boundary in enumerate(dist_info):
                 boundary_index = j + 1
@@ -117,3 +108,48 @@ class Test_Layered_Atlas(unittest.TestCase):
             volume_path = Path(tempdir, "Isocortex_problematic_voxel_mask.nrrd")
             voxel_data = VoxelData.load_nrrd(volume_path)
             npt.assert_almost_equal(voxel_data.raw, expected_voxel_mask)
+
+
+class Test_Thalamus_Atlas(unittest.TestCase):
+    thalamus_mock: Optional[ThalamusMock] = None
+    thalamus_atlas: Optional[ThalamusAtlas] = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.thalamus_mock = ThalamusMock(padding=20, shape=(50, 50, 50), layer_thickness_ratio=0.2)
+        cls.thalamus_atlas = tested.ThalamusAtlas(
+            "TH",
+            cls.thalamus_mock.annotation,
+            cls.thalamus_mock.region_map,
+        )
+
+    def test_create_layers_volume(self):
+        expected = self.thalamus_mock.annotation.raw.copy()
+        expected[expected == 549] = 2
+        expected[expected == 262] = 1
+        npt.assert_array_equal(self.thalamus_atlas.volume, expected)
+
+    def test_create_layer_meshes(self):
+        meshes = self.thalamus_atlas.create_layer_meshes(self.thalamus_atlas.volume)
+
+        # Check that the x-coordinates of the layer meshes vertices are reasonnable
+        vertices = meshes[0].vertices
+        assert np.all(vertices[:, 0] >= 0.8 * self.thalamus_mock.padding)
+        assert np.all(
+            vertices[:, 0]
+            <= 1.2 * self.thalamus_mock.padding
+            + self.thalamus_mock.layer_thickness_ratio * self.thalamus_mock.shape[0]
+        )
+
+        vertices = meshes[1].vertices
+        assert np.all(
+            vertices[:, 0]
+            >= 0.8
+            * (
+                self.thalamus_mock.padding
+                + self.thalamus_mock.layer_thickness_ratio * self.thalamus_mock.shape[0]
+            )
+        )
+        assert np.all(
+            vertices[:, 0] <= 1.2 * (self.thalamus_mock.padding + self.thalamus_mock.shape[0])
+        )

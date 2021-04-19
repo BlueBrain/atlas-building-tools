@@ -1,6 +1,8 @@
 """
  Mocking tools for the unit tests related to placement hints.
 """
+from typing import Tuple
+
 import numpy as np
 from voxcell import RegionMap, VoxelData
 
@@ -191,3 +193,49 @@ class Ca1Mock:
                 ],
             }
         )
+
+
+class ThalamusMock:
+    """
+    Class to instantiate an annotated volume with some of the mouse thalamus features.
+
+    The constructor allows to specify the dimensions of a box and a uniform padding,
+    as well as the thickness ratio of the smallest layer (RT) wrt the largest (RT complement).
+    """
+
+    def __init__(self, padding: int, shape: Tuple[int, int, int], layer_thickness_ratio: float):
+        self.padding = padding
+        self.shape = shape
+        self.layer_thickness_ratio = layer_thickness_ratio
+
+        raw = np.zeros(shape, dtype=int)
+        reticular_nucleus_thickness = int(layer_thickness_ratio * shape[0])
+        raw[:reticular_nucleus_thickness, ...] = 262  # Region id of the reticular nucleus (RT)
+        raw[reticular_nucleus_thickness:, ...] = 549  # Region id of the thalamus (TH)
+
+        self.volume = shape[0] * shape[1] * shape[2]  # Number of voxels with positive labels
+
+        raw = np.pad(raw, padding, "constant", constant_values=0)
+        self.annotation = VoxelData(raw, (10.0, 10.0, 10.0))
+        self.region_map_dict = {
+            "id": 0,
+            "acronym": "root",
+            "children": [
+                {
+                    "id": 549,
+                    "acronym": "TH",
+                    "children": [
+                        {
+                            "id": 856,
+                            "acronym": "DORpm",
+                            "children": [{"acronym": "RT", "id": 262}],
+                        },
+                        {
+                            "id": 864,
+                            "acronym": "DORsm",
+                        },
+                    ],
+                },
+            ],
+        }
+        self.region_map = RegionMap.from_dict(self.region_map_dict)

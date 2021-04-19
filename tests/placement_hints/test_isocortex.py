@@ -6,6 +6,7 @@ import unittest
 import numpy as np  # type: ignore
 
 import atlas_building_tools.placement_hints.compute_placement_hints as tested
+from atlas_building_tools.placement_hints.layered_atlas import LayeredAtlas
 from tests.placement_hints.mocking_tools import IsocortexMock
 
 
@@ -20,11 +21,14 @@ class Test_isocortex(unittest.TestCase):
         )
         direction_vectors = np.zeros(cls.isocortex_mock.annotation.raw.shape + (3,), dtype=float)
         direction_vectors[cls.isocortex_mock.annotation.raw > 0] = (0.0, 1.0, 0.0)
-        cls.result = tested.compute_placement_hints(
-            cls.isocortex_mock.region_map,
-            cls.isocortex_mock.annotation,
+        atlas = LayeredAtlas(
             "Isocortex",
+            cls.isocortex_mock.annotation,
+            cls.isocortex_mock.region_map,
             ["@.*{}[ab]?$".format(i) for i in range(1, 7)],
+        )
+        cls.result = tested.compute_placement_hints(
+            atlas,
             direction_vectors,
             [210.639, 190.2134, 450.6398, 242.554, 670.2, 893.62],
         )

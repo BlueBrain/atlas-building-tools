@@ -167,11 +167,7 @@ def test_load_placement_hints():
 def test_compute_layer_slice_voxel_indices(mocked_loader):
     density_profile_collection = create_density_profile_collection()
     actual_voxel_indices = density_profile_collection.compute_layer_slice_voxel_indices(
-        {
-            "layer_2": "[PH]layer_2.nrrd",
-            "layer_3": "[PH]layer_3.nrrd",
-            "y": "[PH]y.nrrd",
-        }
+        {"layer_2": "[PH]layer_2.nrrd", "layer_3": "[PH]layer_3.nrrd", "y": "[PH]y.nrrd"}
     )  # fake file paths
 
     expected = create_slice_voxel_indices()

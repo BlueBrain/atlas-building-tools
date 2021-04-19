@@ -3,12 +3,17 @@ Utility functions for the computation of placement hints.
 """
 import logging
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import trimesh  # type: ignore
 import voxcell  # type: ignore
 from nptyping import NDArray  # type: ignore
+from scipy.ndimage import correlate
+
+# I don't know why, but pylint believes scipy.spatial.ConvexHull is a myth
+# pylint: disable=E0611
+from scipy.spatial import ConvexHull
 
 from atlas_building_tools.utils import get_region_mask, is_obtuse_angle
 
@@ -31,7 +36,7 @@ def centroid_outfacing_mesh(mesh: trimesh.Trimesh) -> trimesh.Trimesh:
 
 
 def layers_volume(
-    annotation: voxcell.VoxelData,
+    annotation: NDArray[int],
     region_map: Union[str, dict, "voxcell.RegionMap"],
     layers: List[str],
     region: Optional[Region] = "Isocortex",
@@ -58,6 +63,7 @@ def layers_volume(
     result = 0
     for index, layer in enumerate(layers, 1):
         result += index * np.logical_and(get_region_mask(layer, annotation, region_map), region)
+
     return result
 
 
@@ -112,3 +118,139 @@ def save_placement_hints(
         placement_hints = np.stack((bottom, top), axis=-1) + y[..., np.newaxis]
         layer_placement_hints_path = str(Path(output_dir, "[PH]{}.nrrd".format(name)))
         voxel_data.with_data(voxel_size * placement_hints).save_nrrd(layer_placement_hints_path)
+
+
+def detailed_mesh_mask(mesh: "trimesh.Trimesh", shape: Tuple[int, int, int]) -> NDArray[bool]:
+    """
+    Generate a mask for the voxels occupied by `mesh`.
+
+    The vertex coordinates of the mesh are assumed to be expressed in voxel index space and
+    the dimensions of this space are given by `shape`.
+
+    Arguments:
+        mesh: the mesh in question
+        shape: the desired shape of the mask
+
+    Returns:
+        boolean mask of the voxels occupied by mesh. The shape of `mask` is `shape`.
+    """
+
+    def points_in_between(p_1, p_2) -> NDArray[float]:
+        """
+        Create points at regular intervals between `p_1` and `p_2`.
+
+        The 3D points `p_1` and `p_2` are expressed in voxel index space and hence have
+        non-negative float coordinates. If the distance between them is larger than 1.0 (edge
+        length of a voxel in voxel index space), regularly spaced points are inserted between `p_1`
+        and `p_2`.
+
+        Args:
+            p_1: NDArray[float] of shape (3,), the 3D coordinates of a vertex in voxel index space
+            p_2: NDArray[float] of shape (3,), the 3D coordinates of a vertex in voxel index space
+
+        Returns:
+            A float array of shape (N, 3) where N is the number of new points inserted on
+            the edge [p_1, p_2]. The integer N depends on the distance between p_1 and p_2.
+        """
+        distance = np.linalg.norm(p_1 - p_2)
+
+        return np.linspace(p_1, p_2, int(np.ceil(distance)) + 1)
+
+    points = []
+    for triangle in mesh.triangles:
+        edge1 = points_in_between(triangle[0], triangle[1])
+        edge2 = points_in_between(triangle[1], triangle[2])
+        edge3 = points_in_between(triangle[0], triangle[2])
+        points.append(edge1)
+        points.append(edge2)
+        points.append(edge3)
+        for p_1 in edge1:
+            for p_2 in edge2:
+                points.append(points_in_between(p_1, p_2))
+
+    mesh_voxels = indexable(np.concatenate(points, axis=0))  # round coordinates
+    mask = np.zeros(shape, dtype=bool)
+    mask[mesh_voxels] = True
+
+    return mask
+
+
+def get_convex_hull_boundary(mask: NDArray[bool]) -> "trimesh.Trimesh":
+    """Get the convex hull boundary of the volume defined by `mask`
+
+    Args:
+        mask: boolean mask defining a 3D volume
+
+    Returns:
+        A surface mesh representing the boundary of the convex hull of the
+        `mask` volume.
+    """
+    convex_hull = ConvexHull(np.transpose(np.nonzero(mask)))
+
+    return trimesh.Trimesh(vertices=convex_hull.points, faces=convex_hull.simplices)
+
+
+def indexable(
+    positions: NDArray[float],
+) -> Tuple[NDArray[np.int16], ...]:
+    """
+    Convert a float array of shape (N, 3) into a 3-tuple of voxel indices.
+
+    The array `positions` holds 3D points whose coordinates are expressed in voxel index
+    space. This function rounds coordinates to integers and returns the corresponding voxel
+    indices under the form of a tuple (X, Y, Z).
+
+    Args:
+        positions: float array of shape (N, 3).
+
+    Returns:
+        A tuple (X, Y, Z) where each component is a vector of shape (N,)
+        and of dtype equal to np.uint16.
+
+
+    """
+    return tuple(np.int16(positions[..., ax]) for ax in range(positions.shape[-1]))
+
+
+def clip_mesh(
+    mesh: "trimesh.Mesh",
+    mask: NDArray[bool],
+    remainder: bool = False,
+    dilation: int = 5,
+) -> "trimesh.Trimesh":
+    """
+    Get the parts of a mesh which are in the space of `mask`'s volume or the remainder.
+
+    Args:
+        mesh: the mesh to clip. Vertex coordinates are assumed to be expressed wrt to voxel index
+            space.
+        mask: the mask used when clipping.
+        remainder: (optional) if True, the complement of the (dilated) mask is used for clipping.
+            Defaults to False.
+        dilation: edge length, expressed in number of voxels, of the box used to dilate `mask`
+            prior to clipping.
+
+    Returns:
+        The mesh obtained by intersecting `mesh` with the `mask` volume.
+    """
+    # Dilate the mask slightly before use
+    mask = correlate(mask, np.ones([dilation] * 3)) > 0
+
+    if remainder:
+        mask = ~mask
+
+    # Keep every vertex sitting in `mask`
+    vertex_mask = mask[indexable(mesh.vertices)]
+    vertex_indices = np.nonzero(vertex_mask)[0]
+
+    # Keep every face whose vertices and whose center are in `mask`
+    face_mask = np.all(np.isin(mesh.faces, vertex_indices), axis=-1)
+    face_mask = np.logical_and(face_mask, mask[indexable(mesh.triangles_center)])
+
+    vertices = mesh.vertices[vertex_mask]
+    faces = mesh.faces[face_mask]
+    # Reset vertex numbering
+    for i, val in enumerate(vertex_indices):
+        faces[faces == val] = i
+
+    return trimesh.Trimesh(vertices=vertices, faces=faces)

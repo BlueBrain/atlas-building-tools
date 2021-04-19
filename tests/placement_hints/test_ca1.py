@@ -1,11 +1,13 @@
 """
-Unit tests for the comptutation of the placement hints for the CA1 region of the mouse hippocampus.
+Unit tests for the computation of the placement hints for the CA1 region of the mouse hippocampus.
 """
+
 import unittest
 
 import numpy as np  # type: ignore
 
 import atlas_building_tools.placement_hints.compute_placement_hints as tested
+from atlas_building_tools.placement_hints.layered_atlas import LayeredAtlas
 from tests.placement_hints.mocking_tools import Ca1Mock
 
 
@@ -18,11 +20,14 @@ class Test_ca1(unittest.TestCase):
         cls.ca1_mock = Ca1Mock(padding=10, layer_thickness=30, x_thickness=35, z_thickness=30)
         direction_vectors = np.zeros(cls.ca1_mock.annotation.raw.shape + (3,), dtype=float)
         direction_vectors[cls.ca1_mock.annotation.raw > 0] = (0.0, -1.0, 0.0)
-        cls.result = tested.compute_placement_hints(
-            cls.ca1_mock.region_map,
-            cls.ca1_mock.annotation,
+        atlas = LayeredAtlas(
             "CA1",
+            cls.ca1_mock.annotation,
+            cls.ca1_mock.region_map,
             ["CA1so", "CA1sp", "CA1sr", "CA1slm"],
+        )
+        cls.result = tested.compute_placement_hints(
+            atlas,
             direction_vectors,
             flip_direction_vectors=True,
             has_hemispheres=False,

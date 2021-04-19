@@ -109,3 +109,17 @@ def test_save_placement_hints():
 
     for filename, value in expected_dict.items():
         npt.assert_array_equal(saved_files_dict[filename], value)
+
+
+class Test_detailed_mesh_mask:
+    def test_get_space_occupied_by_triangles(self):
+        expected_mesh_mask = np.array(
+            [[[1, 0, 0, 0, 0], [1, 1, 0, 0, 0], [1, 1, 1, 0, 0], [0, 0, 0, 0, 0]]], dtype=np.bool
+        )
+
+        vertices = np.array([[0, 0.5, 0.5], [0, 2.5, 0.5], [0, 2.5, 2.5]])
+        faces = [[0, 1, 2]]
+        test_mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+        npt.assert_array_equal(
+            tested.detailed_mesh_mask(test_mesh, expected_mesh_mask.shape), expected_mesh_mask
+        )
