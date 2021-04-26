@@ -42,7 +42,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'atlas-analysis'
+project = u'atlas-building-tools'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -105,7 +105,7 @@ html_theme = 'sphinx-bluebrain-theme'
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = u'atlas-analysis'
+html_title = u'atlas-building-tools'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 #html_short_title = None
@@ -181,7 +181,7 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'atlas-analysis.tex', u'atlas-analysis Documentation',
+  ('index', 'atlas-building-tools.tex', u'atlas-building-tools Documentation',
    u'BlueBrain NSE', 'manual'),
 ]
 

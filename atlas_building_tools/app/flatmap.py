@@ -15,9 +15,9 @@ import logging
 import click  # type: ignore
 import numpy as np
 import voxcell  # type: ignore
-from atlas_analysis.atlas import assert_meta_properties  # type: ignore
 
 from atlas_building_tools.app.utils import EXISTING_FILE_PATH  # type: ignore
+from atlas_building_tools.app.utils import assert_meta_properties  # type: ignore
 from atlas_building_tools.app.utils import log_args, set_verbose
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 from atlas_building_tools.flatmap.streamlines_flatmap import compute_flatmap

@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING
 import cgal_pybind
 import numpy as np  # type: ignore
 import trimesh
-from atlas_analysis.vector_field import interpolate
 from nptyping import NDArray
 
 from atlas_building_tools.flatmap.utils import reconstruct_surface_mesh
 from atlas_building_tools.utils import compute_boundary
+from atlas_building_tools.vector_field import interpolate
 
 if TYPE_CHECKING:  # pragma: no cover
     from voxcell import VoxelData  # type: ignore

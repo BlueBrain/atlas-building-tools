@@ -17,8 +17,6 @@ setup(
     license="BBP-internal-confidential",
     python_requires=">=3.6.0",
     install_requires=[
-        "atlas-analysis>=0.0.3",
-        "cairosvg>=2.4.2",
         "click>=7.0",
         "cgal_pybind>=0.0.2",
         "cached-property>=1.5.2",
@@ -43,10 +41,13 @@ setup(
         "voxcell>=3.0.0",
         "xlrd>=1.0.0",
     ],
-    tests_require=["pytest>=4.4.0", "mock>=2.0.0", "rtree"],
+    extras_require={
+        "cell-detection": "cairosvg>=2.4.2",
+        "tests": ["pytest>=4.4.0", "mock>=2.0.0", "cairosvg>=2.4.2"],
+    },
     packages=find_packages(),
     include_package_data=True,
-    entry_points={"console_scripts": ["atlas-building-tools=atlas_building_tools.app.cli:main"]},
+    entry_points={"console_scripts": ["atlas-building-tools=atlas_building_tools.app.cli:cli"]},
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Programming Language :: Python",

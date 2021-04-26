@@ -33,12 +33,12 @@ from pathlib import Path
 
 import click
 import numpy as np
-from atlas_analysis.atlas import assert_properties
 from voxcell import RegionMap, VoxelData  # type: ignore
 
 from atlas_building_tools.app.utils import (
     EXISTING_DIR_PATH,
     EXISTING_FILE_PATH,
+    assert_properties,
     log_args,
     set_verbose,
 )
