@@ -272,6 +272,7 @@ def thalamus(annotation_path, hierarchy_path, direction_vectors_path, output_dir
         atlas,
         direction_vectors_path,
         output_dir,
-        ["Rt", "VPL"],
+        # See discussion in https://bbpteam.epfl.ch/project/issues/browse/NSETM-1433 for layer names
+        ["RT", "THnotRT"],
         has_hemispheres=True,
     )
