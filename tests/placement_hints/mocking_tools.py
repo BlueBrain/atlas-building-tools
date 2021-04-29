@@ -70,53 +70,52 @@ class IsocortexMock:
                 (2 * padding + (3 * z_thickness) // 2) : (2 * padding + 2 * z_thickness),
             ] = ids[0]
         self.annotation = VoxelData(raw, (10.0, 10.0, 10.0))
-        self.region_map = RegionMap.from_dict(
-            {
-                "id": 0,
-                "acronym": "root",
-                "children": [
-                    {
-                        "id": 315,
-                        "acronym": "Isocortex",
-                        "children": [
-                            {
-                                "id": 184,
-                                "acronym": "FRP",
-                                "children": [
-                                    {"id": 68, "acronym": "FRP1"},
-                                    {"id": 1073, "acronym": "FRP2"},
-                                    {"id": 11073, "acronym": "FRP3"},
-                                    {"id": 526322264, "acronym": "FRP6b"},
-                                ],
-                            },
-                            {
-                                "id": 500,
-                                "acronym": "MO",
-                                "children": [
-                                    {"id": 320, "acronym": "MOp1"},
-                                    {"id": 767, "acronym": "MOs5"},
-                                    {"id": 844, "acronym": "MOp6a"},
-                                ],
-                            },
-                            {
-                                "id": 453,
-                                "acronym": "SS",
-                                "children": [
-                                    {"id": 12995, "acronym": "SS4"},
-                                    {"id": 12994, "acronym": "SS2"},
-                                    {"id": 12996, "acronym": "SS5"},
-                                ],
-                            },
-                        ],
-                    },
-                    {
-                        "id": 698,
-                        "acronym": "OLF",
-                        "children": [{"id": 507, "acronym": "MOB"}],
-                    },
-                ],
-            }
-        )
+        self.region_map_dict = {
+            "id": 0,
+            "acronym": "root",
+            "children": [
+                {
+                    "id": 315,
+                    "acronym": "Isocortex",
+                    "children": [
+                        {
+                            "id": 184,
+                            "acronym": "FRP",
+                            "children": [
+                                {"id": 68, "acronym": "FRP1"},
+                                {"id": 1073, "acronym": "FRP2"},
+                                {"id": 11073, "acronym": "FRP3"},
+                                {"id": 526322264, "acronym": "FRP6b"},
+                            ],
+                        },
+                        {
+                            "id": 500,
+                            "acronym": "MO",
+                            "children": [
+                                {"id": 320, "acronym": "MOp1"},
+                                {"id": 767, "acronym": "MOs5"},
+                                {"id": 844, "acronym": "MOp6a"},
+                            ],
+                        },
+                        {
+                            "id": 453,
+                            "acronym": "SS",
+                            "children": [
+                                {"id": 12995, "acronym": "SS4"},
+                                {"id": 12994, "acronym": "SS2"},
+                                {"id": 12996, "acronym": "SS5"},
+                            ],
+                        },
+                    ],
+                },
+                {
+                    "id": 698,
+                    "acronym": "OLF",
+                    "children": [{"id": 507, "acronym": "MOB"}],
+                },
+            ],
+        }
+        self.region_map = RegionMap.from_dict(self.region_map_dict)
 
 
 class Ca1Mock:
@@ -158,41 +157,40 @@ class Ca1Mock:
                 padding : (z_width - padding),
             ] = id_
         self.annotation = VoxelData(raw, (10.0, 10.0, 10.0))
-        self.region_map = RegionMap.from_dict(
-            {
-                "id": 0,
-                "acronym": "root",
-                "children": [
-                    {
-                        "id": 382,
-                        "acronym": "CA1",
-                        "children": [
-                            {
-                                "id": 399,
-                                "acronym": "CA1so",
-                            },
-                            {
-                                "id": 407,
-                                "acronym": "CA1sp",
-                            },
-                            {
-                                "id": 415,
-                                "acronym": "CA1sr",
-                            },
-                            {
-                                "id": 391,
-                                "acronym": "CA1slm",
-                            },
-                        ],
-                    },
-                    {
-                        "id": 698,
-                        "acronym": "OLF",
-                        "children": [{"id": 507, "acronym": "MOB"}],
-                    },
-                ],
-            }
-        )
+        self.region_map_dict = {
+            "id": 0,
+            "acronym": "root",
+            "children": [
+                {
+                    "id": 382,
+                    "acronym": "CA1",
+                    "children": [
+                        {
+                            "id": 399,
+                            "acronym": "CA1so",
+                        },
+                        {
+                            "id": 407,
+                            "acronym": "CA1sp",
+                        },
+                        {
+                            "id": 415,
+                            "acronym": "CA1sr",
+                        },
+                        {
+                            "id": 391,
+                            "acronym": "CA1slm",
+                        },
+                    ],
+                },
+                {
+                    "id": 698,
+                    "acronym": "OLF",
+                    "children": [{"id": 507, "acronym": "MOB"}],
+                },
+            ],
+        }
+        self.region_map = RegionMap.from_dict(self.region_map_dict)
 
 
 class ThalamusMock:

@@ -94,7 +94,7 @@ def _placement_hints(  # pylint: disable=too-many-locals
         "after interpolation": problems["after interpolation"]["report"],
     }
     with open(Path(output_dir, "distance_report.json"), mode="w+") as file_:
-        json.dump(distance_report, file_)
+        json.dump(distance_report, file_, indent=1, separators=(",", ": "))
 
     save_placement_hints(
         distances_info["distances_to_layer_meshes"],
@@ -111,7 +111,25 @@ def _placement_hints(  # pylint: disable=too-many-locals
 @click.group()
 @click.option("-v", "--verbose", count=True)
 def app(verbose):
-    """Run the different placement hints CLI"""
+    """Run the different placement hints CLI
+
+    Besides the placement hints of the region of interest, each command generates:
+    - the file `distance_report.json` reporting several distance-related problems caused by the
+        region or the algorithm.
+    - an nrrd file containing the 'mask' of the voxels whose placement hints are subject to one of
+        the problems listed in `distance_report.json`.
+
+    In the latter nrrd file, voxels are labeled in the following way. A voxel value of
+
+    - 0 means there is no problem or that the voxel lies outside the region of interest,
+    - 1 means that a problem was detected before interpolation and has been addressed by
+        interpolation, with the placement hints of nearby voxels,
+    - 2 means that a problem persisted after interpolation,
+    - 3 means that a problem was created by interpolation.
+
+    For the definition of the placement hints, see:
+    https://bbpteam.epfl.ch/documentation/projects/placement-algorithm/latest/index.html#input-data
+    """
     set_verbose(L, verbose)
 
 
@@ -203,7 +221,7 @@ def isocortex(annotation_path, hierarchy_path, direction_vectors_path, output_di
     A report and an nrrd volume on problematic distance computations are generated
     in `output_dir` under the names:
     * distance_report.json\n
-    * isocortex_problematic_voxel_mask.nrrd (mask of the voxels for which the computed
+    * Isocortex_problematic_voxel_mask.nrrd (mask of the voxels for which the computed
     placement hints cannot be trusted).
     """
 
@@ -256,7 +274,7 @@ def thalamus(annotation_path, hierarchy_path, direction_vectors_path, output_dir
     * '[PH]Rt.nrrd', '[PH]VPL.nrrd'
 
     A report and an nrrd volume on problematic distance computations are generated
-    in `output_dir` under the names:
+    in `output_dir` under the names:\n
     * distance_report.json\n
     * thalamus_problematic_voxel_mask.nrrd (mask of the voxels for which the computed
     placement hints cannot be trusted).

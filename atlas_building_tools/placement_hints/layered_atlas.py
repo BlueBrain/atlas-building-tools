@@ -47,10 +47,11 @@ class DistanceProblem(IntEnum):
     """
 
     NO_PROBLEM = 0
-    BEFORE_INTERPOLATION = 1  # NaN distance value or excessive layer thickness
-    AFTER_INTERPOLATION = 2  # Excessive layer thickness only
-    # NaN distance values are assumed to have been interpolated with valid distances of nearby
-    # voxels.
+    # Problems are, e.g., NaN distance value or excessive layer thickness, see
+    # distances/distances_to_meshes/report_distance_problems for a complete list of problems
+    BEFORE_INTERPOLATION = 1  # the problem is fixed after interpolation
+    PERSISTENT_AFTER_INTERPOLATION = 2
+    NEW_AFTER_INTERPOLATION = 3
 
 
 class AbstractLayeredAtlas(ABC):
@@ -94,8 +95,8 @@ class AbstractLayeredAtlas(ABC):
         Get the volume enclosed by the specified layers.
 
         Returns:
-            layers_volume: numpy 3D array whose voxels are labelled
-                by the indices of `self.layer_regexps` augmented by 1.
+            numpy 3D array whose voxels are labelled by the indices of `self.layer_regexps`
+            augmented by 1.
         """
 
     @abstractmethod
@@ -119,7 +120,6 @@ class AbstractLayeredAtlas(ABC):
                     The last mesh represents the bottom of the last layer.
                     It has the vertices of the first mesh, but its normal are
                     inverted.
-
         """
 
     def _compute_dists_and_obtuse_angles(self, volume, direction_vectors):
@@ -383,10 +383,17 @@ def save_problematic_voxel_mask(layered_atlas: LayeredAtlas, problems: dict, out
         layered_atlas.acronym,
         problematic_volume_path,
     )
-    voxel_mask = problems["before interpolation"]["volume"]
-    problematic_volume = np.full(voxel_mask.shape, np.uint8(DistanceProblem.NO_PROBLEM.value))
-    problematic_volume[voxel_mask] = np.uint8(DistanceProblem.BEFORE_INTERPOLATION.value)
-    voxel_mask = problems["after interpolation"]["volume"]
-    problematic_volume[voxel_mask] = np.uint8(DistanceProblem.AFTER_INTERPOLATION.value)
+    before_voxel_mask = problems["before interpolation"]["volume"]
+    problematic_volume = np.full(
+        before_voxel_mask.shape, np.uint8(DistanceProblem.NO_PROBLEM.value)
+    )
+    problematic_volume[before_voxel_mask] = np.uint8(DistanceProblem.BEFORE_INTERPOLATION.value)
+    after_voxel_mask = problems["after interpolation"]["volume"]
+    problematic_volume[np.logical_and(after_voxel_mask, before_voxel_mask)] = np.uint8(
+        DistanceProblem.PERSISTENT_AFTER_INTERPOLATION.value
+    )
+    problematic_volume[np.logical_and(after_voxel_mask, ~before_voxel_mask)] = np.uint8(
+        DistanceProblem.NEW_AFTER_INTERPOLATION.value
+    )
 
     layered_atlas.annotation.with_data(problematic_volume).save_nrrd(problematic_volume_path)

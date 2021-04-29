@@ -2,7 +2,6 @@ import numpy as np
 import numpy.testing as npt
 import pytest as pyt
 import trimesh
-import voxcell
 
 import atlas_building_tools.distances.distances_to_meshes as tested
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
@@ -111,9 +110,37 @@ class Test_distances_to_mesh_wrt_dir:
         assert not wrong_side[0]
 
 
+def get_expected_distances_to_meshes():
+    rt2 = np.sqrt(2)
+    dist_to_top_mesh = np.array(
+        [
+            [
+                [np.nan, np.nan, np.nan, np.nan, np.nan],
+                [np.nan, np.nan, 1 / rt2, 0.5, 0.5],
+                [np.nan, 0.0, np.sqrt(8 / 9), np.nan, np.nan],
+                [np.nan, 0.0, 2.5, 2.5, np.nan],
+                [np.nan, np.nan, np.nan, np.nan, np.nan],
+            ]
+        ]
+    )
+    dist_to_bottom_mesh = np.array(
+        [
+            [
+                [np.nan, np.nan, np.nan, np.nan, np.nan],
+                [np.nan, np.nan, -np.sqrt(3.38), -1.5, -5 / 6],
+                [np.nan, -np.sqrt(2.42), -np.sqrt(49 / 50), np.nan, np.nan],
+                [np.nan, -1 / rt2, -1 / 6, 0.0, np.nan],
+                [np.nan, np.nan, np.nan, np.nan, np.nan],
+            ]
+        ]
+    )
+
+    return np.array([dist_to_top_mesh, dist_to_bottom_mesh])
+
+
 class Test_distances_from_voxels_to_meshes_wrt_dir:
     def test_one_layer(self):
-        test_layervol = np.array([[[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0]]])
+        test_layered_volume = np.array([[[0, 0, 0, 0], [1, 1, 1, 1], [0, 0, 0, 0]]])
         bot_mesh = trimesh.Trimesh(
             vertices=np.array([[0, 1, 0], [0, 1, 4], [1, 1, 0], [1, 1, 4]]),
             faces=np.array([[0, 1, 2], [2, 1, 3]]),
@@ -135,7 +162,7 @@ class Test_distances_from_voxels_to_meshes_wrt_dir:
         )
 
         distances, wrong_side = tested.distances_from_voxels_to_meshes_wrt_dir(
-            test_layervol, [top_mesh, bot_mesh], principal_axes
+            test_layered_volume, [top_mesh, bot_mesh], principal_axes
         )
 
         dist_to_bottom_mesh = np.array(
@@ -162,7 +189,7 @@ class Test_distances_from_voxels_to_meshes_wrt_dir:
         assert not np.any(wrong_side)
 
     def test_warns_nan(self):
-        test_layervol = np.array(
+        test_layered_volume = np.array(
             [
                 [
                     [np.nan, np.nan, np.nan, np.nan],
@@ -194,7 +221,7 @@ class Test_distances_from_voxels_to_meshes_wrt_dir:
         with pyt.warns(UserWarning, match="NaN direction vectors"):
             principal_axes[0, 1, 0] = nanvec
             tested.distances_from_voxels_to_meshes_wrt_dir(
-                test_layervol, [top_mesh, bot_mesh], principal_axes
+                test_layered_volume, [top_mesh, bot_mesh], principal_axes
             )
 
     def test_other_side_mesh(self):
@@ -221,7 +248,7 @@ class Test_distances_from_voxels_to_meshes_wrt_dir:
         |  |  |  |  |  |
 
         """
-        layervol = np.array(
+        layered_volume = np.array(
             [
                 [
                     [0, 0, 0, 0, 0],
@@ -272,33 +299,10 @@ class Test_distances_from_voxels_to_meshes_wrt_dir:
         )
 
         distances, something_wrong = tested.distances_from_voxels_to_meshes_wrt_dir(
-            layervol, [top_mesh, bot_mesh], vectors
+            layered_volume, [top_mesh, bot_mesh], vectors
         )
-        rt2 = np.sqrt(2)
-        dist_to_bottom_mesh = np.array(
-            [
-                [
-                    [np.nan, np.nan, np.nan, np.nan, np.nan],
-                    [np.nan, np.nan, 1 / rt2, 0.5, 0.5],
-                    [np.nan, 0.0, np.sqrt(8 / 9), np.nan, np.nan],
-                    [np.nan, 0.0, 2.5, 2.5, np.nan],
-                    [np.nan, np.nan, np.nan, np.nan, np.nan],
-                ]
-            ]
-        )
-        dist_to_top_mesh = np.array(
-            [
-                [
-                    [np.nan, np.nan, np.nan, np.nan, np.nan],
-                    [np.nan, np.nan, -np.sqrt(3.38), -1.5, -5 / 6],
-                    [np.nan, -np.sqrt(2.42), -np.sqrt(49 / 50), np.nan, np.nan],
-                    [np.nan, -1 / rt2, -1 / 6, 0.0, np.nan],
-                    [np.nan, np.nan, np.nan, np.nan, np.nan],
-                ]
-            ]
-        )
-        exp_distance = np.array([dist_to_bottom_mesh, dist_to_top_mesh])
-        npt.assert_array_almost_equal(distances, exp_distance)
+
+        npt.assert_array_almost_equal(distances, get_expected_distances_to_meshes())
         assert not np.any(something_wrong)
 
 
@@ -322,7 +326,7 @@ class Test_report_distance_problems:
     """test the function that reports problems related to distances computations"""
 
     def test_report_output_format(self):
-        raw = np.array(
+        layered_volume = np.array(
             [
                 [
                     [1, 0, 0, 0, 0],
@@ -333,36 +337,14 @@ class Test_report_distance_problems:
                 ]
             ]
         )
-        obtuse = np.full(raw.shape, False)
+        obtuse = np.full(layered_volume.shape, False)
         obtuse[0][1][4] = True
         obtuse[0][3][1] = True
-        voxel_data = voxcell.VoxelData(raw, voxel_dimensions=(1.0, 1.0, 1.0))
-        rt2 = np.sqrt(2)
-        dist_to_top_mesh = np.array(
-            [
-                [
-                    [np.nan, np.nan, np.nan, np.nan, np.nan],
-                    [np.nan, np.nan, 1 / rt2, 0.5, 0.5],
-                    [np.nan, 0.0, np.sqrt(8 / 9), np.nan, np.nan],
-                    [np.nan, 0.0, 2.5, 2.5, np.nan],
-                    [np.nan, np.nan, np.nan, np.nan, np.nan],
-                ]
-            ]
-        )
-        dist_to_bottom_mesh = np.array(
-            [
-                [
-                    [0.0, np.nan, np.nan, np.nan, np.nan],
-                    [np.nan, np.nan, -np.sqrt(3.38), -1.5, -5 / 6],
-                    [np.nan, -np.sqrt(2.42), -np.sqrt(49 / 50), np.nan, np.nan],
-                    [np.nan, -1 / rt2, -1 / 6, 0.0, np.nan],
-                    [np.nan, np.nan, np.nan, np.nan, np.nan],
-                ]
-            ]
-        )
-        distances = np.array([dist_to_top_mesh, dist_to_bottom_mesh])
+
+        distances = get_expected_distances_to_meshes()
+        distances[1][0, 0, 0] = 0.0
         report, problematic_volume = tested.report_distance_problems(
-            distances, obtuse, voxel_data, max_thicknesses=[0.5], tolerance=2.0
+            distances, obtuse, layered_volume, max_thicknesses=[0.5], tolerance=2.0
         )
         assert (
             report["Proportion of voxels whose rays do not intersect with the bottom mesh"] == 0.1
@@ -381,6 +363,31 @@ class Test_report_distance_problems:
             ]
             == 0.2
         )
+
+        # Inconsitency checks
+        assert (
+            report[
+                "Proportion of voxels whose distances to layer boundaries are not ordered consistently"
+            ]
+            == 0.0
+        )
+
+        assert (
+            report[
+                "Proportion of voxels for which the top layer has a non-positive thickness along their"
+                " direction vectors"
+            ]
+            == 0.0
+        )
+
+        assert (
+            report[
+                "Proportion of voxels whose distances to layer boundaries are inconsistent with their"
+                " actual layer location"
+            ]
+            == 0.0
+        )
+
         assert report["Proportion of voxels with at least one distance-related problem"] == 0.6
         expected_problematic_volume = [
             [
@@ -393,53 +400,133 @@ class Test_report_distance_problems:
         ]
         npt.assert_array_equal(problematic_volume, expected_problematic_volume)
 
+        distances[0][0, 1, 3] = -0.5
+        report, problematic_volume = tested.report_distance_problems(
+            distances, obtuse, layered_volume, max_thicknesses=[0.5], tolerance=2.0
+        )
 
-class Test_interpolate_volume:
+        # Inconsitency checks
+        assert (
+            report[
+                "Proportion of voxels whose distances to layer boundaries are not ordered consistently"
+            ]
+            == 0.0
+        )
+
+        assert (
+            report[
+                "Proportion of voxels for which the top layer has a non-positive thickness along their"
+                " direction vectors"
+            ]
+            == 0.0
+        )
+        assert (
+            report[
+                "Proportion of voxels whose distances to layer boundaries are inconsistent with their"
+                " actual layer location"
+            ]
+            == 0.1
+        )
+
+        distances[0][0, 1, 3] = -2.0
+        distances[0][0, 1, 4] = -0.5
+        report, problematic_volume = tested.report_distance_problems(
+            distances, obtuse, layered_volume, max_thicknesses=[0.5], tolerance=2.0
+        )
+
+        # Inconsitency checks
+        assert (
+            report[
+                "Proportion of voxels whose distances to layer boundaries are not ordered consistently"
+            ]
+            == 0.1
+        )
+
+        assert (
+            report[
+                "Proportion of voxels for which the top layer has a non-positive thickness along their"
+                " direction vectors"
+            ]
+            == 0.1
+        )
+        assert (
+            report[
+                "Proportion of voxels whose distances to layer boundaries are inconsistent with their"
+                " actual layer location"
+            ]
+            == 0.2
+        )
+
+
+class Test_interpolate_scalar_field:
     def test_no_known_values(self):
         with pyt.raises(AtlasBuildingToolsError):
-            tested.interpolate_volume([[[1, 2, 3, 4]]], [[[1, 0, 1, 1]]], [[[0, 0, 0, 0]]])
+            field = np.array([[[1, 2, 3, 4]]])
+            unknown = np.array([[[1, 0, 1, 1]]], dtype=bool)
+            known = np.array([[[0, 0, 0, 0]]], dtype=bool)
+            tested.interpolate_scalar_field([[[1, 2, 3, 4]]], unknown, known)
 
     def test_no_target_values(self):
-        npt.assert_array_equal(
-            tested.interpolate_volume([[[1, 2, 3, 4]]], [[[0, 0, 0, 0]]], [[[1, 1, 1, 0]]]),
-            [],
-        )
+        field = np.array([[[1, 2, 3, 4]]])
+        unknown = np.array([[[0, 0, 0, 0]]], dtype=bool)
+        known = np.array([[[1, 1, 1, 0]]], dtype=bool)
+        tested.interpolate_scalar_field(field, unknown, known)
+        npt.assert_array_equal(field, [[[1, 2, 3, 4]]])
 
     def test_known_and_target_uses_nearest(self):
-        npt.assert_array_equal(
-            tested.interpolate_volume([[[1, 2, 3, 4]]], [[[0, 1, 1, 0]]], [[[1, 0, 0, 1]]]),
-            [1, 4],
-        )
+        field = np.array([[[1, 2, 3, 4]]])
+        unknown = np.array([[[0, 1, 1, 0]]], dtype=bool)
+        known = np.array([[[1, 0, 0, 1]]], dtype=bool)
+        tested.interpolate_scalar_field(field, unknown, known)
+        npt.assert_array_equal(field, [[[1, 1, 4, 4]]])
 
     def test_voxel_in_known_and_target_is_unchanged(self):
-        npt.assert_array_equal(
-            tested.interpolate_volume([[[1, 2, 1, 1]]], [[[0, 1, 0, 0]]], [[[0, 1, 0, 0]]]),
-            [2],
-        )
+        field = np.array([[[1, 2, 1, 1]]])
+        unknown = np.array([[[0, 1, 0, 0]]], dtype=bool)
+        known = np.array([[[0, 1, 0, 0]]], dtype=bool)
+        tested.interpolate_scalar_field(field, unknown, known)
+        npt.assert_array_equal(field, [[[1, 2, 1, 1]]])
 
 
-class Test_interpolate_problematics_voxels:
-    """test the function that corrects problematic voxels by interpolateing"""
+class Test_interpolate_problematic_distances:
+    """test the function that corrects problematic distances by interpolation"""
 
-    def test_no_problematic_voxels_raise(self):
-        distance = np.array([[[[np.nan, 0, 1, np.nan]]]])
-        with pyt.raises(AtlasBuildingToolsError):
-            tested.interpolate_problematic_voxels(
-                distance,
-                np.array([[[0, 0, 0, 0]]]).astype(bool),
-            )
-
-    def test_nans_in_mask_corrected_with_neighbors(self):
+    def test_nan_in_mask_corrected_with_neighbors(self):
         distance = np.array([[[[10000, -1, np.nan, -1]]]])
-        tested.interpolate_problematic_voxels(
+        tested.interpolate_problematic_distances(
             distance,
-            np.array([[[0, 1, 1, 1]]]).astype(bool),
+            np.array([[[1, 0, 1, 0]]]).astype(bool),
+            np.array([[[0, 1, 1, 1]]]),
+            has_hemispheres=False,
         )
         npt.assert_array_equal(distance, np.array([[[[10000, -1, -1, -1]]]]))
 
+    def test_with_2_layers(self):
+        distance = np.array([[[[10000, -1, np.nan, -2]]]])
+        tested.interpolate_problematic_distances(
+            distance,
+            np.array([[[1, 0, 1, 0]]]).astype(bool),
+            np.array([[[0, 1, 2, 2]]]),
+            has_hemispheres=False,
+        )
+        npt.assert_array_equal(distance, np.array([[[[10000, -1, -2, -2]]]]))
+
+    def test_with_2_layers_and_2_hemispheres(self):
+        distance = np.array([[[[10000, 1, np.nan, -2, -1, 0]]]])
+        tested.interpolate_problematic_distances(
+            distance,
+            np.array([[[0, 0, 1, 0, 0, 0]]]).astype(bool),
+            np.array([[[1, 2, 1, 1, 1, 1]]]),
+            has_hemispheres=True,
+        )
+        npt.assert_array_equal(distance, np.array([[[[10000, 1, 10000, -2, -1, 0]]]]))
+
     def test_invalid_non_nan_in_mask_corrected_with_neighbors(self):
         distance = np.array([[[[100, -1, 9000, -1]]], [[[100, -1, -9000, 1]]]])
-        tested.interpolate_problematic_voxels(
-            distance, np.array([[[0, 1, 1, 1]]]).astype(bool), max_thicknesses=[900]
+        tested.interpolate_problematic_distances(
+            distance,
+            np.array([[[0, 0, 1, 0]]]).astype(bool),
+            np.array([[[0, 1, 1, 0]]]),
+            has_hemispheres=False,
         )
-        npt.assert_array_equal(distance, np.array([[[[100, -1, -1, -1]]], [[[100, -1, -9000, 1]]]]))
+        npt.assert_array_equal(distance, np.array([[[[100, -1, -1, -1]]], [[[100, -1, -1, 1]]]]))

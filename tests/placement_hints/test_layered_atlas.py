@@ -101,7 +101,9 @@ class Test_Layered_Atlas(unittest.TestCase):
             }
             problematic_voxel_mask[0, 1, 0] = False
             expected_voxel_mask = np.full((2, 2, 2), np.uint8(DistanceProblem.NO_PROBLEM.value))
-            expected_voxel_mask[0, 0, 0] = np.uint8(DistanceProblem.AFTER_INTERPOLATION.value)
+            expected_voxel_mask[0, 0, 0] = np.uint8(
+                DistanceProblem.PERSISTENT_AFTER_INTERPOLATION.value
+            )
             expected_voxel_mask[0, 1, 0] = np.uint8(DistanceProblem.BEFORE_INTERPOLATION.value)
 
             tested.save_problematic_voxel_mask(self.layered_atlas, problems, tempdir)

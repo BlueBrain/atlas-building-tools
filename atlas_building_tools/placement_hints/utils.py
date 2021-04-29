@@ -83,8 +83,8 @@ def save_placement_hints(
 
     Args:
         distances: 4D array of shape (number-of-layers + 1, length, width, height)
-            holding the signed distances from voxel centers to layer meshes wrt
-            to voxel direction vectors.
+            holding the signed distances from voxel centers to layer tops wrt to voxel direction
+            vectors.
         output_dir: directory in which to save the placement hints nrrd files.
         layer_names: list of layer names used to compose the placement hints file names.
     """

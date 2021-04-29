@@ -15,7 +15,7 @@ from scipy.interpolate import NearestNDInterpolator  # type: ignore
 from atlas_building_tools.direction_vectors.algorithms.utils import normalized
 from atlas_building_tools.distances.utils import memory_efficient_intersection
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
-from atlas_building_tools.utils import is_obtuse_angle
+from atlas_building_tools.utils import is_obtuse_angle, split_into_halves
 
 if TYPE_CHECKING:  # pragma: no cover
     from scipy.interpolate import LinearNDInterpolator  # pylint: disable=ungrouped-imports
@@ -49,7 +49,7 @@ def distances_to_mesh_wrt_dir(
                   The check for vector direction in relation to mesh normals
                   still uses unnegated directions.
                   This option is intended to be used to check the locations
-                  of deeper boundaries (e.g. L5, L6 for L4 voxels)
+                  of deeper distances (e.g. L5, L6 for L4 voxels)
 
     Returns:
         float array(N, ) array holding the distance of each voxel
@@ -137,7 +137,7 @@ def _compute_distances_to_mesh(
 
     Args:
         directions(array(N, 3)): direction vectors to compute along.
-        dists: dists: 3D distances array corresponding to layer `mesh_index` + 1.
+        dists: 3D distances array corresponding to the layer with label `mesh_index` + 1.
             A distances array is float 3D numpy array which holds the distance
             of every voxel in the underlying volume (wrt to its direction vector) to a fixed
             layer mesh.
@@ -195,7 +195,7 @@ def distances_from_voxels_to_meshes_wrt_dir(
             Each voxel is labelled by an integer representing a layer.
             The higher is the label, the deeper is the layer.
             The value 0 represents a voxel that lies outside this volume.
-        layer_meshes: list of meshes representing the upper boundaries of the layers.
+        layer_meshes: list of meshes representing the upper distances of the layers.
         directions: array of shape (N, 3).
             The direction vectors of the voxels. Should be finite (not nan)
             wherever `layers_volume` > 0.
@@ -278,17 +278,17 @@ def get_thickness_excess_mask(
     distances: NDArray[float], max_thicknesses: NDArray[float], tolerance: float
 ) -> NDArray[bool]:
     """
-    Retrieve the binary mask of the voxels which bear at least one invalid layer thickness hint
+    Retrieve the boolean mask of the voxels which bear at least one invalid layer thickness hint
 
         Args:
             distances(numpy.ndarray): the distances of each voxel to each boundary,
-                array of shape (number of boundaries, length, width, height).
+                array of shape (number of distances, length, width, height).
             max_thicknesses: 1D float array, the maximum expected thickness for each
                 layer.
             tolerance: tolerance of the error with respect to thickness.
 
         Returns:
-            3D binary mask of the voxels with at least one invalid thickness hint.
+            3D boolean mask of the voxels with at least one invalid thickness hint.
     """
     too_thick = np.zeros(distances[0].shape, dtype=bool)
     for i, max_thickness in enumerate(max_thicknesses):
@@ -296,17 +296,123 @@ def get_thickness_excess_mask(
             # distances[i] holds the non-negative distances wrt to direction vectors
             # from voxels to the top of layer i.
             # distances[i + 1] holds the non-positive distances wrt to direction vectors
-            # from voxels to the top of layer i.
+            # from voxels to the top of layer i + 1 = bottom of layer i.
             excess = (distances[i] - distances[i + 1]) > (max_thickness + tolerance)
         too_thick = np.logical_or(too_thick, excess)
 
     return too_thick
 
 
+def _handle_nan_distances(
+    distances: NDArray[float], region_mask: NDArray[bool], report: Dict[str, float]
+) -> NDArray[bool]:
+    """
+    Reports the proportions of voxels which have been assigned a NaN distance.
+
+    Updates `report` in place and returns the mask of voxels with some NaN distance.
+
+    Args:
+        distances(numpy.ndarray): the distances of each voxel to each boundary,
+            array of shape (number of distances, length, width, height).
+        region_mask: mask of the region to be checked.
+        report: dict containing the proportions of voxels of each problem
+
+    Returns:
+        boolean mask of the voxels with at least one NaN distance information.
+    """
+    do_not_intersect_bottom = np.isnan(distances[-1])
+    do_not_intersect_top = np.isnan(distances[0])
+    report["Proportion of voxels whose rays do not intersect with the bottom mesh"] = float(
+        np.mean(do_not_intersect_bottom[region_mask])
+    )
+    report["Proportion of voxels whose rays do not intersect with the top mesh"] = float(
+        np.mean(do_not_intersect_top[region_mask])
+    )
+    nan_distances_mask = np.full(region_mask.shape, False)
+    for distance in distances[1:-1]:
+        nan_distances_mask = np.logical_or(np.isnan(distance), nan_distances_mask)
+    report[
+        "Proportion of voxels with a NaN distance with respect to at least one layer boundary"
+        " distinct from the top and the bottom distances of the region"
+    ] = float(np.mean(nan_distances_mask[region_mask]))
+
+    for mask in [do_not_intersect_bottom, do_not_intersect_top]:
+        nan_distances_mask = np.logical_or(nan_distances_mask, mask)
+
+    return np.logical_and(nan_distances_mask, region_mask)
+
+
+def _handle_distance_inconsistencies(
+    distances: NDArray[float], layered_volume: NDArray[int], report: Dict[str, float]
+) -> NDArray[bool]:
+    """
+    Reports the proportions of voxels which have been assigned inconsistent distances.
+
+    Updates `report` in place and returns the mask of voxels with some inconsitent distance.
+
+    Args:
+        distances(numpy.ndarray): the distances of each voxel to each boundary,
+            array of shape (number of distances, length, width, height).
+        layered_volume: array whose voxels are labelled by integers encoding layers
+            (e.g., 1, 2, 3, 4, 5 and 6 are the integers used to label the 6 layers of the mouse
+            isocortex)
+        report: dict containing the proportions of voxels of each problem
+
+    Returns:
+        boolean mask of the voxels with at least one inconsistent distance information.
+    """
+
+    def _invalid_layer_order(distances, region_mask, report):
+        invalid = np.any(np.diff(distances, axis=0) > 0.0, axis=0)
+
+        report[
+            "Proportion of voxels whose distances to layer boundaries are not ordered consistently"
+        ] = float(np.mean(invalid[region_mask]))
+
+        return invalid
+
+    def _non_positive_top_layer_thickness(distances, region_mask, report):
+        invalid = distances[0] <= distances[1]
+
+        report[
+            "Proportion of voxels for which the top layer has a non-positive thickness along their"
+            " direction vectors"
+        ] = float(np.mean(invalid[region_mask]))
+
+        return invalid
+
+    def _out_of_layer(distances, layers, report):
+        invalid = np.zeros(layers.shape, dtype=bool)
+        labels = np.unique(layers)
+        labels = labels[labels != 0]
+        for label in labels:
+            layer_mask = layers == label
+            invalid[layer_mask] = np.logical_or(
+                distances[label - 1][layer_mask] < 0.0, distances[label][layer_mask] > 0.0
+            )
+
+        report[
+            "Proportion of voxels whose distances to layer boundaries are inconsistent with their"
+            " actual layer location"
+        ] = float(np.mean(invalid[region_mask]))
+
+        return invalid
+
+    region_mask = layered_volume != 0
+
+    result = _invalid_layer_order(distances, region_mask, report)
+    result = np.logical_or(
+        result, _non_positive_top_layer_thickness(distances, region_mask, report)
+    )
+    result = np.logical_or(result, _out_of_layer(distances, layered_volume, report))
+
+    return result
+
+
 def report_distance_problems(
     distances: NDArray[float],
     obtuse_intersection: NDArray[bool],
-    voxel_data: "VoxelData",
+    layered_volume: NDArray[int],
     max_thicknesses: Optional[NDArray[float]] = None,
     tolerance: float = 0.0,
 ) -> Tuple[Dict[str, float], NDArray[bool]]:
@@ -321,45 +427,31 @@ def report_distance_problems(
         * some layer thickness exceeds the expected amount.
 
     Args:
-        distances(numpy.ndarray): the distances of each voxel to each boundary,
-            array of shape (number of boundaries, length, width, height).
-        obtuse_intersection(numpy.ndarray): mask of the voxels issuing
+        distances: the distances of each voxel to each boundary,
+            array of shape (number of distances, length, width, height).
+        obtuse_intersection: mask of the voxels issuing
             a ray that intersects with some boundary making an obtuse angle
             with the boundary normal vector.
-        region_voxel_data(VoxelData): mask of the region to be checked,
-            provided as a VoxelData object.
+        layered_volume: array whose voxels are labelled by integers encoding layers
+            (e.g., 1, 2, 3, 4, 5 and 6 are the integers used to label the 6 layers of the mouse
+            isocortex).
         max_thicknesses: (Optional) 1D float array, the maximum expected thickness for each layer.
             Defaults to None.
         tolerance: (Optional) tolerance of the error with respect to thickness.
             Defaults to 0.0.
 
      Returns: tuple of the form
-        (dict containing the proportions of voxels of each problem,
-        mask of all voxels displaying at least one problem)
+        (
+            dict containing the proportions of voxels of each problem,
+            mask of all voxels displaying at least one problem listed above
+        )
     """
     report: Dict[str, float] = {}
-    region_mask = voxel_data.raw > 0
-    do_not_intersect_bottom = np.logical_and(np.isnan(distances[-1]), region_mask)
-    do_not_intersect_top = np.logical_and(np.isnan(distances[0]), region_mask)
-    report["Proportion of voxels whose rays do not intersect with the bottom mesh"] = float(
-        np.mean(do_not_intersect_bottom[region_mask])
-    )
-    report["Proportion of voxels whose rays do not intersect with the top mesh"] = float(
-        np.mean(do_not_intersect_top[region_mask])
-    )
+    region_mask = layered_volume != 0
     report[
         "Proportion of voxels whose rays make an obtuse angle "
         "with the mesh normal at the intersection point"
     ] = float(np.mean(obtuse_intersection[region_mask]))
-
-    nan_distances_mask = np.full(region_mask.shape, False)
-    for distance in distances[1:-1]:
-        nan_distances_mask = np.logical_or(np.isnan(distance), nan_distances_mask)
-    nan_distances_mask = np.logical_and(nan_distances_mask, region_mask)
-    report[
-        "Proportion of voxels with a NaN distance with respect to at least one layer boundary"
-        "distinct from the top and the bottom boundaries of the region"
-    ] = float(np.mean(nan_distances_mask[region_mask]))
 
     too_thick = None
     if max_thicknesses is not None:
@@ -369,51 +461,47 @@ def report_distance_problems(
             "(NaN distances are ignored)"
         ] = float(np.mean(too_thick[region_mask]))
 
-    problematic_volume = np.full(region_mask.shape, False)
-    problems = [
-        do_not_intersect_bottom,
-        do_not_intersect_top,
-        nan_distances_mask,
+    problematic_volume = np.logical_or(
+        _handle_nan_distances(distances, region_mask, report),
         obtuse_intersection,
-    ]
+    )
+
+    problematic_volume = np.logical_or(
+        problematic_volume,
+        _handle_distance_inconsistencies(distances, layered_volume, report),
+    )
 
     if too_thick is not None:
-        problems.append(too_thick)
-
-    for problem in problems:
-        problematic_volume = np.logical_or(problematic_volume, problem)
+        problematic_volume = np.logical_or(problematic_volume, too_thick)
 
     report["Proportion of voxels with at least one distance-related problem"] = float(
         np.mean(problematic_volume[region_mask])
     )
 
-    return report, problematic_volume
+    return report, np.logical_and(problematic_volume, region_mask)
 
 
 Interpolator = Union[NearestNDInterpolator, "LinearNDInterpolator"]
 
 
-def interpolate_volume(
-    volume: NDArray[float],
+def interpolate_scalar_field(
+    field: NDArray[float],
     unknown_values_mask: NDArray[bool],
     known_values_mask: NDArray[bool],
     interpolator: Interpolator = NearestNDInterpolator,
-) -> NDArray[float]:
+) -> None:
     """
     Interpolate `unknown_values_mask` based on `known_values_mask` using
     the `interpolator` algorithm.
 
+    Mutates `field` in place.
+
     Args:
-        volume: 3D float array.
-        unknown_values_mask: 3D binary mask of the voxels
-            which are not assigned a value yet.
-        known_values_mask: 3D binary mask of the voxels
-            which are assigned a known value.
+        field: float array of shape (W, H, D) where W, H and D are the integer dimensions of
+            the field domain.
+        unknown_values_mask: 3D boolean mask of the voxels which are not assigned a value yet.
+        known_values_mask: 3D boolean mask of the voxels which are assigned a known value.
         interpolator: the scipy interpolation algorithm.
-
-    Returns:
-        1D numpy array of interpolated values.
-
     """
     nonzero_known_values = np.nonzero(known_values_mask)
     known_positions = np.transpose(np.asarray(nonzero_known_values))
@@ -421,42 +509,54 @@ def interpolate_volume(
         raise AtlasBuildingToolsError(
             "known_values_mask is empty, no values to use for interpolation"
         )
-    known_values = np.array(volume)[nonzero_known_values]
+    known_values = np.array(field)[nonzero_known_values]
     interpolated_values = interpolator(known_positions, known_values)(
         np.transpose(np.asarray(np.nonzero(unknown_values_mask)))
     )
-    return interpolated_values
+    field[unknown_values_mask] = interpolated_values
 
 
-def interpolate_problematic_voxels(
+def interpolate_problematic_distances(
     distances: NDArray[float],
-    region_mask: NDArray[bool],
-    max_thicknesses: Optional[NDArray[float]] = None,
-    tolerance: float = 0.0,
+    problematic_mask: NDArray[bool],
+    layered_volume: NDArray[int],
+    has_hemispheres: bool = True,
 ) -> None:
     """
-    Replace in-mask nans with weighted means of nearby in-mask non-nan values
-    mutates 'distances' in-place
+    Interpolate the distances associated to voxels in `problematic_mask` with values of
+    non-problematic voxels.
+
+    Mutate `distances` in place.
+
+    The valid values selected to interpolate to a voxel with problematic distances are the valid
+    values of voxels in the same layer, and in the same hemispshere if moreover `has_hemispheres`
+    is True.
 
     Args:
-        distances: array of shape (n, x, y, z), that is the volumetric distance data
-            where n stands for the number of layers augmented by 1.
-        region_mask: 3D binary mask of the region of interest of shape (x, y, z).
-        max_thicknesses: (Optional) 1D float array of shape n - 1,
-            the maximum expected thickness for each layer. Defaults to None.
-        tolerance: tolerance of the error with respect to thickness.
+        distances: array of shape (N, W, H, D), holding the volumetric distance data
+            where N stands for the number of layers augmented by 1 and (W, H, D) =
+            `region_mask.shape`.
+        region_mask: boolean mask of the region of interest of shape (W, H, D) where
+            W, H and D are the region integer dimensions.
+        problematic_mask: boolean mask of shape `region_mask.shape` holding to voxels to
+            handle.
+        layered_volume: integer array of shape `region_mask.shape` whose voxels are labeled
+            by numbers representing layers. (The labels of six layers of the mouse isocortex
+            are for instance the integers from 1 to 6).
+        has_hemispheres: If True, the valid values to interpolate a problematic voxel are taken
+            in the same hemisphere only.
 
     Returns:
-        None (mutates distances in place).
+        None (mutates `distances` in place).
     """
+    layered_volumes: Tuple[NDArray[int], ...] = (layered_volume,)
+    if has_hemispheres:
+        layered_volumes = split_into_halves(layered_volume)
 
-    for i, distance in enumerate(distances):
-        nan_distance = np.isnan(distance)
-        valid = np.logical_and(region_mask, ~nan_distance)
-        if max_thicknesses is not None and i != len(distances) - 1:
-            excess = (distances[i] - distances[i + 1]) > (max_thicknesses[i] + tolerance)
-            valid = np.logical_and(valid, ~excess)
-        problematic = np.logical_and(region_mask, ~valid)
-        interpolated = interpolate_volume(distance, problematic, valid)
-        distance[problematic] = interpolated
-        assert np.all(~np.isnan(distance[problematic]))
+    for layered_hemisphere in layered_volumes:
+        for label in np.unique(layered_hemisphere[layered_hemisphere != 0]):
+            layer_mask = layered_hemisphere == label
+            for distance in distances:
+                valid = np.logical_and(layer_mask, ~problematic_mask)
+                invalid = np.logical_and(layer_mask, problematic_mask)
+                interpolate_scalar_field(distance, invalid, valid)

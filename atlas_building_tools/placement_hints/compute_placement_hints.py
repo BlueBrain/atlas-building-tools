@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 from nptyping import NDArray  # type: ignore
 
 from atlas_building_tools.distances.distances_to_meshes import (
-    interpolate_problematic_voxels,
+    interpolate_problematic_distances,
     report_distance_problems,
 )
 
@@ -62,7 +62,7 @@ def compute_placement_hints(
                     the value associated to "report" is dict reporting the proportion of voxels
                     subject to each distance-related problem,
                     see distances.distance_to_meshes.report_distance_problems doc.
-                volume: the value associated to "volume" is a 3D binary mask of the voxels with at
+                volume: the value associated to "volume" is a 3D boolean mask of the voxels with at
                     least one distance-related problem.
                     See distances.distance_to_meshes.report_distance_problems doc.
     """
@@ -74,33 +74,33 @@ def compute_placement_hints(
 
     distances_to_meshes = distances_info["distances_to_layer_meshes"]
     tolerance = 2.0 * atlas.region.voxel_dimensions[0]
-    distances_report, problematic_volume = report_distance_problems(
+    distances_report, problematic_mask = report_distance_problems(
         distances_to_meshes,
         distances_info["obtuse_angles"],
-        atlas.region,
+        atlas.volume,
         max_thicknesses=max_thicknesses,
         tolerance=tolerance,
     )
-    interpolate_problematic_voxels(
+    interpolate_problematic_distances(
         distances_to_meshes,
-        atlas.region.raw > 0,
-        max_thicknesses=max_thicknesses,
-        tolerance=tolerance,
+        problematic_mask,
+        atlas.volume,
+        has_hemispheres=has_hemispheres,
     )
-    (interpolated_distances_report, filtered_problematic_volume,) = report_distance_problems(
+    (interpolated_distances_report, filtered_problematic_mask,) = report_distance_problems(
         distances_to_meshes,
         distances_info["obtuse_angles"],
-        atlas.region,
+        atlas.volume,
         max_thicknesses=max_thicknesses,
     )
     problems = {
         "before interpolation": {
             "report": distances_report,
-            "volume": problematic_volume,
+            "volume": problematic_mask,
         },
         "after interpolation": {
             "report": interpolated_distances_report,
-            "volume": filtered_problematic_volume,
+            "volume": filtered_problematic_mask,
         },
     }
 
