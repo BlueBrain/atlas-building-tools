@@ -199,7 +199,8 @@ def constrain_cell_counts_per_voxel(  # pylint: disable=too-many-arguments, too-
 
     Args:
         target_sum: the value constraining the sum of all voxel values.
-        cell_counts: float array of shape (W, H, D) with non-negative values. The array to modify.
+        cell_counts: float array of shape (W, H, D) with non-negative values where each voxel
+            holds a (float) cell count. This is the array to modify.
         cell_counts_upper_bound: float array of shape (W, H, D) with non-negative values.
             The bounds imposed upon the voxel values of the ouput array.
         max_cell_counts_mask: Optional boolean array of shape (W, H, D) indicating which voxels

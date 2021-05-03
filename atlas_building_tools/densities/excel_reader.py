@@ -95,9 +95,9 @@ def compute_kim_et_al_neuron_densities(
     that is, the float nan, when loaded with pd.read_excel.
 
     Args:
-        inhibitory_neuron_densities_path: path to the excel document mm3c.xls of the supplementary
-            materials of 'Brain-wide Maps Reveal Stereotyped Cell-Type-Based Cortical Architecture
-            and Subcortical Sexual Dimorphism' by Kim et al., 2017.
+        inhibitory_neuron_densities_path: path to the excel document mm3c.xls of the
+            supplementary materials of 'Brain-wide Maps Reveal Stereotyped Cell-Type-Based Cortical
+             Architecture and Subcortical Sexual Dimorphism' by Kim et al., 2017.
             https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc3.xlsx
 
     Returns: pandas.DataFrame of the form (values are fake)

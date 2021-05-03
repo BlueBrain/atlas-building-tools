@@ -49,7 +49,7 @@ def compute_inhibitory_neuron_intensity(
         inhibitory_data: a dictionary with 3 keys:
             'proportions': a dictionary of type Dict[str, float] assigning the proportion of
                 inhibitory neurons in each group named by a key string.
-            'neuron_count': the inhibitory neuron count.
+            'neuron_count': the inhibitory neuron count (float).
             'region_masks': dictionary whose keys are region group names and whose values are
                 the boolean masks of these groups. Each boolean array is of shape (W, H, D) and
                 encodes which voxels belong to the corresponding group.
@@ -113,7 +113,7 @@ def compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
         inhibitory_data: (Optional) a dictionary with two keys:
             'proportions': the corresponding value is a dictionary of type Dict[str, float]
                 assigning the proportion of ihnibitory neurons in each group named by a key string.
-            'neuron_count': the total number of inhibitory neurons.
+            'neuron_count': the total number of inhibitory neurons (float).
             Used only if `inhibitory_proportion` is None.
 
     Returns:
@@ -143,7 +143,7 @@ def compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
     else:
         inhibitory_data = {
             "proportions": {"whole brain": inhibitory_proportion},
-            "neuron_count": int(np.sum(neuron_density) * voxel_volume * inhibitory_proportion),
+            "neuron_count": round(np.sum(neuron_density) * voxel_volume * inhibitory_proportion),
         }
         inhibitory_data["region_masks"] = {
             "whole brain": np.ones(annotation.shape, dtype=bool)

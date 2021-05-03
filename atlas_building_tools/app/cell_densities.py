@@ -274,7 +274,7 @@ def glia_cell_densities(
         "microglia": VoxelData.load_nrrd(microglia_density_path),
     }
 
-    atlases = list(glia_densities.values)
+    atlases = list(glia_densities.values())
     atlases += [annotation, overall_cell_density]
     assert_properties(atlases)
 
@@ -362,7 +362,7 @@ def glia_cell_densities(
     " It will be created if it doesn't exist already.",
 )
 @log_args(L)
-def inhibitory_neuron_densities(
+def inhibitory_and_excitatory_neuron_densities(
     annotation_path,
     hierarchy_path,
     gad1_path,
@@ -390,6 +390,9 @@ def inhibitory_neuron_densities(
 
     An optimization process is responsible for enforcing these constraints while keeping\n
     the output densities as close as possible to the unconstrained input densities.\n
+
+    Note: optimization is not fully implemented and the current process only returns a
+    feasible point.
 
     The ouput densities are saved in the specified output directory under the following\n
     names:\n
@@ -420,7 +423,7 @@ def inhibitory_neuron_densities(
     annotation.with_data(np.asarray(inhibitory_neuron_density, dtype=float)).save_nrrd(
         str(Path(output_dir, "inhibitory_neuron_density.nrrd"))
     )
-    excitatory_neuron_density = neuron_density - inhibitory_neuron_density
+    excitatory_neuron_density = neuron_density.raw - inhibitory_neuron_density
     annotation.with_data(np.asarray(excitatory_neuron_density, dtype=float)).save_nrrd(
         str(Path(output_dir, "excitatory_neuron_density.nrrd"))
     )

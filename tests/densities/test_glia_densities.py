@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import numpy.testing as npt
-from voxcell import RegionMap
+from voxcell import RegionMap, VoxelData
 
 import atlas_building_tools.densities.glia_densities as tested
 
@@ -59,46 +59,59 @@ def test_glia_cell_counts_per_voxel_input():
     npt.assert_allclose(np.sum(output_glia_density), glia_cell_count, rtol=1e-3)
 
 
-def test_compute_glia_densities():
-    region_map = RegionMap.load_json(Path(TESTS_PATH, "1.json"))
+def get_glia_input_data(glia_cell_count):
     shape = (20, 20, 20)
-    annotation = np.arange(8000).reshape(shape)
-    cell_density = np.random.random_sample(annotation.shape).reshape(shape)
+    cell_density = np.random.random_sample(shape)
     voxel_volume = (25 ** 3) / 1e9
-    cell_density = (50000 * cell_density / np.sum(cell_density)) / voxel_volume
+    cell_density = (2 * glia_cell_count * cell_density / np.sum(cell_density)) / voxel_volume
     glia_proportions = {
         "astrocyte": "0.3",
         "oligodendrocyte": "0.5",
         "microglia": "0.2",
     }
     glia_densities = {
-        glia_type: float(proportion) * np.random.random_sample(annotation.shape).reshape(shape)
+        glia_type: float(proportion) * np.random.random_sample(shape)
         for glia_type, proportion in glia_proportions.items()
     }
-    glia_densities["glia"] = np.random.random_sample(annotation.shape).reshape(shape)
+    glia_densities["glia"] = np.random.random_sample(shape)
+
+    return {
+        "region_map": RegionMap.load_json(Path(TESTS_PATH, "1.json")),
+        "annotation": np.arange(8000).reshape(shape),
+        "voxel_volume": (25 ** 3) / 1e9,
+        "glia_densities": glia_densities,
+        "cell_density": cell_density,
+        "glia_proportions": glia_proportions,
+    }
+
+
+def test_compute_glia_densities():
     glia_cell_count = 25000
+    data = get_glia_input_data(glia_cell_count)
     output_glia_densities = tested.compute_glia_densities(
-        region_map,
-        annotation,
-        voxel_volume,
+        data["region_map"],
+        data["annotation"],
+        data["voxel_volume"],
         glia_cell_count,
-        glia_densities,
-        cell_density,
-        glia_proportions,
+        data["glia_densities"],
+        data["cell_density"],
+        data["glia_proportions"],
         copy=True,
     )
     assert output_glia_densities["glia"].dtype == np.float64
-    assert np.all(output_glia_densities["glia"] <= cell_density)
+    assert np.all(output_glia_densities["glia"] <= data["cell_density"])
 
-    glia_proportions["glia"] = "1.0"
+    data["glia_proportions"]["glia"] = "1.0"
     npt.assert_allclose(
-        np.sum(output_glia_densities["glia"]) * voxel_volume, glia_cell_count, rtol=1e-3
+        np.sum(output_glia_densities["glia"]) * data["voxel_volume"],
+        glia_cell_count,
+        rtol=1e-3,
     )
     for glia_type, density in output_glia_densities.items():
         assert np.all(density <= output_glia_densities["glia"])
         npt.assert_allclose(
-            np.sum(density) * voxel_volume,
-            float(glia_proportions[glia_type]) * glia_cell_count,
+            np.sum(density) * data["voxel_volume"],
+            float(data["glia_proportions"][glia_type]) * glia_cell_count,
             rtol=1e-3,
         )
 

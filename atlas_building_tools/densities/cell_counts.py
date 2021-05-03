@@ -122,7 +122,7 @@ def inhibitory_neuron_counts(
             * 'Cerebellum group': Cerebellum (CB) and arbor vitae (arb)
             * 'Isocortex group': Isocortex plus the Entorhinal (ENT) and Piriform areas (PIR)
             * 'Rest': rest of the mouse brain
-        and whose values are the corresponding inhibitory neuron cell counts.
+        and whose values are the corresponding inhibitory neuron cell counts (int).
     """
     cerebellum_group_count = np.sum(inhibitory_neurons_dataframe.loc["CB"][1:])
     isocortex_group_count = sum(
@@ -137,9 +137,9 @@ def inhibitory_neuron_counts(
         - isocortex_group_count
     )
     return {
-        "Cerebellum group": cerebellum_group_count,
-        "Isocortex group": isocortex_group_count,
-        "Rest": rest_count,
+        "Cerebellum group": round(cerebellum_group_count),
+        "Isocortex group": round(isocortex_group_count),
+        "Rest": round(rest_count),
     }
 
 
@@ -175,11 +175,11 @@ def inhibitory_data(
         dict of the form
         {
             'proportions': {
-                'Cerebellum group': <value>,
-                'Isocortex group': <value>,
-                'Rest': <value>
+                'Cerebellum group': <float value>,
+                'Isocortex group': <float value>,
+                'Rest': <float value>
             }
-            'neuron_count': <value>
+            'neuron_count': <int value>
         }
         where the value corresponding to each group is a float in (0, 1) indicating the proportion
         of inhibitory cells among neurons in that group and the value corresponding to
@@ -199,7 +199,7 @@ def inhibitory_data(
             "Rest": inhibitory_neuron_counts(inhibitory_neurons_dataframe)["Rest"]
             / neuron_counts()["Rest"],
         },
-        "neuron_count": sum(inhibitory_neuron_counts(inhibitory_neurons_dataframe).values()),
+        "neuron_count": round(sum(inhibitory_neuron_counts(inhibitory_neurons_dataframe).values())),
     }
 
 

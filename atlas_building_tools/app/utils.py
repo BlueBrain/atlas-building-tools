@@ -78,7 +78,7 @@ def compare_all(data_sets, fun, comp):
     try:
         res = all(comp(fun(data_sets[0]), fun(other)) for other in data_sets[1:])
     except Exception as error_:
-        raise AtlasBuildingToolsError("Bad operation during comparing") from error_
+        raise AtlasBuildingToolsError("[compare_all] Bad operation during comparing") from error_
     return res
 
 

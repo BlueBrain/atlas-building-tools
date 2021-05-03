@@ -29,7 +29,7 @@ L = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from voxcell import VoxelData  # type: ignore
 
-# The following constants are documented in Section in Section 5.1.1.4 of the release report of the
+# The following constants are documented in Section 5.1.1.4 of the release report of the
 # Neocortex Tissue Reconstruction.
 DEFAULT_L2_THICKNESS = 95.10
 DEFAULT_L3_THICKNESS = 225.3199

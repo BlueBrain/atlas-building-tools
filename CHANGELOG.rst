@@ -3,6 +3,9 @@ Changelog
 
 Version 0.1.1
 --------------
+- Fix runtime error of atlas-building-tools cell-densities glia-cell-densities [`NSETM-1463`_]
+- Fix runtime error of atlas-building-tools cell-densities inhibitory-neuron-densities [`NSETM-1463`_]
+- Rename the inhibitory-neuron-densities CLI with inhibitory-and-excitatory-neuron-densities [`NSETM-1463`_]
 - Adds cell count and volume measurements from app/data/gaba_papers.xlsx (code 6 in PV-SST-VIP worksheet) to app/data/measurements.csv
 
 Version 0.1.0 (2021-04-27)
@@ -16,3 +19,6 @@ Version 0.1.0 (2021-04-27)
 - CLI to compute volumetric cell densities of m_types specified in app/data/mtypes
 - CLI to compute a flat map based on the streamlines of a laminar brain region
 - CLI to turn the excel measurement compilation gaba_papers.xlsx of D. Rodarie into a CSV file.
+
+
+.. _`NSETM-1463`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1463
