@@ -2,17 +2,15 @@
 Utils functions to flatten a laminar brain region.
 """
 import logging
-from typing import TYPE_CHECKING, Set
+from typing import TYPE_CHECKING
 
 import numpy as np
 import trimesh
 from nptyping import NDArray
 from poisson_recon_pybind import Vector3dVector, create_poisson_surface
 
-from atlas_building_tools.exceptions import AtlasBuildingToolsError
-
-if TYPE_CHECKING:
-    from voxcell import RegionMap, VoxelData  # type:  ignore
+if TYPE_CHECKING:  # pragma: no cover
+    from voxcell import VoxelData  # type:  ignore
 
 L = logging.getLogger(__name__)
 
@@ -66,70 +64,3 @@ def reconstruct_surface_mesh(volume: NDArray[bool], normals: "VoxelData") -> tri
     assert poisson_mesh.is_winding_consistent
 
     return poisson_mesh
-
-
-def create_layers_volume(
-    annotated_volume: NDArray[int],
-    region_map: "RegionMap",
-    metadata: dict,
-    subregion_ids: Set[int] = None,
-):
-    """
-    Create a 3D volume whose voxels are labeled by 1-based layer indices.
-
-    Args:
-        annotated_volume: integer numpy array of shape (W, H, D) where
-            W, H and D are the integer dimensions of the volume domain.
-        region_map: RegionMap object used to navigate the brain regions hierarchy.
-        metadata: dict of the following form:
-            {
-                "layers": {
-                    "names": ["layer 1", "layer 2", "layer3", "layer 4", "layer 5", "layer 6"],
-                    "queries": ["@.*;L1$", "@.*;L2$", "@.;L3*$", "@.*;L4$", "@.*;L5$", "@.*;L6$"],
-                    "attribute": "acronym"
-                }
-            }
-            Queries in "queries" should be compliant with the interface of voxcell.RegionMap.find
-            interface. The value of "attribute" can be "acronym" or "name".
-            This object contains the definitions of the layers to be built.
-        subregion_ids: (Optional) set of region identifiers used to restrict to input
-            volume. The list defines a subregion of `annotated_volume` to be labeled with layer
-            indices. Defaults to None, in which case the full `annotated_volume` is considered.
-
-    Returns:
-        A numpy array of the same shape as the input volume, i.e., (W, H, D). Voxels are labeled by
-        the the 1-based indices of the layers defined in `metadata`. Voxels out of the (restricted)
-        annotated volume are labeled with the 0 index.
-    """
-
-    if "layers" not in metadata:
-        raise AtlasBuildingToolsError('Missing "layers" key')
-
-    metadata_layers = metadata["layers"]
-
-    missing = {"names", "queries", "attribute"} - set(metadata_layers.keys())
-    if missing:
-        err_msg = (
-            'The "layers" dictionary has the following mandatory keys: '
-            '"names", "queries" and "attribute".'
-            f" Missing: {missing}."
-        )
-        raise AtlasBuildingToolsError(err_msg)
-
-    if not (
-        isinstance(metadata_layers["names"], list)
-        and isinstance(metadata_layers["queries"], list)
-        and len(metadata_layers["names"]) == len(metadata_layers["queries"])
-    ):
-        raise AtlasBuildingToolsError(
-            'The values of "names" and "queries" must be lists of the same length'
-        )
-
-    layers = np.zeros_like(annotated_volume, dtype=np.uint8)
-    for (index, query) in enumerate(metadata_layers["queries"], 1):
-        layer_ids = region_map.find(query, attr=metadata_layers["attribute"], with_descendants=True)
-        if subregion_ids is not None:
-            layer_ids = layer_ids & subregion_ids
-        layers[np.isin(annotated_volume, list(layer_ids))] = index
-
-    return layers

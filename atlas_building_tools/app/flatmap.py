@@ -21,7 +21,7 @@ from atlas_building_tools.app.utils import assert_meta_properties  # type: ignor
 from atlas_building_tools.app.utils import log_args, set_verbose
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 from atlas_building_tools.flatmap.streamlines_flatmap import compute_flatmap
-from atlas_building_tools.flatmap.utils import create_layers_volume
+from atlas_building_tools.utils import create_layered_volume
 
 logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
@@ -66,9 +66,10 @@ def app(verbose):
     required=True,
     help=(
         "Path to the metadata file of the brain region (json file). This file encloses the "
-        "definition of the region layers by means of regular expressions that be read by "
-        "voxcell.RegionMap.find. See atlas-building-tools/atlas_building_tools/data/metadata.json"
-        " for an exmample."
+        "definitions of the region and of its layers given through regular expressions that can "
+        "be read by voxcell.RegionMap.find. See"
+        " atlas-building-tools/atlas_building_tools/data/metadata for examples."
+        "The fields 'region' and 'layers' are in this case mandatory."
     ),
 )
 @click.option(
@@ -101,16 +102,6 @@ def app(verbose):
     ),
 )
 @click.option(
-    "--acronym",
-    type=str,
-    required=False,
-    help=(
-        "Acronym of the subregion to be flattened; acronyms are listed in the hierarchy json file."
-        ' Examples: "S1", "Isocortex". Defaults to None.'
-    ),
-    default=None,
-)
-@click.option(
     "--resolution",
     type=int,
     required=False,
@@ -129,7 +120,6 @@ def streamlines_flatmap(
     output_path,
     first_layer,
     second_layer,
-    acronym,
     resolution,
 ):  # pylint: disable=too-many-arguments, too-many-locals
     """Generate and save the flatmap of a brain region obtained by collapsing
@@ -157,14 +147,8 @@ def streamlines_flatmap(
     with open(metadata_path, "r") as file_:
         metadata = json.load(file_)
 
-    subregion_ids = (
-        region_map.find(acronym, attr="acronym", with_descendants=True)
-        if acronym is not None
-        else None
-    )
-
     L.info("Labelling the layers of the input volume ...")
-    layers = create_layers_volume(annotation.raw, region_map, metadata, subregion_ids)
+    layers = create_layered_volume(annotation.raw, region_map, metadata)
 
     # Direction vectors are required to be valid when restricted to the specified region
     L.info("Checking direction vectors sanity ...")

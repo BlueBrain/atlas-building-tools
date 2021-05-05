@@ -1,14 +1,21 @@
 """Generate and save the direction vectors for different regions of the mouse brain"""
+import json
 import logging
 
 import click  # type: ignore
 import voxcell  # type: ignore
 
-from atlas_building_tools.app.utils import EXISTING_FILE_PATH  # type: ignore
-from atlas_building_tools.app.utils import log_args, set_verbose
-from atlas_building_tools.direction_vectors import cerebellum as cerebellum_  # type: ignore
-from atlas_building_tools.direction_vectors import isocortex as isocortex_  # type: ignore
-from atlas_building_tools.direction_vectors import thalamus as thalamus_  # type: ignore
+from atlas_building_tools.app.utils import (
+    EXISTING_FILE_PATH,
+    assert_meta_properties,
+    log_args,
+    set_verbose,
+)
+from atlas_building_tools.direction_vectors import cerebellum as cerebellum_
+from atlas_building_tools.direction_vectors import isocortex as isocortex_
+from atlas_building_tools.direction_vectors import thalamus as thalamus_
+from atlas_building_tools.direction_vectors.interpolation import interpolate_vectors
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 L = logging.getLogger(__name__)
 
@@ -130,3 +137,166 @@ def thalamus(annotation_path, hierarchy_path, output_path):
     region_map = voxcell.RegionMap.load_json(hierarchy_path)
     dir_vectors = thalamus_.compute_direction_vectors(region_map, annotation)
     annotation.with_data(dir_vectors).save_nrrd(output_path)
+
+
+METADATA_HELP_STR = (
+    "Path to the json metadata file of the brain region of interest. It must enclose the "
+    "definition of the region and also the definition of the region layers if "
+    "--restrict-to-layer is specified. Regions are defined through regular expressions"
+    " which can be consumed by voxcell.RegionMap.find. "
+    "See atlas-building-tools/atlas_building_tools/data/metadata for examples."
+)
+ANNOTATION_HELP_STR = (
+    "Path to the annotation nrrd file. It can contain the whole annotated brain volume or a "
+    "superset of the region defined by the 'region' section of the metadata json file."
+)
+RESTRICT_TO_HEMISPHERE_HELP_STR = (
+    "Performs interpolation in each hemisphere separately. The region of interest is assumed "
+    "to be symmetric wrt to z = half_z_dimensions."
+)
+RESTRICT_TO_LAYER_HELP_STR = (
+    "Performs interpolation in each layer separately. The region of interest is assumed "
+    "to be made of layers. These layers must be listed in the metadata json file. See "
+    "--metadata-path."
+)
+
+
+@app.command()
+@click.option(
+    "--direction-vectors-path",
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help=("Path to the nrrd files containing direction vectors."),
+)
+@click.option(
+    "--nans",
+    is_flag=True,
+    required=False,
+    help=(
+        "Interpolate [NaN, NaN, NaN] direction vector of a voxel in the region of interest is "
+        "interpolated by non-NaN directio vectors of nearby voxels. Must be set if --mask-path is "
+        "not specified."
+    ),
+    default=False,
+)
+@click.option(
+    "--mask-path",
+    type=EXISTING_FILE_PATH,
+    required=False,
+    help=(
+        "Path to the nrrd files containing a mask of the voxels whose direction vectors will be"
+        " interpolated. A non-zero values are used to filter voxels in."
+    ),
+    default=None,
+)
+@click.option(
+    "--annotation-path",
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help=ANNOTATION_HELP_STR,
+)
+@click.option(
+    "--hierarchy-path",
+    type=EXISTING_FILE_PATH,
+    required=False,
+    help=("Path to hierarchy.json or AIBS 1.json defining the hierarchy of brain regions."),
+)
+@click.option(
+    "--metadata-path",
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help=METADATA_HELP_STR,
+)
+@click.option(
+    "--output-path",
+    required=True,
+    help="Path of the file where to write the modified direction vectors.",
+)
+@click.option(
+    "--restrict-to-hemisphere",
+    is_flag=True,
+    help=RESTRICT_TO_HEMISPHERE_HELP_STR,
+    default=False,
+)
+@click.option(
+    "--restrict-to-layer",
+    is_flag=True,
+    help=RESTRICT_TO_LAYER_HELP_STR,
+    default=False,
+)
+@log_args(L)
+def interpolate(  # pylint: disable=too-many-arguments,too-many-locals
+    direction_vectors_path,
+    annotation_path,
+    nans,
+    mask_path,
+    hierarchy_path,
+    metadata_path,
+    output_path,
+    restrict_to_hemisphere,
+    restrict_to_layer,
+):
+    """
+    Interpolate the direction vectors of the voxels in the mask by those of voxels out of the
+    mask.
+
+    The direction vector of each voxel in the mask is interpolated by non-NaN direction
+    vectors of nearby voxels out of the mask if --mask-path is specified.
+
+    The NaN direction vectors are interpolated by non-NaN direction vectors of neighboring voxels
+    if --nans is specified. In this case, each [NaN, NaN, NaN] direction vector of a voxel in the
+    region of interest is interpolated by non-NaN direction vectors of nearby voxels.
+
+    Interpolation is restricted to voxels inside the region of interest which is specified in the
+    json metadata file.
+
+    The interpolation is made separately on each hemisphere and on each layer if the flags
+    --restrict-to-hemisphere and --restrict-to-layer are specified.
+
+    Note: When direction vectors are created, the voxels lying outside of the region of interest are
+    assigned [NaN, NaN, NaN] direction vectors. These vectors should not be interpolated. However,
+    some voxels inside the region of interest can bear NaN direction vectors because of the
+    algorithm limitations. This function aims at finding a sensible value for those vectors.
+    """
+
+    if mask_path is None and not nans:
+        raise AtlasBuildingToolsError(
+            "None of --mask-path or --nans was specified. You must specify at least one of these "
+            "two options."
+        )
+
+    direction_vectors = voxcell.VoxelData.load_nrrd(direction_vectors_path)
+    annotation = voxcell.VoxelData.load_nrrd(annotation_path)
+    voxel_data = [annotation, direction_vectors]
+
+    mask = None
+    if mask_path is not None:
+        mask = voxcell.VoxelData.load_nrrd(mask_path)
+        voxel_data.append(mask)
+
+    # Check nrrd metadata consistency
+    assert_meta_properties(voxel_data)
+
+    with open(metadata_path, "r") as file_:
+        metadata = json.load(file_)
+
+    if restrict_to_layer and "layers" not in metadata.keys():
+        raise AtlasBuildingToolsError(
+            "The 'layers' key is required in metadata when --restrict-to-layer is specified. "
+            "Please provide the definition of the layers in your json metadata file."
+        )
+
+    region_map = voxcell.RegionMap.load_json(hierarchy_path)
+
+    interpolate_vectors(
+        annotation.raw,
+        region_map,
+        metadata,
+        direction_vectors.raw,
+        nans,
+        mask.raw != 0 if mask is not None else None,
+        restrict_to_hemisphere,
+        restrict_to_layer,
+    )
+
+    direction_vectors.save_nrrd(output_path)

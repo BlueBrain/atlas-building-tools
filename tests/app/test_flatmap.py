@@ -53,11 +53,18 @@ def get_hierarchy():
 
 def get_metadata():
     return {
+        "region": {
+            "name": "Paxinos-Watson rat isocortex",
+            "query": "Isocortex",
+            "attribute": "name",
+            "with_descendants": True,
+        },
         "layers": {
             "names": ["layer_1", "layer_2", "layer_3", "layer_4"],
             "queries": ["@.* Layer 1", "@.* Layer 2", "@.* Layer 3", "@.* Layer 4"],
             "attribute": "name",
-        }
+            "with_descendants": True,
+        },
     }
 
 

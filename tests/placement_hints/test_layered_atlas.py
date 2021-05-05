@@ -42,7 +42,7 @@ class Test_Layered_Atlas(unittest.TestCase):
         expected[expected > 0] = 1
         npt.assert_array_equal(raw, expected.astype(bool))
 
-    def test_create_layers_volume(self):
+    def test_create_layered_volume(self):
         volume = self.layered_atlas.volume
         expected = self.isocortex_mock.annotation.raw.copy()
         for i, ids in enumerate(self.isocortex_mock.layer_ids):
@@ -125,7 +125,7 @@ class Test_Thalamus_Atlas(unittest.TestCase):
             cls.thalamus_mock.region_map,
         )
 
-    def test_create_layers_volume(self):
+    def test_create_layered_volume(self):
         expected = self.thalamus_mock.annotation.raw.copy()
         expected[expected == 549] = 2
         expected[expected == 262] = 1

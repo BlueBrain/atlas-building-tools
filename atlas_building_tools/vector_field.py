@@ -19,7 +19,10 @@ This duplication is done on purpose so as to remove the dependency on atlas-anal
 See https://bbpteam.epfl.ch/project/issues/browse/NSETM-1454.
 """
 
+from typing import Optional
+
 import numpy as np
+from nptyping import NDArray
 from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
 
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
@@ -30,7 +33,12 @@ INTERPOLATION_ALGORITHMS = {
 }
 
 
-def interpolate(field, unknown_values_mask, known_values_mask=None, interpolator="linear"):
+def interpolate(
+    field: NDArray[float],
+    unknown_values_mask: NDArray[bool],
+    known_values_mask: Optional[NDArray[bool]] = None,
+    interpolator: str = "linear",
+) -> None:
     """
     Interpolate in-place a vector field.
 
@@ -42,7 +50,7 @@ def interpolate(field, unknown_values_mask, known_values_mask=None, interpolator
 
     Args:
         field(numpy.ndarray): numeric array of shape (..., N) to be interpolated.
-            This is a field of N-dimensional vectors defined on a volume of arbitrary dimension.
+            This is a field of N-dimensional vectors defined on a volume of arbitrary dimensions.
         unknown_values_mask(numpy.ndarray): boolean array of shape `field.shape[:-1]`. A mask
             for the unknown values, i.e., a mask for the locations where `field` should be
             interpolated.
@@ -60,10 +68,10 @@ def interpolate(field, unknown_values_mask, known_values_mask=None, interpolator
             )
         )
 
-    interpolator = INTERPOLATION_ALGORITHMS[interpolator]
+    interpolator_ = INTERPOLATION_ALGORITHMS[interpolator]
     if known_values_mask is None:
         known_values_mask = ~unknown_values_mask
     known_indices = np.where(known_values_mask)
     unknown_indices = np.where(unknown_values_mask)
-    interpolated_values = interpolator(known_indices, field[known_values_mask])(unknown_indices)
+    interpolated_values = interpolator_(known_indices, field[known_values_mask])(unknown_indices)
     field[unknown_values_mask] = interpolated_values

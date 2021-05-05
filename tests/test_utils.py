@@ -9,6 +9,7 @@ import pytest
 from voxcell import RegionMap
 
 import atlas_building_tools.utils as tested
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 
 class Test_load_region_map:
@@ -33,6 +34,28 @@ class Test_load_region_map:
             "children": [{"id": 2, "children": [{"id": 3}, {"id": 4}]}],
         }
         assert isinstance(tested.load_region_map(hierachy), RegionMap)
+
+
+def test_query_region_mask():
+    annotation = np.arange(27).reshape((3, 3, 3))
+    expected = np.zeros((3, 3, 3), dtype=bool)
+    expected[0, 0, 2] = True  # label 2, "SSp-m6b"
+    expected[1, 0, 0] = True  # label 9, "SSp-tr6a"
+    expected[2, 1, 1] = True  # label 22, "SSp-tr6a"
+
+    # RegionMap instantiated from string
+    region = {
+        "query": "Isocortex",
+        "attribute": "acronym",
+        "with_descendants": True,
+    }
+    mask = tested.query_region_mask(region, annotation, str(Path(TEST_PATH, "1.json")))
+    npt.assert_array_equal(mask, expected)
+
+    # True RegionMap object
+    region_map = RegionMap.load_json(str(Path(TEST_PATH, "1.json")))
+    mask = tested.query_region_mask(region, annotation, region_map)
+    npt.assert_array_equal(mask, expected)
 
 
 def test_get_region_mask():
@@ -147,3 +170,112 @@ def test_compute_boundary():
     expected = np.zeros_like(v_1)
     expected[1, :, 1:4] = True
     npt.assert_array_equal(boundary, expected)
+
+
+def get_hierarchy_excerpt():
+    return {
+        "id": 315,
+        "acronym": "Isocortex",
+        "name": "Isocortex",
+        "children": [
+            {
+                "id": 500,
+                "acronym": "MO",
+                "name": "Somatomotor areas",
+                "children": [
+                    {
+                        "id": 107,
+                        "acronym": "MO1",
+                        "name": "Somatomotor areas, Layer 1",
+                        "children": [],
+                    },
+                    {
+                        "id": 219,
+                        "acronym": "MO2/3",
+                        "name": "Somatomotor areas, Layer 2/3",
+                        "children": [],
+                    },
+                    {
+                        "id": 299,
+                        "acronym": "MO5",
+                        "name": "Somatomotor areas, layer 5",
+                        "children": [],
+                    },
+                ],
+            },
+            {
+                "id": 453,
+                "acronym": "SS",
+                "name": "Somatosensory areas",
+                "children": [
+                    {"id": 12993, "acronym": "SS1", "name": "Somatosensory areas, layer 1"}
+                ],
+            },
+        ],
+    }
+
+
+def get_metadata(region_fullname="Isocortex"):
+    return {
+        "region": {
+            "name": region_fullname,
+            "query": region_fullname,
+            "attribute": "name",
+            "with_descendants": True,
+        },
+        "layers": {
+            "names": ["layer_1", "layer_2_3", "layer_5"],
+            "queries": ["@.*1$", "@.*2/3$", "@.*5$"],
+            "attribute": "acronym",
+            "with_descendants": True,
+        },
+    }
+
+
+def test_create_layered_volume():
+    region_map = RegionMap.from_dict(get_hierarchy_excerpt())
+
+    metadata = get_metadata("Isocortex")
+    annotated_volume = np.array(
+        [[[107, 107, 107, 12993, 219, 219, 219, 299, 299, 299]]], dtype=np.uint32
+    )
+    expected_layers_volume = np.array([[[1, 1, 1, 1, 2, 2, 2, 3, 3, 3]]], dtype=np.uint8)
+    actual = tested.create_layered_volume(annotated_volume, region_map, metadata)
+    npt.assert_array_equal(expected_layers_volume, actual)
+
+    metadata = get_metadata("Somatomotor areas")
+    expected_layers_volume = np.array([[[1, 1, 1, 0, 2, 2, 2, 3, 3, 3]]], dtype=np.uint8)
+    actual = tested.create_layered_volume(annotated_volume, region_map, metadata)
+    npt.assert_array_equal(expected_layers_volume, actual)
+
+
+def test_assert_metadata_content():
+    region_map = RegionMap.from_dict(get_hierarchy_excerpt())
+    annotated_volume = np.array(
+        [[[107, 107, 107, 12993, 219, 219, 219, 299, 299, 299]]], dtype=np.uint32
+    )
+
+    with pytest.raises(AtlasBuildingToolsError):
+        metadata = get_metadata("Isocortex")
+        del metadata["layers"]
+        tested.assert_metadata_content(metadata)
+
+    with pytest.raises(AtlasBuildingToolsError):
+        metadata = get_metadata("Isocortex")
+        del metadata["region"]
+        tested.assert_metadata_content(metadata)
+
+    with pytest.raises(AtlasBuildingToolsError):
+        metadata = get_metadata("Isocortex")
+        del metadata["layers"]["attribute"]
+        tested.assert_metadata_content(metadata)
+
+    with pytest.raises(AtlasBuildingToolsError):
+        metadata = get_metadata("Isocortex")
+        del metadata["layers"]["names"]
+        tested.assert_metadata_content(metadata)
+
+    with pytest.raises(AtlasBuildingToolsError):
+        metadata = get_metadata("Isocortex")
+        del metadata["layers"]["queries"]
+        tested.assert_metadata_content(metadata)

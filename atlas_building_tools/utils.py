@@ -8,6 +8,8 @@ from scipy.ndimage.morphology import generate_binary_structure  # type: ignore
 from scipy.signal import correlate  # type: ignore
 from voxcell import RegionMap  # type: ignore
 
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
+
 # pylint: disable=invalid-name
 FloatArray = Union[NDArray[float], NDArray[np.float16], NDArray[np.float32], NDArray[np.float64]]
 NumericArray = Union[NDArray[bool], NDArray[int], NDArray[float]]
@@ -34,9 +36,38 @@ def load_region_map(region_map: Union[str, dict, RegionMap]) -> RegionMap:
     return region_map
 
 
+def query_region_mask(
+    region: dict, annotation: NDArray[int], region_map: Union[str, dict, "RegionMap"]
+) -> NDArray[bool]:
+    """
+    Create a mask for the region defined by `query`.
+
+    Args:
+        query: dict of the form
+            {
+                "query": "@.*layer 1",
+                "attribute": "name",
+                "with_descendants": True,  # Optional, defaults to False.
+            }
+            Each key corresponds to an argument of the function RegionMap.find that will be called
+            to create the mask.
+        annotation: 3D array of region ids containing the region to mask.
+        region_map: path to hierarchy.json, dict made of such a file or a RegionMap object.
+
+    Returns:
+       3D boolean array of the same shape as annotation.
+    """
+    region_map = load_region_map(region_map)
+    ids = region_map.find(
+        region["query"], region["attribute"], with_descendants=region.get("with_descendants", False)
+    )
+
+    return np.isin(annotation, list(ids))
+
+
 def get_region_mask(
-    acronym: str, annotation: NDArray[int], region_map: Union[str, dict, RegionMap]
-) -> RegionMap:
+    acronym: str, annotation: NDArray[int], region_map: Union[str, dict, "RegionMap"]
+) -> NDArray[bool]:
     """
     Create a mask for the region defined by `acronym`.
 
@@ -45,13 +76,14 @@ def get_region_mask(
                  the remainder is interprereted as a regexp.
         annotation: 3D array of region ids containing the region to mask.
         region_map: path to hierarchy.json, dict made of such a file or a RegionMap object.
+
     Returns:
        3D boolean array of the same shape as annotation.
 
     """
-    region_map = load_region_map(region_map)
-    ids = list(region_map.find(acronym, "acronym", with_descendants=True))
-    return np.isin(annotation, ids)
+    region = {"query": acronym, "attribute": "acronym", "with_descendants": True}
+
+    return query_region_mask(region, annotation, region_map)
 
 
 def split_into_halves(
@@ -135,3 +167,108 @@ def compute_boundary(v_1, v_2):
     full_volume = correlate(v_1 * 1 + v_2 * 8, filter_, mode="same")
 
     return np.logical_and(v_1, full_volume > 8)
+
+
+def assert_metadata_content(metadata: dict) -> None:
+    """
+    Raise an error if some mandatory key is missing in `metadata`.
+
+    Args:
+        metadata: dict of the form
+            {
+                "region" : {
+                    "name": "aibs_isocortex",
+                    "query": "Isocortex",
+                    "attribute": "acronym"
+                }
+                "layers": {
+                    "names": ["layer 1", "layer 2", "layer3", "layer 4", "layer 5", "layer 6"],
+                    "queries": ["@.*;L1$", "@.*;L2$", "@.;L3*$", "@.*;L4$", "@.*;L5$", "@.*;L6$"],
+                    "attribute": "acronym"
+                }
+            }
+            Queries in "query" or "queries" should be compliant with the interface of
+            voxcell.RegionMap.find interface. The value of "attribute" can be "acronym" or "name".
+
+    Raise:
+        AtlasBuildingToolsError if a mandatory key is missing or if the length of
+        layer names and queries are different.
+    """
+
+    if "region" not in metadata:
+        raise AtlasBuildingToolsError('Missing "region" key')
+
+    metadata_region = metadata["region"]
+
+    missing = {"name", "query", "attribute"} - set(metadata_region.keys())
+    if missing:
+        err_msg = (
+            'The "region" dictionary has the following mandatory keys: '
+            '"name", "query" and "attribute".'
+            f" Missing: {missing}."
+        )
+        raise AtlasBuildingToolsError(err_msg)
+
+    if "layers" not in metadata:
+        raise AtlasBuildingToolsError('Missing "layers" key')
+
+    metadata_layers = metadata["layers"]
+
+    missing = {"names", "queries", "attribute"} - set(metadata_layers.keys())
+    if missing:
+        err_msg = (
+            'The "layers" dictionary has the following mandatory keys: '
+            '"names", "queries" and "attribute".'
+            f" Missing: {missing}."
+        )
+        raise AtlasBuildingToolsError(err_msg)
+
+    if not (
+        isinstance(metadata_layers["names"], list)
+        and isinstance(metadata_layers["queries"], list)
+        and len(metadata_layers["names"]) == len(metadata_layers["queries"])
+    ):
+        raise AtlasBuildingToolsError(
+            'The values of "names" and "queries" must be lists of the same length.'
+        )
+
+
+def create_layered_volume(
+    annotated_volume: NDArray[int],
+    region_map: "RegionMap",
+    metadata: dict,
+):
+    """
+    Create a 3D volume whose voxels are labeled by 1-based layer indices.
+
+    Args:
+        annotated_volume: integer numpy array of shape (W, H, D) where
+            W, H and D are the integer dimensions of the volume domain.
+        region_map: RegionMap object used to navigate the brain regions hierarchy.
+        metadata: dict, see :fun:`atlas_building_tools.utils.assert_metadata`.
+            This dict contains the definitions of the layers to be built.
+
+    Returns:
+        A numpy array of the same shape as the input volume, i.e., (W, H, D). Voxels are labeled by
+        the 1-based indices of the layers defined in `metadata`. Voxels out of the region defined in
+        `metadata` are labeled with the 0 index.
+    """
+
+    assert_metadata_content(metadata)
+
+    metadata_layers = metadata["layers"]
+    layers = np.zeros_like(annotated_volume, dtype=np.uint8)
+    region_ids = region_map.find(
+        metadata["region"]["query"],
+        attr=metadata["region"]["attribute"],
+        with_descendants=metadata["region"].get("with_descendants", False),
+    )
+    for (index, query) in enumerate(metadata_layers["queries"], 1):
+        layer_ids = region_map.find(
+            query,
+            attr=metadata_layers["attribute"],
+            with_descendants=metadata_layers.get("with_descendants", False),
+        )
+        layers[np.isin(annotated_volume, list(layer_ids & region_ids))] = index
+
+    return layers

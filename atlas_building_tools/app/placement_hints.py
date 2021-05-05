@@ -163,7 +163,7 @@ def ca1(annotation_path, hierarchy_path, direction_vectors_path, output_dir):
 
     Placement hints are saved under the names:\n
     * '[PH]y.nrrd\n
-    * '[PH]CA1so.nrrd', '[PH]CA1so.nrrd', '[PH]CA1sp.nrrd', '[PH]CA1sr.nrrd' and '[PH]CA1slm.nrrd'
+    * '[PH]CA1so.nrrd', '[PH]CA1sp.nrrd', '[PH]CA1sr.nrrd' and '[PH]CA1slm.nrrd'
 
     A report and an nrrd volume on problematic distance computations are generated
     in `output_dir` under the names:
