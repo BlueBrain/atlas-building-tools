@@ -4,8 +4,9 @@ Changelog
 Version 0.1.1
 --------------
 
+- Use cgal-pydind==0.1.0 and lower the version required for openpyxl, rtree and trimesh [`NSETM-1454`_]
 - Adds 3 consistency checks for distances to layer boundaries wrt to direction vectors (placement hints) [`NSETM-1343`_]
-- Enlarges the mask of distance-wise problematic voxels with voxels whose distances are inconsistent according to the above checks [`NSETM-1343`_]                                             
+- Enlarges the mask of distance-wise problematic voxels with voxels whose distances are inconsistent according to the above checks [`NSETM-1343`_]
 - Interpolate invalid distances by valid ones, restricting valid values to one hemisphere and one layer [`NSETM-1343`_]
 - Adds a the label 3 to the mask of problematic voxels: 3 denotes a new problem caused by interpolation [`NSETM-1343`_]
 - Fix runtime error of atlas-building-tools cell-densities glia-cell-densities [`NSETM-1463`_]
@@ -26,5 +27,6 @@ Version 0.1.0 (2021-04-27)
 - CLI to turn the excel measurement compilation gaba_papers.xlsx of D. Rodarie into a CSV file.
 
 
+.. _`NSETM-1454`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1343
 .. _`NSETM-1343`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1343
 .. _`NSETM-1463`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1463

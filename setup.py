@@ -18,10 +18,10 @@ setup(
     python_requires=">=3.6.0",
     install_requires=[
         "click>=7.0",
-        "cgal_pybind>=0.0.2",
+        "cgal_pybind>=0.1.0",
         "cached-property>=1.5.2",
-        "networkx>=2.5",
-        "nptyping==1.0.1",
+        "networkx>=2.4",
+        "nptyping>=1.0.1",
         # In numba>0.48.0, numba.utils does not exist anymore and this causes numba to
         # be left unused by numpy-quaternion (warning), see
         # https://bbpteam.epfl.ch/project/issues/browse/NSETM-1463
@@ -30,17 +30,17 @@ setup(
         # numpy-quaternion version is capped because of an issue similar to
         # https://stackoverflow.com/questions/20518632/importerror-numpy-core-multiarray-failed-to-import
         "numpy-quaternion<=2019.12.11.22.25.52",
-        "openpyxl>=3.0.5",
+        "openpyxl>=3.0.3",
         "pandas>=1.0.3",
         "Pillow>=7.1.2",
         "poisson-recon-pybind>=0.1.0",
         "pynrrd>=0.4.0",
         "PyYAML>=5.3.1",
-        "rtree>=0.9.4",
+        "rtree>=0.8.3",
         "scipy>=1.4.1",
         "scikit-image>=0.17.2",
         "tqdm>=4.44.1",
-        "trimesh>=3.6.18",
+        "trimesh>=2.38.10",
         "voxcell>=3.0.0",
         "xlrd>=1.0.0",
     ],
