@@ -1,9 +1,9 @@
-brain region,cell type,measurement,standard deviation,measurement type,measurement unit,comment,source title,specimen age
+brain_region,cell_type,measurement,standard_deviation,measurement_type,measurement_unit,comment,source_title,specimen_age
 Somatomotor areas,inhibitory neuron,0.1945187165775401,,neuron proportion,,"GAD67 19% (291 of 1,496) of neurons in 460 μm * 25‐μm‐thick
 Percentage applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.
 ","> 3 months
 "
-Primary visual area,inhibitory neuron,0.10300000000000001,,cell proportion,,"RNA seq. Also have excitatory ratio 
+Primary visual area,inhibitory neuron,0.103,,cell proportion,,"RNA seq. Also have excitatory ratio 
 Fig. 4.
 Percent of inhibitory cells * cells densities from Cell Atlas ( cell counts / region volume)",Three-dimensional intact-tissue sequencing of single-cell transcriptional states,adult
 Prelimbic area,inhibitory neuron,0.109,,cell proportion,,"RNA seq. Also have excitatory ratio 
@@ -12,7 +12,7 @@ Percent of inhibitory cells * cells densities from Cell Atlas ( cell counts / re
 "Entorhinal area, lateral part, layer 2a",inhibitory neuron,0.13,0.008,neuron proportion,,"
 Supplementary Figure 1 
 Percent of GAD neurons * number of neuron / volume of the region ",Spatially segregated feedforward and feedback neurons support differential odor processing in the lateral entorhinal cortex,8- to 14-week-old
-"Entorhinal area, lateral part, layer 2b",inhibitory neuron,0.20199999999999999,0.013000000000000001,neuron proportion,,"
+"Entorhinal area, lateral part, layer 2b",inhibitory neuron,0.2019999999999999,0.013,neuron proportion,,"
 Supplementary Figure 1 
 Percent of GAD neurons * number of neuron / volume of the region ",Spatially segregated feedforward and feedback neurons support differential odor processing in the lateral entorhinal cortex,8- to 14-week-old
 Dorsal part of the lateral geniculate complex,inhibitory neuron,0.15,0.05,neuron proportion,,"Review paper on GABAergic neurons for different species 
@@ -71,33 +71,33 @@ Authors Ventral part is part of AIBS lateral part
 Taking mean of all lateral and medial subregions
 Taking sum of left and right side
 ",Spatially segregated feedforward and feedback neurons support differential odor processing in the lateral entorhinal cortex,4–6 weeks
-"Primary motor area, Layer 2/3",PV+,0.08694064533262515,0.009142379679144386,neuron proportion,,"% of neurons coexpressing marker
+"Primary motor area, Layer 2/3",PV+,0.0869406453326251,0.0091423796791443,neuron proportion,,"% of neurons coexpressing marker
 Percentage of percentage of Gabaergic cells (~19%) applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.",> 3 months
-"Primary motor area, Layer 5",PV+,0.0839361585231851,0.012449197860962569,neuron proportion,,"% of neurons coexpressing marker
+"Primary motor area, Layer 5",PV+,0.0839361585231851,0.0124491978609625,neuron proportion,,"% of neurons coexpressing marker
 Percentage of percentage of Gabaergic cells (~19%) applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.",> 3 months
-"Primary motor area, Layer 6a",PV+,0.07992309804998626,0.021980614973262032,neuron proportion,,"% of neurons coexpressing marker
+"Primary motor area, Layer 6a",PV+,0.0799230980499862,0.021980614973262,neuron proportion,,"% of neurons coexpressing marker
 Percentage of percentage of Gabaergic cells (~19%) applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.",> 3 months
-"Primary motor area, Layer 6b",PV+,0.07992309804998626,0.021980614973262032,neuron proportion,,"% of neurons coexpressing marker
+"Primary motor area, Layer 6b",PV+,0.0799230980499862,0.021980614973262,neuron proportion,,"% of neurons coexpressing marker
 Percentage of percentage of Gabaergic cells (~19%) applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.",> 3 months
-"Secondary motor area, layer 2/3",PV+,0.08694064533262515,0.009142379679144386,neuron proportion,,"% of neurons coexpressing marker
+"Secondary motor area, layer 2/3",PV+,0.0869406453326251,0.0091423796791443,neuron proportion,,"% of neurons coexpressing marker
 Percentage of percentage of Gabaergic cells (~19%) applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.",> 3 months
-"Secondary motor area, layer 5",PV+,0.0839361585231851,0.012449197860962569,neuron proportion,,"% of neurons coexpressing marker
+"Secondary motor area, layer 5",PV+,0.0839361585231851,0.0124491978609625,neuron proportion,,"% of neurons coexpressing marker
 Percentage of percentage of Gabaergic cells (~19%) applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.",> 3 months
-"Secondary motor area, layer 6a",PV+,0.07992309804998626,0.021980614973262032,neuron proportion,,"% of neurons coexpressing marker
+"Secondary motor area, layer 6a",PV+,0.0799230980499862,0.021980614973262,neuron proportion,,"% of neurons coexpressing marker
 Percentage of percentage of Gabaergic cells (~19%) applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.",> 3 months
-"Secondary motor area, layer 6b",PV+,0.07992309804998626,0.021980614973262032,neuron proportion,,"% of neurons coexpressing marker
+"Secondary motor area, layer 6b",PV+,0.0799230980499862,0.021980614973262,neuron proportion,,"% of neurons coexpressing marker
 Percentage of percentage of Gabaergic cells (~19%) applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.",> 3 months
-"Primary motor area, Layer 2/3",SST+,0.0347172512526843,0.0068081550802138995,neuron proportion,,"% of neurons coexpressing marker
+"Primary motor area, Layer 2/3",SST+,0.0347172512526843,0.0068081550802138,neuron proportion,,"% of neurons coexpressing marker
 Percentage of percentage of Gabaergic cells (~19%) applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.",> 3 months
-"Primary motor area, Layer 5",SST+,0.0607008760951189,0.00914237967914439,neuron proportion,,"% of neurons coexpressing marker
+"Primary motor area, Layer 5",SST+,0.0607008760951189,0.0091423796791443,neuron proportion,,"% of neurons coexpressing marker
 Percentage of percentage of Gabaergic cells (~19%) applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.",> 3 months
 "Primary motor area, Layer 6a",SST+,0.0608313077297035,0.0110875668449198,neuron proportion,,"% of neurons coexpressing marker
 Percentage of percentage of Gabaergic cells (~19%) applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.",> 3 months
 "Primary motor area, Layer 6b",SST+,0.0608313077297035,0.0110875668449198,neuron proportion,,"% of neurons coexpressing marker
 Percentage of percentage of Gabaergic cells (~19%) applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.",> 3 months
-"Secondary motor area, layer 2/3",SST+,0.0347172512526843,0.0068081550802138995,neuron proportion,,"% of neurons coexpressing marker
+"Secondary motor area, layer 2/3",SST+,0.0347172512526843,0.0068081550802138,neuron proportion,,"% of neurons coexpressing marker
 Percentage of percentage of Gabaergic cells (~19%) applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.",> 3 months
-"Secondary motor area, layer 5",SST+,0.0607008760951189,0.00914237967914439,neuron proportion,,"% of neurons coexpressing marker
+"Secondary motor area, layer 5",SST+,0.0607008760951189,0.0091423796791443,neuron proportion,,"% of neurons coexpressing marker
 Percentage of percentage of Gabaergic cells (~19%) applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.",> 3 months
 "Secondary motor area, layer 6a",SST+,0.0608313077297035,0.0110875668449198,neuron proportion,,"% of neurons coexpressing marker
 Percentage of percentage of Gabaergic cells (~19%) applied to densities of neurons in Cell Atlas ( neuron counts / region volume)","Green fluorescent protein expression and colocalization with calretinin, parvalbumin, and somatostatin in the GAD67-GFP knock-in mouse.",> 3 months
@@ -109,12 +109,12 @@ Percent of inhibitory cells * cells densities from Cell Atlas ( cell counts / re
 Primary visual area,SST+,0.035329,,cell proportion,,"RNA seq. Also have excitatory ratio 
 Fig. 4.
 Percent of inhibitory cells * cells densities from Cell Atlas ( cell counts / region volume)",Three-dimensional intact-tissue sequencing of single-cell transcriptional states,adult
-Primary visual area,VIP+,0.014626000000000002,,cell proportion,,"RNA seq. Also have excitatory ratio 
+Primary visual area,VIP+,0.014626,,cell proportion,,"RNA seq. Also have excitatory ratio 
 Fig. 4.
 Percent of inhibitory cells * cells densities from Cell Atlas ( cell counts / region volume)",Three-dimensional intact-tissue sequencing of single-cell transcriptional states,adult
-Prelimbic area,SST+,0.030192999999999998,,cell proportion,,"RNA seq. Also have excitatory ratio 
+Prelimbic area,SST+,0.0301929999999999,,cell proportion,,"RNA seq. Also have excitatory ratio 
 Fig. 4.
 Percent of inhibitory cells * cells densities from Cell Atlas ( cell counts / region volume)",Three-dimensional intact-tissue sequencing of single-cell transcriptional states,adult
-Prelimbic area,VIP+,0.015477999999999999,,cell proportion,,"RNA seq. Also have excitatory ratio 
+Prelimbic area,VIP+,0.0154779999999999,,cell proportion,,"RNA seq. Also have excitatory ratio 
 Fig. 4.
 Percent of inhibitory cells * cells densities from Cell Atlas ( cell counts / region volume)",Three-dimensional intact-tissue sequencing of single-cell transcriptional states,adult

@@ -14,6 +14,22 @@ if TYPE_CHECKING:  # pragme: no cover
     from voxcell import RegionMap  # type: ignore
 
 
+MEASUREMENT_TYPES = {
+    # For a given brain region R and a given cell type T:
+    0: "cell density",  # number of cells of type T per mm^3 in R
+    1: "neuron proportion",  # number of cells of type T / number of neurons in R
+    2: "cell proportion",  # number of cells of type T / number of cells in R
+    3: "cell count per slice",  # number of cells of type T per slice of R, see MEASUREMENT_UNITS
+}
+
+MEASUREMENT_UNITS = {
+    "cell density": "number of cells per mm^3",
+    "neuron proportion": "None",
+    "cell proportion": "None",
+    "cell count per slice": "number of cells per 5 micrometer-thick slice",
+}
+
+
 def normalize_intensity(
     marker_intensity: NDArray[float],
     annotation: NDArray[int],
@@ -365,3 +381,23 @@ def get_region_masks(
     )
 
     return region_masks
+
+
+def get_aibs_region_names(region_map: "RegionMap") -> Set[str]:
+    """
+    Retrieve the names of every region in `region_map`.
+
+    Args:
+        region_map: RegionMap object to navigate the brain regions hierarchy
+            instantiated with the 1.json hierarchy file from AIBS.
+
+    Returns:
+        Set of strings containing the names of all regions represented in
+        `region_map`.
+
+    """
+    aibs_region_ids = region_map.find(
+        "Basic cell groups and regions", attr="name", with_descendants=True
+    )
+
+    return {region_map.get(id_, "name") for id_ in aibs_region_ids}

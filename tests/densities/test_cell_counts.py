@@ -31,7 +31,9 @@ def test_glia_cell_counts():
 
 
 def test_inhibitory_neuron_counts():
-    dataframe = tested.extract_inhibitory_neurons_dataframe(Path(DATA_PATH, "mmc1.xlsx"))
+    dataframe = tested.extract_inhibitory_neurons_dataframe(
+        Path(DATA_PATH, "measurements", "mmc1.xlsx")
+    )
     assert tested.inhibitory_neuron_counts(dataframe) == {
         "Cerebellum group": round(1861600.2000000002),
         "Isocortex group": round(1587055.65),
@@ -40,7 +42,9 @@ def test_inhibitory_neuron_counts():
 
 
 def test_inhibitory_data():
-    dataframe = tested.extract_inhibitory_neurons_dataframe(Path(DATA_PATH, "mmc1.xlsx"))
+    dataframe = tested.extract_inhibitory_neurons_dataframe(
+        Path(DATA_PATH, "measurements", "mmc1.xlsx")
+    )
     assert tested.inhibitory_data(dataframe) == {
         "proportions": {
             "Cerebellum group": 0.044092846991946946,

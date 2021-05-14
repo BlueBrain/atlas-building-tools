@@ -15,21 +15,23 @@ import atlas_building_tools.densities.excel_reader as tested
 from atlas_building_tools.exceptions import AtlasBuildingToolsWarning
 
 TEST_PATH = Path(__file__).parent.parent
-DATA_PATH = Path(Path(__file__).parent.parent.parent, "atlas_building_tools", "app", "data")
+MEASUREMENTS_PATH = Path(
+    Path(__file__).parent.parent.parent, "atlas_building_tools", "app", "data", "measurements"
+)
 
 REGULAR_COLUMNS = {
-    "brain region": np.dtype("O"),
+    "brain_region": np.dtype("O"),
     "measurement": float,
-    "standard deviation": float,
-    "measurement type": np.dtype("O"),
-    "measurement unit": np.dtype("O"),
-    "cell type": np.dtype("O"),
+    "standard_deviation": float,
+    "measurement_type": np.dtype("O"),
+    "measurement_unit": np.dtype("O"),
+    "cell_type": np.dtype("O"),
 }
 
 SOURCE_COLUMNS = {
-    "source title": np.dtype("O"),
+    "source_title": np.dtype("O"),
     "comment": np.dtype("O"),
-    "specimen age": np.dtype("O"),
+    "specimen_age": np.dtype("O"),
 }
 
 REGION_MAP = RegionMap.load_json(Path(TEST_PATH, "1.json"))
@@ -41,7 +43,7 @@ AIBS_REGIONS = set(map(lambda id_: REGION_MAP.get(id_, "name"), AIBS_REGION_IDS)
 
 def test_compute_kim_et_al_neuron_densities():
     with warnings.catch_warnings(record=True) as warnings_:
-        dataframe = tested.compute_kim_et_al_neuron_densities(Path(DATA_PATH, "mmc3.xlsx"))
+        dataframe = tested.compute_kim_et_al_neuron_densities(Path(MEASUREMENTS_PATH, "mmc3.xlsx"))
         warnings_ = [w for w in warnings_ if isinstance(w.message, AtlasBuildingToolsWarning)]
         regions_with_nd = []
         regions_with_invalid_full_name = []
@@ -103,7 +105,7 @@ def test_compute_kim_et_al_neuron_densities():
         )
         npt.assert_array_equal(regions_with_invalid_full_name, ["IB"])
         expected_columns = [
-            "Full name",
+            "full_name",
             "PV",
             "PV_stddev",
             "SST",
@@ -117,7 +119,7 @@ def test_compute_kim_et_al_neuron_densities():
         assert (
             len(
                 {"Whole brain", "Cerebrum", "Cerebral cortex", "Olfactory areas"}
-                - set(dataframe["Full name"])
+                - set(dataframe["full_name"])
             )
             == 0
         )
@@ -147,10 +149,10 @@ def check_column_names(dataframe, has_source: bool = True):
 
 
 def check_columns_na(dataframe):
-    assert np.all(~dataframe["brain region"].isna())
+    assert np.all(~dataframe["brain_region"].isna())
     assert np.all(~dataframe["measurement"].isna())
-    assert np.all(~dataframe["cell type"].isna())
-    assert np.all(~dataframe["measurement type"].isna())
+    assert np.all(~dataframe["cell_type"].isna())
+    assert np.all(~dataframe["measurement_type"].isna())
 
 
 def check_column_types(dataframe, has_source: bool = True) -> bool:
@@ -166,18 +168,20 @@ def check_column_types(dataframe, has_source: bool = True) -> bool:
 
 
 def get_invalid_region_names(dataframe):
-    return set(dataframe["brain region"]) - AIBS_REGIONS
+    return set(dataframe["brain_region"]) - AIBS_REGIONS
 
 
 def check_non_negative_values(dataframe):
-    for column in ["measurement", "standard deviation"]:
+    for column in ["measurement", "standard_deviation"]:
         mask = ~dataframe[column].isna()
         assert np.all(dataframe.loc[mask, column] >= 0.0)
 
 
 def test_read_kim_et_al_neuron_densities():
     warnings.simplefilter("ignore")
-    dataframe = tested.read_kim_et_al_neuron_densities(REGION_MAP, Path(DATA_PATH, "mmc3.xlsx"))
+    dataframe = tested.read_kim_et_al_neuron_densities(
+        REGION_MAP, Path(MEASUREMENTS_PATH, "mmc3.xlsx")
+    )
 
     check_column_names(dataframe)
     check_column_types(dataframe)
@@ -196,9 +200,9 @@ def test_read_kim_et_al_neuron_densities():
         "Periaqueductal gray, ventral lateral",
     }
 
-    pv_count = np.count_nonzero(dataframe["cell type"] == "PV+")
-    sst_count = np.count_nonzero(dataframe["cell type"] == "SST+")
-    vip_count = np.count_nonzero(dataframe["cell type"] == "VIP+")
+    pv_count = np.count_nonzero(dataframe["cell_type"] == "PV+")
+    sst_count = np.count_nonzero(dataframe["cell_type"] == "SST+")
+    vip_count = np.count_nonzero(dataframe["cell_type"] == "VIP+")
 
     # 849 = 824 - 15 + 40:
     # * 824 initial region names
@@ -210,13 +214,13 @@ def test_read_kim_et_al_neuron_densities():
     assert vip_count == 864
     assert len(dataframe.index) == 849 + 2 * 864
 
-    for value in ["measurement", "standard deviation"]:
+    for value in ["measurement", "standard_deviation"]:
         assert np.all(~dataframe[value].isna())
 
 
 def test_read_inhibitory_neuron_measurement_compilation():
     dataframe = tested.read_inhibitory_neuron_measurement_compilation(
-        Path(DATA_PATH, "gaba_papers.xlsx")
+        Path(MEASUREMENTS_PATH, "gaba_papers.xlsx")
     )
     check_column_names(dataframe, has_source=True)
     check_column_types(dataframe, has_source=True)
@@ -230,11 +234,11 @@ def test_read_inhibitory_neuron_measurement_compilation():
     check_non_negative_values(dataframe)
 
     assert np.count_nonzero(dataframe["measurement"].isna()) == 0
-    assert np.count_nonzero(dataframe["standard deviation"].isna()) == 10
+    assert np.count_nonzero(dataframe["standard_deviation"].isna()) == 10
 
-    assert np.all(dataframe["cell type"] == "inhibitory neuron")
-    mask = dataframe["brain region"] == "Field CA1"
-    assert set(dataframe["source title"][mask]) == {
+    assert np.all(dataframe["cell_type"] == "inhibitory neuron")
+    mask = dataframe["brain_region"] == "Field CA1"
+    assert set(dataframe["source_title"][mask]) == {
         "Quantitative analysis of GABAergic neurons in the mouse hippocampus, with optical "
         "disector using confocal laser scanning microscope",
         "Selective populations of hippocampal interneurons express ErbB4 and their number and "
@@ -243,12 +247,14 @@ def test_read_inhibitory_neuron_measurement_compilation():
         "altered by brain serotonin deficiency in Tph2 knockout mice",
     }
 
-    assert len(set(dataframe["source title"])) == 21
+    assert len(set(dataframe["source_title"])) == 21
     assert len(set(dataframe["comment"])) == 25
 
 
 def test_read_pv_sst_vip_measurement_compilation():
-    dataframe = tested.read_pv_sst_vip_measurement_compilation(Path(DATA_PATH, "gaba_papers.xlsx"))
+    dataframe = tested.read_pv_sst_vip_measurement_compilation(
+        Path(MEASUREMENTS_PATH, "gaba_papers.xlsx")
+    )
     check_column_names(dataframe, has_source=True)
     check_column_types(dataframe, has_source=True)
 
@@ -265,10 +271,10 @@ def test_read_pv_sst_vip_measurement_compilation():
     check_non_negative_values(dataframe)
 
     assert np.count_nonzero(dataframe["measurement"].isna()) == 0
-    assert np.count_nonzero(dataframe["standard deviation"].isna()) == 0
+    assert np.count_nonzero(dataframe["standard_deviation"].isna()) == 0
 
-    mask = dataframe["brain region"] == "Field CA1"
-    assert set(dataframe["source title"][mask]) == {
+    mask = dataframe["brain_region"] == "Field CA1"
+    assert set(dataframe["source_title"][mask]) == {
         "Age‐dependent loss of parvalbumin‐expressing hippocampal interneurons in mice deficient"
         " in CHL1, a mental retardation and schizophrenia susceptibility gene",
         "Cellular architecture of the mouse hippocampus: A quantitative aspect of chemically "
@@ -285,38 +291,38 @@ def test_read_pv_sst_vip_measurement_compilation():
         "distribution is altered in ErbB4 knockout mice",
     }
 
-    mask = dataframe["brain region"] == "Prelimbic area"
-    assert set(dataframe["specimen age"][mask]) == {
+    mask = dataframe["brain_region"] == "Prelimbic area"
+    assert set(dataframe["specimen_age"][mask]) == {
         "Adult mice",
         "3–8 months old",
         "P25",
         "6  months  old",
         "3 months",
     }
-    assert set(dataframe["cell type"]) == {"PV+", "SST+", "VIP+"}
+    assert set(dataframe["cell_type"]) == {"PV+", "SST+", "VIP+"}
 
 
 def test_read_non_density_measurements():
-    dataframe = pd.read_csv(Path(DATA_PATH, "non_density_measurements.csv"))
+    dataframe = pd.read_csv(Path(MEASUREMENTS_PATH, "non_density_measurements.csv"))
 
     check_column_names(dataframe, has_source=True)
-    assert np.all(dataframe["measurement unit"].isna())
-    dataframe["measurement unit"] = "None"
+    assert np.all(dataframe["measurement_unit"].isna())
+    dataframe["measurement_unit"] = "None"
     check_column_types(dataframe, has_source=True)
     check_columns_na(dataframe)
     check_non_negative_values(dataframe)
 
     assert np.count_nonzero(dataframe["measurement"].isna()) == 0
-    assert np.count_nonzero(dataframe["standard deviation"].isna()) == 9
-    assert np.count_nonzero(dataframe["specimen age"].isna()) == 2
+    assert np.count_nonzero(dataframe["standard_deviation"].isna()) == 9
+    assert np.count_nonzero(dataframe["specimen_age"].isna()) == 2
 
-    mask = dataframe["measurement type"] != "cell count per slice"
+    mask = dataframe["measurement_type"] != "cell count per slice"
     assert np.all(dataframe["measurement"][mask] <= 1.0)  # only proportions are expected
 
-    inhibitory_neuron_count = np.count_nonzero(dataframe["cell type"] == "inhibitory neuron")
-    pv_count = np.count_nonzero(dataframe["cell type"] == "PV+")
-    sst_count = np.count_nonzero(dataframe["cell type"] == "SST+")
-    vip_count = np.count_nonzero(dataframe["cell type"] == "VIP+")
+    inhibitory_neuron_count = np.count_nonzero(dataframe["cell_type"] == "inhibitory neuron")
+    pv_count = np.count_nonzero(dataframe["cell_type"] == "PV+")
+    sst_count = np.count_nonzero(dataframe["cell_type"] == "SST+")
+    vip_count = np.count_nonzero(dataframe["cell_type"] == "VIP+")
     assert inhibitory_neuron_count == 12
     assert pv_count == 9
     assert sst_count == 10
@@ -328,26 +334,26 @@ def test_read_measurements():
     warnings.simplefilter("ignore")
     dataframe = tested.read_measurements(
         REGION_MAP,
-        Path(DATA_PATH, "mmc3.xlsx"),
-        Path(DATA_PATH, "gaba_papers.xlsx"),
-        Path(DATA_PATH, "non_density_measurements.csv"),
+        Path(MEASUREMENTS_PATH, "mmc3.xlsx"),
+        Path(MEASUREMENTS_PATH, "gaba_papers.xlsx"),
+        Path(MEASUREMENTS_PATH, "non_density_measurements.csv"),
     )
     check_column_names(dataframe)
     check_non_negative_values(dataframe)
     check_columns_na(dataframe)
 
-    assert set(dataframe["cell type"]) == {"PV+", "SST+", "VIP+", "inhibitory neuron"}
-    assert set(dataframe["measurement type"]) == {
+    assert set(dataframe["cell_type"]) == {"PV+", "SST+", "VIP+", "inhibitory neuron"}
+    assert set(dataframe["measurement_type"]) == {
         "cell density",
         "neuron proportion",
         "cell proportion",
         "cell count per slice",
     }
-    mask = (dataframe["measurement type"] == "neuron proportion") | (
-        dataframe["measurement type"] == "cell proportion"
+    mask = (dataframe["measurement_type"] == "neuron proportion") | (
+        dataframe["measurement_type"] == "cell proportion"
     )
     assert np.all(dataframe["measurement"][mask] <= 1.0)
 
     # TODO: one duplicate title because of a trailing endline character
-    assert len(set(dataframe["source title"])) == 48
+    assert len(set(dataframe["source_title"])) == 48
     assert len(set(dataframe["comment"])) >= 48

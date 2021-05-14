@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
+import pandas.testing as pdt
 from click.testing import CliRunner
 from voxcell import VoxelData  # type: ignore
 
@@ -14,6 +15,7 @@ from atlas_building_tools.densities.cell_counts import (
     glia_cell_counts,
     inhibitory_data,
 )
+from atlas_building_tools.densities.measurement_to_density import remove_non_density_measurements
 from tests.densities.test_excel_reader import (
     check_columns_na,
     check_non_negative_values,
@@ -21,9 +23,16 @@ from tests.densities.test_excel_reader import (
 )
 from tests.densities.test_glia_densities import get_glia_input_data
 from tests.densities.test_inhibitory_neuron_density import get_inhibitory_neuron_input_data
+from tests.densities.test_measurement_to_density import (
+    get_expected_output as get_average_densities_expected_output,
+)
+from tests.densities.test_measurement_to_density import (
+    get_input_data as get_measurement_to_density_input_data,
+)
 
 TEST_PATH = Path(Path(__file__).parent.parent)
 DATA_PATH = Path(TEST_PATH.parent, "atlas_building_tools", "app", "data")
+MEASUREMENTS_PATH = DATA_PATH / "measurements"
 
 
 def _get_cell_density_result(runner):
@@ -161,7 +170,7 @@ def _get_inh_and_exc_neuron_densities_result(runner):
 
 
 def test_inhibitory_and_excitatory_neuron_densities():
-    inhibitory_df = extract_inhibitory_neurons_dataframe(Path(DATA_PATH, "mmc1.xlsx"))
+    inhibitory_df = extract_inhibitory_neurons_dataframe(Path(MEASUREMENTS_PATH, "mmc1.xlsx"))
     neuron_count = inhibitory_data(inhibitory_df)["neuron_count"]
     input_ = get_inhibitory_neuron_input_data(neuron_count)
     runner = CliRunner()
@@ -229,4 +238,58 @@ def test_compile_measurements():
         check_non_negative_values(dataframe)
 
         dataframe = pd.read_csv("homogenous_regions.csv")
-        assert set(dataframe["cell type"]) == {"inhibitory", "excitatory"}
+        assert set(dataframe["cell_type"]) == {"inhibitory", "excitatory"}
+
+
+def _get_measurements_to_average_densities_result(runner, hierarchy_path, measurements_path):
+    args = [
+        "measurements-to-average-densities",
+        "--hierarchy-path",
+        hierarchy_path,
+        "--annotation-path",
+        "annotation.nrrd",
+        "--cell-density-path",
+        "cell_density.nrrd",
+        "--neuron-density-path",
+        "neuron_density.nrrd",
+        "--measurements-path",
+        measurements_path,
+        "--output-path",
+        "average_densities.csv",
+    ]
+
+    return runner.invoke(tested.app, args)
+
+
+def test_measurements_to_average_densities():
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        input_ = get_measurement_to_density_input_data()
+        voxel_dimensions = input_["voxel_dimensions"]
+        for name in ["annotation", "cell_density", "neuron_density"]:
+            VoxelData(input_[name], voxel_dimensions=voxel_dimensions).save_nrrd(name + ".nrrd")
+        input_["measurements"].to_csv("measurements.csv", index=False)
+        with open("hierarchy.json", "w") as out:
+            json.dump(input_["hierarchy"], out, indent=1, separators=(",", ": "))
+
+        result = _get_measurements_to_average_densities_result(
+            runner, hierarchy_path="hierarchy.json", measurements_path="measurements.csv"
+        )
+
+        assert result.exit_code == 0
+
+        actual = pd.read_csv("average_densities.csv")
+        expected = get_average_densities_expected_output()
+        remove_non_density_measurements(expected)  # One volume measurement to remove
+        pdt.assert_frame_equal(actual, expected)
+
+        result = _get_measurements_to_average_densities_result(
+            runner,
+            hierarchy_path=DATA_PATH / "1.json",
+            measurements_path=MEASUREMENTS_PATH / "measurements.csv",
+        )
+
+        assert result.exit_code == 0
+        actual = pd.read_csv("average_densities.csv")
+        assert np.all(actual["measurement_type"] == "cell density")
+        assert np.all(actual["measurement_unit"] == "number of cells per mm^3")

@@ -33,6 +33,7 @@ from pathlib import Path
 
 import click
 import numpy as np
+import pandas as pd
 from voxcell import RegionMap, VoxelData  # type: ignore
 
 from atlas_building_tools.app.utils import (
@@ -55,6 +56,10 @@ from atlas_building_tools.densities.excel_reader import (
 from atlas_building_tools.densities.glia_densities import compute_glia_densities
 from atlas_building_tools.densities.inhibitory_neuron_density import (
     compute_inhibitory_neuron_density,
+)
+from atlas_building_tools.densities.measurement_to_density import (
+    measurement_to_average_density,
+    remove_non_density_measurements,
 )
 from atlas_building_tools.densities.mtype_densities import DensityProfileCollection
 
@@ -339,19 +344,19 @@ def glia_cell_densities(
     "--neuron-density-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=("The path to the overall neuron cell density nrrd file."),
+    help=("The path to the overall neuron density nrrd file."),
 )
 @click.option(
     "--inhibitory-neuron-counts-path",
     type=EXISTING_FILE_PATH,
     required=False,
-    default=Path(Path(__file__).parent, "data", "mmc1.xlsx"),
+    default=Path(Path(__file__).parent, "data", "measurements", "mmc1.xlsx"),
     help=(
         "The path to the excel document mmc1.xlsx of the suplementary materials of "
         '"Brain-wide Maps Reveal Stereotyped Cell-Type- Based Cortical Architecture '
         'and Subcortical Sexual Dimorphism" by Kim et al., 2017. '
         "https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc1.xlsx. "
-        "Defaults to atlas_building_tools/app/data/mmc1.xlsx."
+        "Defaults to atlas_building_tools/app/data/measurements/mmc1.xlsx."
     ),
 )
 @click.option(
@@ -531,7 +536,7 @@ def mtype_densities(
     "--homogenous-regions-output-path",
     required=True,
     help="Path where the list of AIBS brain regions with homogenous neuron type (e.g., inhibitory"
-    ' or excitatory) will be saved. CSV file with 2 columns: "brain region" and "cell type".',
+    ' or excitatory) will be saved. CSV file with 2 columns: "brain_region" and "cell_type".',
 )
 @log_args(L)
 def compile_measurements(
@@ -544,35 +549,37 @@ def compile_measurements(
     In addition to various measurements found in the scientific literature, a list of AIBS mouse
     brain regions with homogenous neuron type is saved to `homogenous_regions_output_path`.
 
-    Two input excel files containing measurements are handled:
+    Two input excel files containing measurements are handled:\n
     * mm3c.xls from the supplementary materials of
         'Brain-wide Maps Reveal Stereotyped Cell-Type-Based Cortical Architecture and Subcortical
         Sexual Dimorphism' by Kim et al., 2017.
-        https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc3.xlsx
+        https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc3.xlsx\n
 
-    * atlas_building_tools/app/data/gaba_papers.xlsx, a compilation of measurements from the
-        scientifc literature made by Rodarie Dimitri (BBP).
+    * atlas_building_tools/app/data/measurements/gaba_papers.xlsx, a compilation of measurements
+        from the scientifc literature made by Rodarie Dimitri (BBP).\n
 
     This command extracts measurements from the above two files and gathers them into a unique
-    CSV file with the following columns:
+    CSV file with the following columns:\n
 
-    * brain region (str), a mouse brain region name, not necessarily compliant
-        with AIBS 1.json file. Thus some filtering must be done when working with AIBS\n
-        annotated files.\n
+    * brain_region (str), a mouse brain region name, not necessarily compliant
+      with AIBS 1.json file. Thus some filtering must be done when working with AIBS\n
+      annotated files.\n
     * cell type (str, e.g, 'PV+' for cells reacting to parvalbumin, 'inhibitory neuron' for\n
     non-specific inhibitory neuron)\n
     * measurement (float)\n
-    * standard deviation (non-negative float)\n
-    * measurement type (str), see measurement types below\n
-    * measurement unit (str), see measurement units below\n
+    * standard_deviation (non-negative float)\n
+    * measurement_type (str), see measurement types below\n
+    * measurement_unit (str), see measurement units below\n
     * comment (str), a comment on how the measurement has been obtained\n
-    * source title (str), the title of the article where the measurement can be exracted\n
-    * specimen age (str, e.g., '8 week old', 'P56', '3 month old'), age of the mice used to obtain
-        the measurement\n
+    * source_title (str), the title of the article where the measurement can be exracted\n
+    * specimen_age (str, e.g., '8 week old', 'P56', '3 month old'), age of the mice used to obtain
+      the measurement\n
 
     The different measurement types are, for a given brain region R and a given cell type T:\n
     * 'cell density', number of cells of type T per mm^3 in R\n
-    * 'neuron proportion', number of cells of type T / number of neurons in R\n
+    * 'cell count', number of cells of type T in R\n
+    * 'neuron proportion', number of cells of type T / number of neurons in R
+    (a cell of type T is assumed to be a neuron, e.g., T = GAD67+)\n
     * 'cell proportion', number of cells of type T / number of cells in R\n
     * 'cell count per slice', number of cells of type T per slice of R\n
 
@@ -580,7 +587,7 @@ def compile_measurements(
     * 'cell density': 'number of cells per mm^3'\n
     * 'neuron proportion': None (empty)\n
     * 'cell proportion': None (empty)\n
-    * 'cell count per slice': e.g, number of cells per 5 micrometer-thick slice\n
+    * 'cell count per slice': e.g, number of cells per 50-micrometer-thick slice\n
 
     See atlas_building_tools/densities/excel_reader.py for more information.
 
@@ -593,14 +600,123 @@ def compile_measurements(
     region_map = RegionMap.load_json(Path(DATA_PATH, "1.json"))  # Unmodified AIBS 1.json
     measurements = read_measurements(
         region_map,
-        Path(DATA_PATH, "mmc3.xlsx"),
-        Path(DATA_PATH, "gaba_papers.xlsx"),
+        Path(DATA_PATH, "measurements", "mmc3.xlsx"),
+        Path(DATA_PATH, "measurements", "gaba_papers.xlsx"),
         # The next measurement file has been obtained after manual extraction
         # of non-density measurements from the worksheets PV-SST-VIP and 'GAD67 densities'
         # of gaba_papers.xlsx.
-        Path(DATA_PATH, "non_density_measurements.csv"),
+        Path(DATA_PATH, "measurements", "non_density_measurements.csv"),
     )
-    homogenous_regions = read_homogenous_neuron_type_regions(Path(DATA_PATH, "gaba_papers.xlsx"))
+    homogenous_regions = read_homogenous_neuron_type_regions(
+        Path(DATA_PATH, "measurements", "gaba_papers.xlsx")
+    )
     L.info("Saving to CSV files ...")
     measurements.to_csv(measurements_output_path, index=False)
     homogenous_regions.to_csv(homogenous_regions_output_path, index=False)
+
+
+@app.command()
+@click.option(
+    "--annotation-path",
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help=("The path to the whole mouse brain annotation file."),
+)
+@click.option(
+    "--hierarchy-path",
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help="The path to the hierarchy file, i.e., AIBS 1.json.",
+)
+@click.option(
+    "--cell-density-path",
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help=("The path to the to the overall cell density nrrd file."),
+)
+@click.option(
+    "--neuron-density-path",
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help=("The path to the overall neuron density nrrd file."),
+)
+@click.option(
+    "--measurements-path",
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help=(
+        "The path to measurements.csv, the compilation of cell density "
+        "related measurements of Dimitri Rodarie (BBP)."
+    ),
+)
+@click.option(
+    "--output-path",
+    type=str,
+    required=True,
+    help="Path where to write the output average cell densities (.csv file), that is, a data frame"
+    " of the same format as the input measurements file (see --measurements-path )but comprising "
+    "only measurements of type `cell density`.",
+)
+@log_args(L)
+def measurements_to_average_densities(
+    annotation_path,
+    hierarchy_path,
+    cell_density_path,
+    neuron_density_path,
+    measurements_path,
+    output_path,
+):  # pylint: disable=too-many-arguments
+    """Compute and save average cell densities based on measurements and AIBS region volumes.\n
+
+    Measurements from Dimitri Rodarie's compilation, together with volumes from the AIBS mouse brain
+    (`annotation`) and precomputed volumetric cell densities (`cell_density_path` and
+    `neuron_density_path`) are used to compute average cell densities in every AIBS region where
+    sufficient information is available.
+
+    The different cell types (e.g., PV+, SST+, VIP+ or overall inhibitory neurons) and
+    brain regions under consideration are prescribed by the input measurements.
+
+    Measurements can be cell densities in number of cells per mm^3 for instance.
+    If several cell density measurements are available for the same region, the output dataframe
+    records the average of these measurements.
+
+    Measurements can also be cell counts, in which case the AIBS brain model volumes
+    (`annotation_path`) are used in addition to compute average cell densities.
+
+    For measurements such as cell proportions, neuron proportions or cell counts per slice, the
+    brain-wide volumetric cell densities (`cell_density_path` or `neuron_density_path`) are used to
+    compute average cell densities.
+
+    If several combinations of measurements yield several average cell densities for the same
+    region, then the output data frame records the average of these measurements.
+
+    The ouput average cell densities are saved in under the CSV format as a dataframe with the same
+    columns as the input data frame specified via `--measurements-path`.
+    See :mod:`atlas_building_tools.app.densities.compile_measurements`.
+
+    All output measurements are average cell densities of various cell types over AIBS brain
+    regions expressed in number of cells per mm^3.
+    """
+
+    annotation = VoxelData.load_nrrd(annotation_path)
+    overall_cell_density = VoxelData.load_nrrd(cell_density_path)
+    neuron_density = VoxelData.load_nrrd(neuron_density_path)
+
+    assert_properties([annotation, overall_cell_density, neuron_density])
+
+    region_map = RegionMap.load_json(hierarchy_path)
+    measurements_df = pd.read_csv(measurements_path)
+    average_cell_densities_df = measurement_to_average_density(
+        region_map,
+        annotation.raw,
+        annotation.voxel_dimensions,
+        _get_voxel_volume_in_mm3(annotation),
+        overall_cell_density.raw,
+        neuron_density.raw,
+        measurements_df,
+    )
+    remove_non_density_measurements(average_cell_densities_df)
+    average_cell_densities_df.to_csv(
+        output_path,
+        index=False,
+    )

@@ -7,7 +7,7 @@ from setuptools import find_packages, setup
 VERSION = imp.load_source("", "atlas_building_tools/version.py").__version__
 
 setup(
-    name="atlas_building_tools",
+    name="atlas-building-tools",
     author="BlueBrain NSE",
     author_email="bbp-ou-nse@groupes.epfl.ch",
     version=VERSION,
