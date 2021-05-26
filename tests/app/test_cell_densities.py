@@ -6,6 +6,7 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pandas.testing as pdt
+import yaml
 from click.testing import CliRunner
 from voxcell import VoxelData  # type: ignore
 
@@ -21,6 +22,7 @@ from tests.densities.test_excel_reader import (
     check_non_negative_values,
     get_invalid_region_names,
 )
+from tests.densities.test_fitting import get_fitting_input_data
 from tests.densities.test_glia_densities import get_glia_input_data
 from tests.densities.test_inhibitory_neuron_density import get_inhibitory_neuron_input_data
 from tests.densities.test_measurement_to_density import (
@@ -293,3 +295,83 @@ def test_measurements_to_average_densities():
         actual = pd.read_csv("average_densities.csv")
         assert np.all(actual["measurement_type"] == "cell density")
         assert np.all(actual["measurement_unit"] == "number of cells per mm^3")
+
+
+def _get_fitting_result(runner):
+    args = [
+        "fit-average-densities",
+        "--hierarchy-path",
+        "hierarchy.json",
+        "--annotation-path",
+        "annotation.nrrd",
+        "--neuron-density-path",
+        "neuron_density.nrrd",
+        "--gene-config-path",
+        "gene_config.yaml",
+        "--average-densities-path",
+        "average_densities.csv",
+        "--homogenous-regions-path",
+        "homogenous_regions.csv",
+        "--fitted-densities-output-path",
+        "fitted_densities.csv",
+        "--fitting-maps-output-path",
+        "fitting_maps.json",
+    ]
+
+    return runner.invoke(tested.app, args)
+
+
+def test_fit_average_densities():
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        input_ = get_fitting_input_data()
+        for name in ["annotation", "neuron_density"]:
+            VoxelData(input_[name], voxel_dimensions=[25.0] * 3).save_nrrd(name + ".nrrd")
+
+        input_["homogenous_regions"].to_csv("homogenous_regions.csv", index=False)
+        input_["average_densities"].to_csv("average_densities.csv", index=False)
+
+        with open("hierarchy.json", "w") as out:
+            json.dump(input_["hierarchy"], out, indent=1, separators=(",", ": "))
+
+        with open("realigned_slices.json", "w") as out:
+            json.dump(input_["realigned_slices"], out, indent=1, separators=(",", ": "))
+
+        with open("std_cells.json", "w") as out:
+            json.dump(input_["cell_density_stddevs"], out, indent=1, separators=(",", ": "))
+
+        with open("gene_config.yaml", "w") as out:
+            gene_config = {
+                "inputGeneVolumePath": {},
+                "sectionDataSetID": {},
+                "realignedSlicesPath": "realigned_slices.json",
+                "cellDensityStandardDeviationsPath": "std_cells.json",
+            }
+            for marker, intensity in input_["gene_marker_volumes"].items():
+                VoxelData(intensity["intensity"], voxel_dimensions=[25.0] * 3).save_nrrd(
+                    marker + ".nrrd"
+                )
+                gene_config["inputGeneVolumePath"][marker] = marker + ".nrrd"
+                gene_config["sectionDataSetID"][marker] = input_["slice_map"][marker]
+
+            yaml.dump(gene_config, out)
+
+        result = _get_fitting_result(runner)
+        assert result.exit_code == 0
+
+        densities = pd.read_csv("fitted_densities.csv")
+        assert set(densities.columns) == {
+            "brain_region",
+            "gad67+",
+            "gad67+_standard_deviation",
+            "pv+",
+            "pv+_standard_deviation",
+        }
+        densities.set_index("brain_region", inplace=True)
+        assert np.allclose(densities.at["Hippocampal formation", "pv+"], 2.0)
+        assert densities.at["Hippocampal formation", "pv+_standard_deviation"] >= 0.0
+
+        with open("fitting_maps.json", "r") as file_:
+            fitting_maps = json.load(file_)
+            assert set(fitting_maps.keys()) == {"Cerebellum group", "Isocortex group", "Rest"}
+            assert np.allclose(fitting_maps["Rest"]["pv+"]["coefficient"], 2.0 / 3.0)

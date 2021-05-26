@@ -104,19 +104,17 @@ def combine_annotations(
     "--brain-annotation",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=("Path to the whole mouse rain annotation file."),
+    help=("Path to the whole mouse brain annotation file."),
 )
 @click.option(
     "--config",
     type=EXISTING_FILE_PATH,
     required=True,
     help=(
-        "Path to the gene markers configuration file."
-        "This is a yaml file indicating which markers are used"
-        " to identify the different glia cell types."
-        "It contains the path to the gene marker volumes "
-        "as well as their average expression intensities "
-        "and the glia intensity output paths."
+        "Path to the gene markers configuration file. This yaml file indicates which markers are"
+        " used to identify the different glia cell types. It contains the path to the gene marker"
+        " volumes as well as their average expression intensities and the glia intensity output "
+        "paths. See tests/markers_config.yaml for an example."
     ),
 )
 @log_args(L)

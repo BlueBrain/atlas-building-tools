@@ -18,38 +18,7 @@ import pandas as pd
 from nptyping import NDArray  # type: ignore
 from voxcell import RegionMap  # type: ignore
 
-
-def get_hierarchy_info(
-    region_map: RegionMap, root: str = "Basic cell groups and regions"
-) -> "pd.DataFrame":
-    """
-    Returns the name and the child_id_set of each region that can be found by `region_map`.
-
-    Args:
-        region_map: RegionMap object to navigate the brain regions hierarchy.
-        root: (Optional) root of the hierarchy tree used by `region_map`. Defaults to
-            "Basic cell groups and regions" which corresponds to the AIBS whole mouse
-            brain in AIBS 1.json.
-
-    Returns: a dataframe with index a list if region ids and two columns (values are fake)
-                 child_id_set    brain region
-            1    {1, 3}          "Cerebellum"
-            3    {1, 3, 100}     "Isocortex"
-                 ...             ...
-        Tne index consists in the sorted list of the identifiers of every region recorded in
-        `region_map` under root. The column `child_id_set` holds the list the identifiers the
-        children of every region, including the region itself. `brain region` is the list of every
-        region name.
-
-    """
-    region_ids = list(region_map.find(root, attr="name", with_descendants=True))
-    region_ids.sort()
-    child_id_sets = [region_map.find(id_, attr="id", with_descendants=True) for id_ in region_ids]
-    region_names = [region_map.get(id_, attr="name") for id_ in region_ids]
-
-    return pd.DataFrame(
-        {"brain_region": region_names, "child_id_set": child_id_sets}, index=region_ids
-    )
+from atlas_building_tools.densities.utils import get_hierarchy_info
 
 
 def get_parent_region(region_name: str, region_map: RegionMap) -> Union[str, None]:

@@ -7,60 +7,12 @@ import numpy as np
 import pandas as pd
 import pandas.testing as pdt
 import pytest
-from mock import patch
 from voxcell import RegionMap  # type: ignore
 
 import atlas_building_tools.densities.measurement_to_density as tested
+from tests.densities.test_utils import get_hierarchy, get_hierarchy_info
 
 TESTS_PATH = Path(__file__).parent.parent
-
-
-def get_hierarchy():
-    return {
-        "id": 8,
-        "name": "Basic cell groups and regions",
-        "acronym": "grey",
-        "parent_structure_id": None,  # would be null in json
-        "children": [
-            {
-                "id": 920,
-                "acronym": "CENT",
-                "name": "Central lobule",
-                "parent_structure_id": 645,
-                "children": [
-                    {
-                        "id": 976,
-                        "acronym": "CENT2",
-                        "name": "Lobule II",
-                        "parent_structure_id": 920,
-                        "children": [
-                            {
-                                "id": 10710,
-                                "acronym": "CENT2mo",
-                                "name": "Lobule II, molecular layer",
-                                "parent_structure_id": 976,
-                                "children": [],
-                            },
-                            {
-                                "id": 10709,
-                                "acronym": "CENT2pu",
-                                "name": "Lobule II, Purkinje layer",
-                                "parent_structure_id": 976,
-                                "children": [],
-                            },
-                            {
-                                "id": 10708,
-                                "acronym": "CENT2gr",
-                                "name": "Lobule II, granular layer",
-                                "parent_structure_id": 976,
-                                "children": [],
-                            },
-                        ],
-                    }
-                ],
-            }
-        ],
-    }
 
 
 @pytest.fixture
@@ -71,28 +23,6 @@ def region_map():
 @pytest.fixture
 def annotation():
     return np.array([[[920, 10710, 10710], [10709, 10708, 976], [10708, 10710, 10709]]])
-
-
-def get_hierarchy_info():
-    return pd.DataFrame(
-        {
-            "brain_region": [
-                "Central lobule",
-                "Lobule II",
-                "Lobule II, granular layer",
-                "Lobule II, Purkinje layer",
-                "Lobule II, molecular layer",
-            ],
-            "child_id_set": [
-                {920, 976, 10708, 10709, 10710},
-                {976, 10708, 10709, 10710},
-                {10708},
-                {10709},
-                {10710},
-            ],
-        },
-        index=[920, 976, 10708, 10709, 10710],
-    )
 
 
 @pytest.fixture

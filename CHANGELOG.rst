@@ -3,11 +3,13 @@ Changelog
 
 Version 0.1.2
 --------------
-- mtype densities: supports mapping.tsv file with no inhibitory synapse class [`NSETM-1487`_]
+
+- Adds CLI which estimates average cell densities using a linear fitting on a point cloud (average marker intensity, average cell density) [`NSETM-1475`_]
 - Adds a CLI which turns non-density measurements of measurements.csv into average cell densities (number of cells per mm^3) [`NSETM-1475`_]
 - Edits measurements.csv: adds missing unit for "cell count per slice" measurements and fix comments of "volume" measurements [`NSETM-1475`_]
 - Renames the columns of every measurement CSV files: spaces are replaced by underscores (the same applies to key variables) [`NSETM-1475`_]
 - Moves measurement files into app/data/measurements [`NSETM-1475`_]
+- mtype densities: supports mapping.tsv file with no inhibitory synapse class [`NSETM-1487`_]
 - Change the name atlas_building_tools to atlas-building-tools in setup.py (NSE standard)
 - Adds CLI to interpolate NaN direction vectors by valid ones but also direction vectors specified by a mask [`NSETM-1343`_]
 - The flatmap CLI has changed: it consumes now a json metadata file defining the ROI and its layers

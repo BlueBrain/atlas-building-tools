@@ -5,6 +5,8 @@ from pathlib import Path
 
 import numpy as np
 import numpy.testing as npt
+import pandas as pd
+import pandas.testing as pdt
 import pytest
 from mock import patch
 from voxcell import RegionMap
@@ -108,6 +110,8 @@ def test_get_group_ids():
     assert len(group_ids["Cerebellum group"] & group_ids["Purkinje layer"]) > 0
     assert len(group_ids["Isocortex group"] & group_ids["Molecular layer"]) > 0
     assert len(group_ids["Isocortex group"] & group_ids["Purkinje layer"]) == 0
+    assert len(group_ids["Isocortex group"] & group_ids["Rest"]) == 0
+    assert len(group_ids["Cerebellum group"] & group_ids["Rest"]) == 0
     assert group_ids["Cerebellar cortex"].issubset(group_ids["Cerebellum group"])
 
 
@@ -120,7 +124,8 @@ def test_get_region_masks():
         np.logical_or(region_masks["Cerebellum group"], region_masks["Isocortex group"]),
         region_masks["Rest"],
     )
-    npt.assert_array_equal(annotation_raw != 0, brain_mask)
+    all_nonzero_ids = region_map.find("root", attr="name", with_descendants=True)
+    npt.assert_array_equal(np.isin(annotation_raw, list(all_nonzero_ids)), brain_mask)
     np.all(~np.logical_and(region_masks["Cerebellum group"], region_masks["Isocortex group"]))
 
 
@@ -257,3 +262,84 @@ def test_constrain_cell_counts_per_voxel_exceptions():
                 zero_cell_counts_mask,
                 copy=True,
             )
+
+
+def get_hierarchy():
+    return {
+        "id": 8,
+        "name": "Basic cell groups and regions",
+        "acronym": "grey",
+        "parent_structure_id": None,  # would be null in json
+        "children": [
+            {
+                "id": 920,
+                "acronym": "CENT",
+                "name": "Central lobule",
+                "parent_structure_id": 645,
+                "children": [
+                    {
+                        "id": 976,
+                        "acronym": "CENT2",
+                        "name": "Lobule II",
+                        "parent_structure_id": 920,
+                        "children": [
+                            {
+                                "id": 10710,
+                                "acronym": "CENT2mo",
+                                "name": "Lobule II, molecular layer",
+                                "parent_structure_id": 976,
+                                "children": [],
+                            },
+                            {
+                                "id": 10709,
+                                "acronym": "CENT2pu",
+                                "name": "Lobule II, Purkinje layer",
+                                "parent_structure_id": 976,
+                                "children": [],
+                            },
+                            {
+                                "id": 10708,
+                                "acronym": "CENT2gr",
+                                "name": "Lobule II, granular layer",
+                                "parent_structure_id": 976,
+                                "children": [],
+                            },
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+
+
+@pytest.fixture
+def region_map():
+    return RegionMap.from_dict(get_hierarchy())
+
+
+def get_hierarchy_info():
+    return pd.DataFrame(
+        {
+            "brain_region": [
+                "Central lobule",
+                "Lobule II",
+                "Lobule II, granular layer",
+                "Lobule II, Purkinje layer",
+                "Lobule II, molecular layer",
+            ],
+            "child_id_set": [
+                {920, 976, 10708, 10709, 10710},
+                {976, 10708, 10709, 10710},
+                {10708},
+                {10709},
+                {10710},
+            ],
+        },
+        index=[920, 976, 10708, 10709, 10710],
+    )
+
+
+def test_get_hierarchy_info(region_map):
+    pdt.assert_frame_equal(
+        get_hierarchy_info(), tested.get_hierarchy_info(region_map, root="Central lobule")
+    )

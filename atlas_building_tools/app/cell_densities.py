@@ -34,6 +34,7 @@ from pathlib import Path
 import click
 import numpy as np
 import pandas as pd
+import yaml
 from voxcell import RegionMap, VoxelData  # type: ignore
 
 from atlas_building_tools.app.utils import (
@@ -53,6 +54,7 @@ from atlas_building_tools.densities.excel_reader import (
     read_homogenous_neuron_type_regions,
     read_measurements,
 )
+from atlas_building_tools.densities.fitting import linear_fitting
 from atlas_building_tools.densities.glia_densities import compute_glia_densities
 from atlas_building_tools.densities.inhibitory_neuron_density import (
     compute_inhibitory_neuron_density,
@@ -64,6 +66,8 @@ from atlas_building_tools.densities.measurement_to_density import (
 from atlas_building_tools.densities.mtype_densities import DensityProfileCollection
 
 DATA_PATH = Path(Path(__file__).parent, "data")
+HOMOGENOUS_REGIONS_PATH = DATA_PATH / "measurements" / "homogenous_regions"
+MARKERS_README_PATH = DATA_PATH / "markers" / "README.rst"
 MTYPES_README_PATH = DATA_PATH / "mtypes" / "README.rst"
 
 L = logging.getLogger(__name__)
@@ -345,7 +349,10 @@ def glia_cell_densities(
     "--neuron-density-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=("The path to the overall neuron density nrrd file."),
+    help=(
+        "The path to the overall neuron density nrrd file obtained as output of the command "
+        "`glia_cell_densities`."
+    ),
 )
 @click.option(
     "--inhibitory-neuron-counts-path",
@@ -718,8 +725,184 @@ def measurements_to_average_densities(
         neuron_density.raw,
         measurements_df,
     )
+
     remove_non_density_measurements(average_cell_densities_df)
+
     average_cell_densities_df.to_csv(
         output_path,
         index=False,
     )
+
+
+@app.command()
+@click.option(
+    "--hierarchy-path",
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help="Path to hierarchy.json or 1.json",
+)
+@click.option(
+    "--annotation-path",
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help=("Path to the whole mouse brain annotation file."),
+)
+@click.option(
+    "--neuron-density-path",
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help=(
+        "Path to the overall neuron volumetric density nrrd file obtained as output of the command "
+        "`glia-cell-densities`."
+    ),
+)
+@click.option(
+    "--gene-config-path",
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help=(
+        "Path to the gene markers configuration file. This yaml file contains the paths to the "
+        "gene marker volumes (nrrd files from AIBS) that will be used to estimate average cell "
+        "densities accross all AIBS brain regions: PV, SST, VIP and GAD67. See "
+        f"{MARKERS_README_PATH}."
+    ),
+)
+@click.option(
+    "--average-densities-path",
+    required=True,
+    help="Path to the average densities data frame, i.e., the output of measurement-to-density."
+    "The format of this CSV file is described in the main help section of compile-measurements. It"
+    " contains only measurements of type 'cell density'.",
+)
+@click.option(
+    "--homogenous-regions-path",
+    type=EXISTING_FILE_PATH,
+    required=False,
+    help=f"Optional path to the CSV file containing names of regions whose neurons are "
+    f"either all inhibitory or all excitatory. Defaults to {HOMOGENOUS_REGIONS_PATH}.",
+    default=HOMOGENOUS_REGIONS_PATH,
+)
+@click.option(
+    "--fitted-densities-output-path",
+    required=True,
+    help="Path where to write the data frame containing the average cell density of every region"
+    "found in the brain hierarchy (see --hierarchy-path option) for the cell types marked by the "
+    "gene markers listed in the gene configuration file (see --gene-config-path option). The output"
+    " file is a CSV file whose index is a list of region names and with two columns for each cell"
+    " type: <cell_type> and <cell_type>_standard_deviation. Cell types are derived from marker "
+    "names: <cell_type> = <marker>+.",
+)
+@click.option(
+    "--fitting-maps-output-path",
+    required=False,
+    help="Path to the json file containing the fitting coefficients and standard deviations"
+    "for each region group and each cell type.",
+)
+@log_args(L)
+def fit_average_densities(
+    hierarchy_path,
+    annotation_path,
+    neuron_density_path,
+    gene_config_path,
+    average_densities_path,
+    homogenous_regions_path,
+    fitted_densities_output_path,
+    fitting_maps_output_path,
+):  # pylint: disable=too-many-arguments, too-many-locals
+    """
+    Estimate average cell densities of brain regions in `hierarchy_path` for the cell types
+    marked by the markers listed in `gene_config_path`.
+
+    We perform a linear fitting based on average cell densities inferred from the scientific
+    literature (`average_densities_path`) to estimate average cell densities in regions where
+    no record is available.
+
+    In addition to records from the scientific literature, we consider as input of our fitting
+    the average densities of the brain regions where neurons are either all inhibitory or all
+    excitatory. These regions are listed in `homogenous_regions_path`. The volumetric density
+    `neuron_density_path` is used to compute the average density of inhibitory neurons (a.k.a
+    gad67+) in every homogenous region of type "inhibitory".
+
+    Our linear fitting of density values relies on the assumption that the average cell density
+    (number of cells per mm^3) of a cell type T in a brain region R depends linearily on the
+    average intensity of a gene marker of T. The conversion factor is a constant which depends only
+    on T and on which of the following three groups R belongs to:
+    - isocortex
+    - cerebellum
+    - the rest
+
+    (For each cell type T, there are hence three linear fittings.)
+
+    The cerebellum was singled out because of its very high cell densities wrt the rest of the
+    mouse brain. The isocortex was singled out because its layer densities and cell type
+    compositions are quite similar across its subregions.
+
+    Each fitted density value v of `fitted_densities_output_path` comes along with standard
+    deviation.
+
+    The standard deviations are computed differently depending on whether the output value is a
+    record from the scientific literature or it has been produced by applying the fitted linear
+    map to an average gene marker intensity - we call it a fitted value.
+    In the first case, the deviation is the standard deviation attached to the initial and unchanged
+    density in `average_densities_path`. In the second case the deviation equals the fitted value
+    times the standard deviation of the linear fitting.
+
+    Notes:
+    - 2D points for which the average marker intensity or the average cell density or is 0.0 are
+        filtered out before fitting.
+    - some regions can have NaN density values for one or more cell types because they are not
+        covered by the selected slices of the volumetric gene marker intensities.
+    """
+
+    annotation = VoxelData.load_nrrd(annotation_path)
+    neuron_density = VoxelData.load_nrrd(neuron_density_path)
+    region_map = RegionMap.load_json(hierarchy_path)
+    config = yaml.load(open(gene_config_path), Loader=yaml.FullLoader)
+
+    gene_voxeldata = {
+        gene: VoxelData.load_nrrd(path) for (gene, path) in config["inputGeneVolumePath"].items()
+    }
+    # Consistency check
+    voxel_data = [annotation, neuron_density]
+    voxel_data += list(gene_voxeldata.values())
+    assert_properties(voxel_data)
+
+    with open(config["realignedSlicesPath"], "r") as file_:
+        slices = json.load(file_)
+
+    with open(config["cellDensityStandardDeviationsPath"], "r") as file_:
+        cell_density_stddev = json.load(file_)
+        cell_density_stddev = {
+            # Use the AIBS name attribute as key (this is a unique identifier in 1.json)
+            # (Ex: former key "|root|Basic cell groups and regions|Cerebrum" -> new key: "Cerebrum")
+            region_name.split("|")[-1]: stddev
+            for (region_name, stddev) in cell_density_stddev.items()
+        }
+
+    gene_marker_volumes = {
+        gene: {
+            "intensity": gene_data.raw,
+            "slices": slices[config["sectionDataSetID"][gene]],  # list of integer slice indices
+        }
+        for (gene, gene_data) in gene_voxeldata.items()
+    }
+
+    average_densities_df = pd.read_csv(average_densities_path)
+    homogenous_regions_df = pd.read_csv(homogenous_regions_path)
+    fitted_densities_df, fitting_maps = linear_fitting(
+        region_map,
+        annotation.raw,
+        neuron_density.raw,
+        gene_marker_volumes,
+        average_densities_df,
+        homogenous_regions_df,
+        cell_density_stddev,
+    )
+
+    # Turn index into column so as to ease off the save and load operations on csv files
+    fitted_densities_df["brain_region"] = fitted_densities_df.index
+
+    fitted_densities_df.to_csv(fitted_densities_output_path, index=False)
+    if fitting_maps_output_path is not None:
+        with open(fitting_maps_output_path, mode="w+") as file_:
+            json.dump(fitting_maps, file_, indent=1, separators=(",", ": "))

@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING, Dict, Set
 
 import numpy as np  # type: ignore
+import pandas as pd
 import scipy.misc
 import scipy.ndimage
 from nptyping import NDArray  # type: ignore
@@ -307,7 +308,7 @@ def constrain_cell_counts_per_voxel(  # pylint: disable=too-many-arguments, too-
     return cell_counts
 
 
-def get_group_ids(region_map: "RegionMap") -> Dict[str, Set[int]]:
+def get_group_ids(region_map: "RegionMap", cleanup_rest: bool = False) -> Dict[str, Set[int]]:
     """
     Get AIBS structure ids for several region groups of interest.
 
@@ -317,6 +318,9 @@ def get_group_ids(region_map: "RegionMap") -> Dict[str, Set[int]]:
     Args:
         region_map: object to navigate the mouse brain regions hierarchy
             (instantied from AIBS 1.json).
+        cleanup_rest: (Optional) If True, the id of any ascendant region of the Cerebellum and
+            Isocortex groups are removed from the ids of the Rest group. This makes sure that
+            the set of ids of the Rest group is closed under taking descendants.
 
     Returns:
         A dictionary whose keys are region group names and whose values are
@@ -326,13 +330,13 @@ def get_group_ids(region_map: "RegionMap") -> Dict[str, Set[int]]:
         "Cerebellum", attr="name", with_descendants=True
     ) | region_map.find("arbor vitae", attr="name", with_descendants=True)
     isocortex_group_ids = (
-        region_map.find("Isocortex", attr="acronym", with_descendants=True)
+        region_map.find("Isocortex", attr="name", with_descendants=True)
         | region_map.find("Entorhinal area", attr="name", with_descendants=True)
         | region_map.find("Piriform area", attr="name", with_descendants=True)
     )
     purkinje_layer_ids = region_map.find("@.*Purkinje layer", attr="name", with_descendants=True)
     fiber_tracts_ids = (
-        region_map.find("fiber tracts", attr="acronym", with_descendants=True)
+        region_map.find("fiber tracts", attr="name", with_descendants=True)
         | region_map.find("grooves", attr="name", with_descendants=True)
         | region_map.find("ventricular systems", attr="name", with_descendants=True)
         | region_map.find("Basic cell groups and regions", attr="name")
@@ -340,6 +344,16 @@ def get_group_ids(region_map: "RegionMap") -> Dict[str, Set[int]]:
     )
     molecular_layer_ids = region_map.find("@.*molecular layer", attr="name", with_descendants=True)
     cerebellar_cortex_ids = region_map.find("Cerebellar cortex", attr="name", with_descendants=True)
+    rest_ids = region_map.find("root", attr="name", with_descendants=True)
+    rest_ids -= cerebellum_group_ids | isocortex_group_ids
+
+    if cleanup_rest:
+        # Make the Rest group stable under taking descendants
+        isocortex_id = region_map.find("Isocortex", attr="name").pop()
+        cerebellum_id = region_map.find("Cerebellum", attr="name").pop()
+        ascendant_ids = set(region_map.get(isocortex_id, attr="id", with_ascendants=True))
+        ascendant_ids |= set(region_map.get(cerebellum_id, attr="id", with_ascendants=True))
+        rest_ids -= ascendant_ids
 
     return {
         "Cerebellum group": cerebellum_group_ids,
@@ -348,6 +362,31 @@ def get_group_ids(region_map: "RegionMap") -> Dict[str, Set[int]]:
         "Purkinje layer": purkinje_layer_ids,
         "Molecular layer": molecular_layer_ids,
         "Cerebellar cortex": cerebellar_cortex_ids,
+        "Rest": rest_ids,
+    }
+
+
+def get_group_names(region_map: "RegionMap", cleanup_rest: bool = False) -> Dict[str, Set[str]]:
+    """
+    Get AIBS names for regions in several region groups of interest.
+
+    Args:
+        region_map: object to navigate the mouse brain regions hierarchy
+            (instantied from AIBS 1.json).
+        cleanup_rest: (Optional) If True, the name of any ascendant region of the Cerebellum and
+            Isocortex groups are removed from the names of the Rest group. This makes sure that
+            the set of names of the Rest group is closed under taking descendants.
+
+    Returns:
+        A dictionary whose keys are region group names and whose values are
+        sets of brain region names.
+    """
+
+    group_ids = get_group_ids(region_map, cleanup_rest)
+
+    return {
+        group_name: {region_map.get(id_, attr="name") for id_ in group_ids[group_name]}
+        for group_name in ["Cerebellum group", "Isocortex group", "Rest"]
     }
 
 
@@ -371,16 +410,11 @@ def get_region_masks(
         the boolean masks of these groups. Each boolean array is of shape (W, H, D) and
         encodes which voxels belong to the corresponding group.
     """
-    region_masks = {}
-    region_masks["Cerebellum group"] = np.isin(annotation, list(group_ids["Cerebellum group"]))
-    region_masks["Isocortex group"] = np.isin(annotation, list(group_ids["Isocortex group"]))
-    region_masks["Rest"] = np.isin(
-        annotation,
-        list({0} | group_ids["Cerebellum group"] | group_ids["Isocortex group"]),
-        invert=True,
-    )
 
-    return region_masks
+    return {
+        group_name: np.isin(annotation, list(group_ids[group_name]))
+        for group_name in ["Cerebellum group", "Isocortex group", "Rest"]
+    }
 
 
 def get_aibs_region_names(region_map: "RegionMap") -> Set[str]:
@@ -401,3 +435,37 @@ def get_aibs_region_names(region_map: "RegionMap") -> Set[str]:
     )
 
     return {region_map.get(id_, "name") for id_ in aibs_region_ids}
+
+
+def get_hierarchy_info(
+    region_map: "RegionMap", root: str = "Basic cell groups and regions"
+) -> "pd.DataFrame":
+    """
+    Returns the name and the child_id_set of each region that can be found by `region_map`.
+
+    Args:
+        region_map: RegionMap object to navigate the brain regions hierarchy.
+        root: (Optional) root of the hierarchy tree used by `region_map`. Defaults to
+            "Basic cell groups and regions" which corresponds to the AIBS whole mouse
+            brain in AIBS 1.json.
+
+    Returns:
+        a dataframe with index a list if region ids and two columns (values are fake)
+                 child_id_set    brain region
+            1    {1, 3}          "Cerebellum"
+            3    {1, 3, 100}     "Isocortex"
+                 ...             ...
+        Tne index consists in the sorted list of the identifiers of every region recorded in
+        `region_map` under root. The column `child_id_set` holds the list the identifiers the
+        children of every region, including the region itself. `brain region` is the list of every
+        region name.
+
+    """
+    region_ids = list(region_map.find(root, attr="name", with_descendants=True))
+    region_ids.sort()
+    child_id_sets = [region_map.find(id_, attr="id", with_descendants=True) for id_ in region_ids]
+    region_names = [region_map.get(id_, attr="name") for id_ in region_ids]
+
+    return pd.DataFrame(
+        {"brain_region": region_names, "child_id_set": child_id_sets}, index=region_ids
+    )
