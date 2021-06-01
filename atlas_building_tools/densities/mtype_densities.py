@@ -41,6 +41,8 @@ from nptyping import NDArray  # type: ignore
 from tqdm import tqdm
 from voxcell import VoxelData
 
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
+
 VoxelIndices = Tuple[NDArray[int], NDArray[int], NDArray[int]]
 logging.basicConfig(level=logging.INFO)
 logging.captureWarnings(True)
@@ -164,7 +166,8 @@ class DensityProfileCollection:
             for layer in self.layer_slices_map
         }
         for _, row in self.mtype_to_profile_map.iterrows():
-            for layer_index in row.layer.split(","):  # handle the special case of layer 2/3: '2,3'
+            # To handle the special case of layer 2/3, we need to split "2,3"
+            for layer_index in str(row.layer).split(","):
                 layer = "layer_" + str(layer_index)
                 range_ = self.layer_slices_map[layer]
                 if row.synapse_class == "excitatory":
@@ -269,8 +272,10 @@ class DensityProfileCollection:
 
         return cls(mtype_to_profile_map, layer_slices_map, density_profiles)
 
-    @staticmethod
-    def load_placement_hints(placement_hints_paths: Dict[str, str]) -> Dict[str, "VoxelData"]:
+    def load_placement_hints(
+        self,
+        placement_hints_paths: Dict[str, str],
+    ) -> Dict[str, "VoxelData"]:
         """
         Load placement hints nrrd files.
 
@@ -292,7 +297,20 @@ class DensityProfileCollection:
             corresponding layer placement hints array (float array of shape (W, H, D, 2) if
             (W, H, D) is the shape of the underlying annotated volume).
 
+        Raises:
+            AtlasBuildingErrors if the keys of `placement_hints_paths` do not coincide with
+            with those of `self.layer_slices` or with the extra "y" key.
+
         """
+        layer_keys = sorted(list(self.layer_slices_map))
+        layer_keys.append("y")
+        for ph_name in placement_hints_paths.keys():
+            if ph_name not in layer_keys:
+                raise AtlasBuildingToolsError(
+                    f"Got unexpected key in placement_hints_paths: {ph_name}.\n"
+                    f"Expected keys: {layer_keys}.\n"
+                )
+
         L.info("Loading placement hints nrrd files ...")
         placement_hints = {
             name: VoxelData.load_nrrd(filepath).raw

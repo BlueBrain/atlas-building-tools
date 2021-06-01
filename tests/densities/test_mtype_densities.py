@@ -7,10 +7,12 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pandas.testing as pdt
+import pytest
 import yaml
 from voxcell import VoxelData  # type: ignore
 
 import atlas_building_tools.densities.mtype_densities as tested
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 TESTS_PATH = Path(__file__).parent.parent
 DATA_PATH = TESTS_PATH / "densities" / "data"
@@ -27,9 +29,9 @@ def create_placement_hints():
     }
 
 
-def create_density_profile_collection():
+def create_density_profile_collection(mapping_path="mapping.tsv"):
     return tested.DensityProfileCollection.load(
-        DATA_PATH / "meta" / "mapping.tsv",
+        DATA_PATH / "meta" / mapping_path,
         DATA_PATH / "meta" / "layers.tsv",
         DATA_PATH / "mtypes",
     )
@@ -101,15 +103,9 @@ def create_expected_cell_densities():
     }
 
 
-def test_density_profile_collection_loading():
-    density_profile_collection = None
-    with warnings.catch_warnings(record=True) as w:
-        density_profile_collection = create_density_profile_collection()
-
-        msg = str(w[0].message)
-        assert "No inhibitory cells assigned to slice 0 of layer_3" in msg
-
-    expected_profile_data = {
+@pytest.fixture
+def expected_profile_data():
+    return {
         "layer_2": {
             "inhibitory": pd.DataFrame({"L23_BP": [1.0, 1.0]}).rename(index={0: 3, 1: 4}),
             "excitatory": pd.DataFrame(
@@ -138,6 +134,33 @@ def test_density_profile_collection_loading():
         },
     }
 
+
+def test_density_profile_collection_loading(expected_profile_data):
+    density_profile_collection = None
+    with warnings.catch_warnings(record=True) as w:
+        density_profile_collection = create_density_profile_collection()
+        msg = str(w[0].message)
+        assert "No inhibitory cells assigned to slice 0 of layer_3" in msg
+
+    for layer in ["layer_2", "layer_3"]:
+        for synapse_class in ["excitatory", "inhibitory"]:
+            pdt.assert_frame_equal(
+                density_profile_collection.profile_data[layer][synapse_class],
+                expected_profile_data[layer][synapse_class],
+            )
+
+
+def test_density_profile_collection_loading_exc_only(expected_profile_data):
+    density_profile_collection = None
+    with warnings.catch_warnings(record=True) as w:
+        density_profile_collection = create_density_profile_collection(
+            mapping_path="mapping_exc_only.tsv"
+        )
+        assert not w
+
+    for layer in ["layer_2", "layer_3"]:
+        expected_profile_data[layer]["inhibitory"] = pd.DataFrame()
+
     for layer in ["layer_2", "layer_3"]:
         for synapse_class in ["excitatory", "inhibitory"]:
             pdt.assert_frame_equal(
@@ -147,17 +170,27 @@ def test_density_profile_collection_loading():
 
 
 def test_load_placement_hints():
+    def _save_ph_to_disk(placement_hints):
+        for ph_data, ph_path in zip(placement_hints.values(), placement_hints_paths.values()):
+            VoxelData(ph_data, voxel_dimensions=[1.0] * 3).save_nrrd(ph_path)
+
     with tempfile.TemporaryDirectory() as tempdir:
         placement_hints = create_placement_hints()
         placement_hints_paths = {
             name: str(Path(tempdir, f"[PH]{name}.nrrd")) for name in placement_hints
         }
-        for ph_data, ph_path in zip(placement_hints.values(), placement_hints_paths.values()):
-            VoxelData(ph_data, voxel_dimensions=[1.0] * 3).save_nrrd(ph_path)
+        _save_ph_to_disk(placement_hints)
 
-        loaded = tested.DensityProfileCollection.load_placement_hints(placement_hints_paths)
+        density_profile_collection = create_density_profile_collection()
+        loaded = density_profile_collection.load_placement_hints(placement_hints_paths)
         for actual, expected in zip(loaded.values(), placement_hints.values()):
             npt.assert_array_equal(actual, expected)
+
+        placement_hints_paths["2"] = placement_hints_paths["layer_2"]
+        del placement_hints_paths["layer_2"]
+        _save_ph_to_disk(placement_hints)
+        with pytest.raises(AtlasBuildingToolsError):
+            density_profile_collection.load_placement_hints(placement_hints_paths)
 
 
 @patch(

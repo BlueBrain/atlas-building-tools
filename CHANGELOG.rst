@@ -3,6 +3,7 @@ Changelog
 
 Version 0.1.2
 --------------
+- mtype densities: supports mapping.tsv file with no inhibitory synapse class [`NSETM-1487`_]
 - Adds a CLI which turns non-density measurements of measurements.csv into average cell densities (number of cells per mm^3) [`NSETM-1475`_]
 - Edits measurements.csv: adds missing unit for "cell count per slice" measurements and fix comments of "volume" measurements [`NSETM-1475`_]
 - Renames the columns of every measurement CSV files: spaces are replaced by underscores (the same applies to key variables) [`NSETM-1475`_]
@@ -38,6 +39,7 @@ Version 0.1.0 (2021-04-27)
 - CLI to turn the excel measurement compilation gaba_papers.xlsx of D. Rodarie into a CSV file.
 
 
+.. _`NSETM-1487`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1487
 .. _`NSETM-1475`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1475
 .. _`NSETM-1454`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1354
 .. _`NSETM-1343`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1343

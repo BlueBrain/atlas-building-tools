@@ -34,6 +34,22 @@ This python project depends on:
 * the BBP C++ toolkits Regiodesics_ and Ultraliser_
 * the BBP python-C++ bindings cgal-pybind_
 
+To install `atlas-buidling-tools` on BB5, run the following command:
+.. code-block:: bash
+
+    module load unstable py-atlas-building-tools
+
+The remaining installation instructions are only relevant if you want to install `atlas-buidling-tools` on BB5
+with its latest sources. Prior to running
+
+.. code-block:: bash
+
+    git clone ssh://${USERNAME}@bbpcode.epfl.ch/nse/atlas-building-tools
+    cd atlas-building-tools
+    pip install -e .
+
+you need to install the dependencies listed below.
+
 Regiodesics
 -----------
 

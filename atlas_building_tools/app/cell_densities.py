@@ -64,6 +64,7 @@ from atlas_building_tools.densities.measurement_to_density import (
 from atlas_building_tools.densities.mtype_densities import DensityProfileCollection
 
 DATA_PATH = Path(Path(__file__).parent, "data")
+MTYPES_README_PATH = DATA_PATH / "mtypes" / "README.rst"
 
 L = logging.getLogger(__name__)
 
@@ -450,7 +451,9 @@ def inhibitory_and_excitatory_neuron_densities(
 @click.option(
     "--placement-hints-config-path",
     type=EXISTING_FILE_PATH,
-    help="Path to the placement hints config file (.yaml)",
+    help="Path to the placement hints config file (.yaml)."
+    "The keys are required to be either 'y' or of the form 'layer_<layer_index>' where "
+    f"layer_index is a 1-based index. See {MTYPES_README_PATH} for an example.",
 )
 @click.option(
     "--layer-slices-path",
