@@ -3,7 +3,10 @@ Changelog
 
 Version 0.1.2
 --------------
-
+- Stores metadata json files for mouse isocortex, CA1 and thalamus in app/data/metadata [`NSETM-1474`_]
+- Uses metadata json files in app/data/metadata as default files for the computation of placement hints [`NSETM-1474`_]
+- Removes the proportion of voxels with the so-called "obtuse angle" issue from the distance report generated after distance interpolation [`NSETM-1474`_]
+- mtype densities: supports mapping.tsv file with no inhibitory synapse class [`NSETM-1487`_]
 - Adds CLI which estimates average cell densities using a linear fitting on a point cloud (average marker intensity, average cell density) [`NSETM-1475`_]
 - Adds a CLI which turns non-density measurements of measurements.csv into average cell densities (number of cells per mm^3) [`NSETM-1475`_]
 - Edits measurements.csv: adds missing unit for "cell count per slice" measurements and fix comments of "volume" measurements [`NSETM-1475`_]
@@ -43,6 +46,7 @@ Version 0.1.0 (2021-04-27)
 
 .. _`NSETM-1487`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1487
 .. _`NSETM-1475`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1475
+.. _`NSETM-1474`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1474
 .. _`NSETM-1454`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1354
 .. _`NSETM-1343`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1343
 .. _`NSETM-1463`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1463

@@ -13,16 +13,16 @@ from atlas_building_tools.distances.distances_to_meshes import (
 
 if TYPE_CHECKING:  # pragma: no cover
     # pylint: disable=ungrouped-imports
-    from atlas_building_tools.placement_hints.layered_atlas import LayeredAtlas
+    from atlas_building_tools.placement_hints.layered_atlas import AbstractLayeredAtlas
 
 
-DistanceInfo = Dict[str, Union["LayeredAtlas", NDArray[float], NDArray[bool]]]
+DistanceInfo = Dict[str, Union["AbstractLayeredAtlas", NDArray[float], NDArray[bool]]]
 DistancesReport = Dict[str, float]
 
 
 # pylint: disable=too-many-arguments, too-many-locals
 def compute_placement_hints(
-    atlas: "LayeredAtlas",
+    atlas: "AbstractLayeredAtlas",
     direction_vectors: NDArray[float],
     max_thicknesses: Optional[List[float]] = None,
     flip_direction_vectors: bool = False,
@@ -76,8 +76,8 @@ def compute_placement_hints(
     tolerance = 2.0 * atlas.region.voxel_dimensions[0]
     distances_report, problematic_mask = report_distance_problems(
         distances_to_meshes,
-        distances_info["obtuse_angles"],
         atlas.volume,
+        distances_info["obtuse_angles"],
         max_thicknesses=max_thicknesses,
         tolerance=tolerance,
     )
@@ -89,7 +89,6 @@ def compute_placement_hints(
     )
     (interpolated_distances_report, filtered_problematic_mask,) = report_distance_problems(
         distances_to_meshes,
-        distances_info["obtuse_angles"],
         atlas.volume,
         max_thicknesses=max_thicknesses,
     )

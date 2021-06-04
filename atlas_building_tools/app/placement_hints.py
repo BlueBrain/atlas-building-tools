@@ -20,40 +20,45 @@ from atlas_building_tools.placement_hints.layered_atlas import (
     save_problematic_voxel_mask,
 )
 from atlas_building_tools.placement_hints.utils import save_placement_hints
+from atlas_building_tools.utils import assert_metadata_content
 
 L = logging.getLogger(__name__)
+METADATA_PATH = Path(Path(__file__).parent, "data", "metadata")
 
 
 def _create_layered_atlas(
-    region_acronym: str,
     annotation_path: str,
     hierarchy_path: str,
-    layer_regexps: List[str],
+    metadata_path: str,
 ):
     """
     Create the LayeredAtlas of the region `region_acronym`
 
     Args:
-        region_acronym: acronym of the region for which the computation is requested.
-            Examples: 'CA1', 'Isocortex'.
         annotation_path: path to the whole mouse brain annotation nrrd file.
         hierarchy_path: path to hierarchy.json.
-        layer_regexps: list of regular expressions defining the layers of `region_acronym`.
+        metadata_path: path to the metadata json file of the brain region of interest.
 
     Returns:
         A LayeredAtlas instance
     """
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
     region_map = voxcell.RegionMap.load_json(hierarchy_path)
+    with open(metadata_path, "r") as file_:
+        metadata = json.load(file_)
 
-    return LayeredAtlas(region_acronym, annotation, region_map, layer_regexps)
+    assert_metadata_content(metadata)
+
+    if metadata["region"]["name"] == "Thalamus":
+        return ThalamusAtlas(annotation, region_map, metadata)
+
+    return LayeredAtlas(annotation, region_map, metadata)
 
 
 def _placement_hints(  # pylint: disable=too-many-locals
     atlas: "LayeredAtlas",
     direction_vectors_path: str,
     output_dir: str,
-    placement_hint_names: List[str],
     max_thicknesses: Optional[List[float]] = None,
     flip_direction_vectors: bool = False,
     has_hemispheres: bool = False,
@@ -66,7 +71,6 @@ def _placement_hints(  # pylint: disable=too-many-locals
         direction_vectors_path: path to the `region_arconym` direction vectors file, e.g.,
             direction_vectors.nrrd.
         output_dir: path to the output directory.
-        placement_hint_names: list of names to be used when saving the layer placement hints.
         max_thicknesses: (optional) thicknesses of `region_acronym` layers.
             Defaults to None, i.e., there will be no validity check against desired thickness
             bounds. Otherwise layer thicknesses inferred from distance computations are checked
@@ -100,7 +104,7 @@ def _placement_hints(  # pylint: disable=too-many-locals
         distances_info["distances_to_layer_meshes"],
         output_dir,
         atlas.region,
-        placement_hint_names,
+        atlas.metadata["layers"]["names"],
     )
     # The problematic voxel mask is a 3D uint8 mask of the voxels for which distances
     # computation has been troublesome.
@@ -147,6 +151,16 @@ def app(verbose):
     help=("Path to hierarchy.json."),
 )
 @click.option(
+    "--metadata-path",
+    type=EXISTING_FILE_PATH,
+    required=False,
+    help=(
+        "(Optional) Path to the metadata json file. Defaults to "
+        f"{str(METADATA_PATH / 'ca1_metadata.json')}"
+    ),
+    default=str(METADATA_PATH / "ca1_metadata.json"),
+)
+@click.option(
     "--direction-vectors-path",
     type=EXISTING_FILE_PATH,
     required=True,
@@ -158,26 +172,27 @@ def app(verbose):
     help="path of the directory to write. It will be created if it doesn't exist",
 )
 @log_args(L)
-def ca1(annotation_path, hierarchy_path, direction_vectors_path, output_dir):
+def ca1(annotation_path, hierarchy_path, metadata_path, direction_vectors_path, output_dir):
     """Generate and save the placement hints for the CA1 region of the mouse hippocampus
 
-    Placement hints are saved under the names:\n
+    Placement hints are saved under the names specified in ca1_metadata.json.
+    Default to:\n
     * '[PH]y.nrrd\n
     * '[PH]CA1so.nrrd', '[PH]CA1sp.nrrd', '[PH]CA1sr.nrrd' and '[PH]CA1slm.nrrd'
 
     A report and an nrrd volume on problematic distance computations are generated
     in `output_dir` under the names:
     * distance_report.json\n
-    * CA1_problematic_voxel_mask.nrrd (mask of the voxels for which the computed
-    placement hints cannot be trusted).
+    * <CA1>_problematic_voxel_mask.nrrd (mask of the voxels for which the computed
+    placement hints cannot be trusted).  <CA1> is the region name specified in
+    ca1_isocortex.json. Defaults to "CA1".
     """
-    layer_names = ["CA1so", "CA1sp", "CA1sr", "CA1slm"]
-    atlas = _create_layered_atlas("CA1", annotation_path, hierarchy_path, layer_names)
+
+    atlas = _create_layered_atlas(annotation_path, hierarchy_path, metadata_path)
     _placement_hints(
         atlas,
         direction_vectors_path,
         output_dir,
-        layer_names,
         flip_direction_vectors=True,
         has_hemispheres=False,
     )
@@ -197,6 +212,16 @@ def ca1(annotation_path, hierarchy_path, direction_vectors_path, output_dir):
     help=("Path to hierarchy.json."),
 )
 @click.option(
+    "--metadata-path",
+    type=EXISTING_FILE_PATH,
+    required=False,
+    help=(
+        "(Optional) Path to the metadata json file. Defaults to "
+        f"{str(METADATA_PATH / 'isocortex_metadata.json')}"
+    ),
+    default=str(METADATA_PATH / "isocortex_metadata.json"),
+)
+@click.option(
     "--direction-vectors-path",
     type=EXISTING_FILE_PATH,
     required=True,
@@ -208,31 +233,29 @@ def ca1(annotation_path, hierarchy_path, direction_vectors_path, output_dir):
     help="path of the directory to write. It will be created if it doesn't exist",
 )
 @log_args(L)
-def isocortex(annotation_path, hierarchy_path, direction_vectors_path, output_dir):
+def isocortex(annotation_path, hierarchy_path, metadata_path, direction_vectors_path, output_dir):
     """Generate and save the placement hints of the mouse isocortex
 
     This command assumes that the layer 2/3 of the isocortex has been split into
     layer 2 and layer 3.
 
-    Placement hints are saved under the names:\n
+    Placement hints are saved under the names specified in app/data/isocortex_metadata.json.
+    Default to:\n
     * '[PH]y.nrrd\n
     * '[PH]layer_1.nrrd', ..., [PH]layer_6.nrrd'
 
     A report and an nrrd volume on problematic distance computations are generated
     in `output_dir` under the names:
     * distance_report.json\n
-    * Isocortex_problematic_voxel_mask.nrrd (mask of the voxels for which the computed
-    placement hints cannot be trusted).
+    * <Isocortex>_problematic_voxel_mask.nrrd (mask of the voxels for which the computed
+    placement hints cannot be trusted). <Isocortex> is the region name specified in
+    isocortex_metadata.json. Defaults to "Isocortex".
     """
-
-    atlas = _create_layered_atlas(
-        "Isocortex", annotation_path, hierarchy_path, ["@.*{}[ab]?$".format(i) for i in range(1, 7)]
-    )
+    atlas = _create_layered_atlas(annotation_path, hierarchy_path, metadata_path)
     _placement_hints(
         atlas,
         direction_vectors_path,
         output_dir,
-        [f"layer_{i}" for i in range(1, 7)],
         # Layer thicknesses from J. Defilipe 2017 (unpublished), see Section 5.1.1.4
         # of the release report "Neocortex Tissue Reconstruction",
         # https://github.com/BlueBrain/ncx_release_report.git
@@ -255,6 +278,16 @@ def isocortex(annotation_path, hierarchy_path, direction_vectors_path, output_di
     help=("Path to hierarchy.json."),
 )
 @click.option(
+    "--metadata-path",
+    type=EXISTING_FILE_PATH,
+    required=False,
+    help=(
+        "(Optional) Path to the metadata json file. Defaults to "
+        f"{str(METADATA_PATH / 'thalamus_metadata.json')}"
+    ),
+    default=str(METADATA_PATH / "thalamus_metadata.json"),
+)
+@click.option(
     "--direction-vectors-path",
     type=EXISTING_FILE_PATH,
     required=True,
@@ -266,31 +299,30 @@ def isocortex(annotation_path, hierarchy_path, direction_vectors_path, output_di
     help="path of the directory to write. It will be created if it doesn't exist.",
 )
 @log_args(L)
-def thalamus(annotation_path, hierarchy_path, direction_vectors_path, output_dir):
+def thalamus(annotation_path, hierarchy_path, metadata_path, direction_vectors_path, output_dir):
     """Generate and save the placement hints of the mouse thalamus
 
-    Placement hints are saved under the names:\n
+    Placement hints are saved under the names sepecified in app/metadata/thalamus_metadata.json.
+    Default to:\n
     * '[PH]y.nrrd\n
     * '[PH]Rt.nrrd', '[PH]VPL.nrrd'
 
     A report and an nrrd volume on problematic distance computations are generated
     in `output_dir` under the names:\n
     * distance_report.json\n
-    * thalamus_problematic_voxel_mask.nrrd (mask of the voxels for which the computed
-    placement hints cannot be trusted).
+    * <Thalamus>_problematic_voxel_mask.nrrd (mask of the voxels for which the computed
+    placement hints cannot be trusted).  <Thalamus> is the region name specified in
+    thalamus_metadata.json. Defaults to "Thalamus".
 
     The annotation file can contain the thalamus or a superset.
     For the algorithm to work properly, some space should separate the boundary
     of the thalamus from the boundary of its enclosing array.
     """
-    annotation = voxcell.VoxelData.load_nrrd(annotation_path)
-    region_map = voxcell.RegionMap.load_json(hierarchy_path)
-    atlas = ThalamusAtlas("TH", annotation, region_map)  # TH = AIBS acronym for thalamus
+    atlas = _create_layered_atlas(annotation_path, hierarchy_path, metadata_path)
+
     _placement_hints(
         atlas,
         direction_vectors_path,
         output_dir,
-        # See discussion in https://bbpteam.epfl.ch/project/issues/browse/NSETM-1433 for layer names
-        ["RT", "THnotRT"],
         has_hemispheres=True,
     )

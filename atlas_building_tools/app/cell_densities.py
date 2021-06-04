@@ -34,7 +34,7 @@ from pathlib import Path
 import click
 import numpy as np
 import pandas as pd
-import yaml
+import yaml  # type: ignore
 from voxcell import RegionMap, VoxelData  # type: ignore
 
 from atlas_building_tools.app.utils import (

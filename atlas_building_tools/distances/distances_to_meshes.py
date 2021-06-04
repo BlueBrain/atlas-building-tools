@@ -411,8 +411,8 @@ def _handle_distance_inconsistencies(
 
 def report_distance_problems(
     distances: NDArray[float],
-    obtuse_intersection: NDArray[bool],
     layered_volume: NDArray[int],
+    obtuse_intersection: Optional[NDArray[bool]] = None,
     max_thicknesses: Optional[NDArray[float]] = None,
     tolerance: float = 0.0,
 ) -> Tuple[Dict[str, float], NDArray[bool]]:
@@ -429,12 +429,11 @@ def report_distance_problems(
     Args:
         distances: the distances of each voxel to each boundary,
             array of shape (number of distances, length, width, height).
-        obtuse_intersection: mask of the voxels issuing
-            a ray that intersects with some boundary making an obtuse angle
-            with the boundary normal vector.
         layered_volume: array whose voxels are labelled by integers encoding layers
             (e.g., 1, 2, 3, 4, 5 and 6 are the integers used to label the 6 layers of the mouse
             isocortex).
+        obtuse_intersection (Optional): mask of the voxels issuing a ray that intersects with some
+            boundary making an obtuse angle with the boundary normal vector. Defaults to None.
         max_thicknesses: (Optional) 1D float array, the maximum expected thickness for each layer.
             Defaults to None.
         tolerance: (Optional) tolerance of the error with respect to thickness.
@@ -448,10 +447,11 @@ def report_distance_problems(
     """
     report: Dict[str, float] = {}
     region_mask = layered_volume != 0
-    report[
-        "Proportion of voxels whose rays make an obtuse angle "
-        "with the mesh normal at the intersection point"
-    ] = float(np.mean(obtuse_intersection[region_mask]))
+    if obtuse_intersection is not None:
+        report[
+            "Proportion of voxels whose rays make an obtuse angle "
+            "with the mesh normal at the intersection point"
+        ] = float(np.mean(obtuse_intersection[region_mask]))
 
     too_thick = None
     if max_thicknesses is not None:
@@ -461,10 +461,9 @@ def report_distance_problems(
             "(NaN distances are ignored)"
         ] = float(np.mean(too_thick[region_mask]))
 
-    problematic_volume = np.logical_or(
-        _handle_nan_distances(distances, region_mask, report),
-        obtuse_intersection,
-    )
+    problematic_volume = _handle_nan_distances(distances, region_mask, report)
+    if obtuse_intersection is not None:
+        problematic_volume = np.logical_or(problematic_volume, obtuse_intersection)
 
     problematic_volume = np.logical_or(
         problematic_volume,

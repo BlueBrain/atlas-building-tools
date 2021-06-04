@@ -8,7 +8,7 @@ import numpy.testing as npt
 import pandas as pd
 import pandas.testing as pdt
 import pytest
-import yaml
+import yaml  # type: ignore
 from voxcell import VoxelData  # type: ignore
 
 import atlas_building_tools.densities.mtype_densities as tested

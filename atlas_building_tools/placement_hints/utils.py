@@ -3,7 +3,7 @@ Utility functions for the computation of placement hints.
 """
 import logging
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Tuple, Union
 
 import numpy as np  # type: ignore
 import trimesh  # type: ignore
@@ -15,7 +15,7 @@ from scipy.ndimage import correlate
 # pylint: disable=E0611
 from scipy.spatial import ConvexHull
 
-from atlas_building_tools.utils import get_region_mask, is_obtuse_angle
+from atlas_building_tools.utils import is_obtuse_angle
 
 logging.basicConfig(level=logging.INFO)
 L = logging.getLogger(__name__)
@@ -33,38 +33,6 @@ def centroid_outfacing_mesh(mesh: trimesh.Trimesh) -> trimesh.Trimesh:
     away_faces = mesh.faces[point_away_from_centroid]
 
     return trimesh.Trimesh(vertices=mesh.vertices, faces=away_faces)
-
-
-def layers_volume(
-    annotation: NDArray[int],
-    region_map: Union[str, dict, "voxcell.RegionMap"],
-    layers: List[str],
-    region: Optional[Region] = "Isocortex",
-) -> NDArray[int]:
-    """
-    Labels a 3D volume using the indices of its `layers`.
-
-    Arguments:
-        annotation: whole brain annotation data.
-        region_map: path to hierachy.json, dict instantiated from the latter
-             or a RegionMap object.
-        layers: the list of layer acronyms (or regexp)
-        region: region to restrict to.
-
-    Returns:
-        A 3D volume whose labels are the indices of `layers`
-        augmented by 1.
-    """
-    if isinstance(region, str):
-        region = get_region_mask(region, annotation, region_map)
-    if isinstance(region, voxcell.VoxelData):
-        region = region.raw
-
-    result = 0
-    for index, layer in enumerate(layers, 1):
-        result += index * np.logical_and(get_region_mask(layer, annotation, region_map), region)
-
-    return result
 
 
 def save_placement_hints(

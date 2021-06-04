@@ -1,6 +1,7 @@
 """
 Unit tests for the layered_atlas module
 """
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -18,6 +19,9 @@ from atlas_building_tools.placement_hints.layered_atlas import (  # type: ignore
 )
 from tests.placement_hints.mocking_tools import IsocortexMock, ThalamusMock
 
+TEST_PATH = Path(Path(__file__).parent.parent)
+METADATA_PATH = TEST_PATH.parent / "atlas_building_tools" / "app" / "data" / "metadata"
+
 
 class Test_Layered_Atlas(unittest.TestCase):
     isocortex_mock: Optional[IsocortexMock] = None
@@ -28,11 +32,11 @@ class Test_Layered_Atlas(unittest.TestCase):
         cls.isocortex_mock = IsocortexMock(
             padding=20, layer_thickness=15, x_thickness=35, z_thickness=25
         )
+        with open(METADATA_PATH / "isocortex_metadata.json", "r") as file_:
+            metadata = json.load(file_)
+
         cls.layered_atlas = tested.LayeredAtlas(
-            "Isocortex",
-            cls.isocortex_mock.annotation,
-            cls.isocortex_mock.region_map,
-            ["@.*{}[ab]?$".format(i) for i in range(1, 7)],
+            cls.isocortex_mock.annotation, cls.isocortex_mock.region_map, metadata
         )
 
     def test_region(self):
@@ -119,10 +123,10 @@ class Test_Thalamus_Atlas(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.thalamus_mock = ThalamusMock(padding=20, shape=(50, 50, 50), layer_thickness_ratio=0.2)
+        with open(METADATA_PATH / "thalamus_metadata.json", "r") as file_:
+            metadata = json.load(file_)
         cls.thalamus_atlas = tested.ThalamusAtlas(
-            "TH",
-            cls.thalamus_mock.annotation,
-            cls.thalamus_mock.region_map,
+            cls.thalamus_mock.annotation, cls.thalamus_mock.region_map, metadata
         )
 
     def test_create_layered_volume(self):

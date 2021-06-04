@@ -8,7 +8,7 @@ import logging
 import click
 import pandas as pd
 import voxcell  # type: ignore
-import yaml
+import yaml  # type: ignore
 
 from atlas_building_tools.app.utils import EXISTING_FILE_PATH, log_args, set_verbose
 from atlas_building_tools.combination import annotations_combinator, markers_combinator

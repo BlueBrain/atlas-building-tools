@@ -6,7 +6,7 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pandas.testing as pdt
-import yaml
+import yaml  # type: ignore
 from click.testing import CliRunner
 from voxcell import VoxelData  # type: ignore
 

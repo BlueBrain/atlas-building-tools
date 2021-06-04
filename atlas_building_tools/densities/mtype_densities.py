@@ -36,7 +36,7 @@ from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import yaml
+import yaml  # type: ignore
 from nptyping import NDArray  # type: ignore
 from tqdm import tqdm
 from voxcell import VoxelData

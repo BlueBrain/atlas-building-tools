@@ -25,9 +25,8 @@ from atlas_building_tools.placement_hints.utils import (
     clip_mesh,
     detailed_mesh_mask,
     get_convex_hull_boundary,
-    layers_volume,
 )
-from atlas_building_tools.utils import get_region_mask, split_into_halves
+from atlas_building_tools.utils import create_layered_volume, query_region_mask, split_into_halves
 
 if TYPE_CHECKING:  # pragma: no cover
     import trimesh  # type: ignore
@@ -60,22 +59,33 @@ class AbstractLayeredAtlas(ABC):
     for which boundary meshes can be created.
     """
 
-    def __init__(
-        self,
-        acronym: str,
-        annotation: "VoxelData",
-        region_map: "RegionMap",
-    ):
+    def __init__(self, annotation: "VoxelData", region_map: "RegionMap", metadata: dict):
         """
-        acronym: acronym of the atlas as written in the
-            hierarchy.json file.
-            Example: 'isocortex' or 'CA1', but could be another layered brain structure.
         annotation: annotated volume enclosing the whole brain atlas.
         region_map: Object to navigate the brain regions hierarchy.
+        metadata: dict of the form
+            {
+                "region": {
+                    "name": "Isocortex",
+                    "query": "Isocortex",
+                    "attribute": "acronym",
+                    "with_descendants": true
+                },
+                "layers": {
+                    "names":
+                        ["layer 1", "layer 2", "layer 3", "layer 4", "layer 5", "layer 6"],
+                    "queries":
+                        ["@.*1[ab]?$", "@.*2[ab]?$", "@.*3[ab]?$", "@.*4[ab]?$", "@.*5[ab]?$",
+                            "@.*6[ab]?$"],
+                    "attribute": "acronym",
+                    "with_descendants": true
+                }
+            }
+            Find more examples in app/data/metadata.
         """
-        self.acronym = acronym
         self.annotation = annotation
         self.region_map = region_map
+        self.metadata = metadata
 
     @cached_property
     def region(self) -> "VoxelData":
@@ -85,19 +95,29 @@ class AbstractLayeredAtlas(ABC):
         Returns:
             VoxelData instance of the layered atlas.
         """
-        region_mask = get_region_mask(self.acronym, self.annotation.raw, self.region_map)
+        region_mask = query_region_mask(
+            self.metadata["region"], self.annotation.raw, self.region_map
+        )
         return self.annotation.with_data(region_mask)
 
     @cached_property
-    @abstractmethod
     def volume(self) -> NDArray[int]:
         """
         Get the volume enclosed by the specified layers.
 
         Returns:
-            numpy 3D array whose voxels are labelled by the indices of `self.layer_regexps`
-            augmented by 1.
+            layers_volume: numpy 3D array whose voxels are labelled by the indices of
+                `self.metadata["layers"]["names"]` augmented by 1.
         """
+
+        number_of_layers = len(self.metadata["region"]["name"])
+        L.info(
+            "Creating a volume for each of the %d layers of %s ...",
+            number_of_layers,
+            self.metadata["region"]["name"],
+        )
+
+        return create_layered_volume(self.annotation.raw, self.region_map, self.metadata)
 
     @abstractmethod
     def create_layer_meshes(self, layered_volume: NDArray[int]) -> List["trimesh.Trimesh"]:
@@ -106,20 +126,16 @@ class AbstractLayeredAtlas(ABC):
         in the laminar region volume, referred to as `layered_volume`.
 
         Args:
-            layered_volume: numpy 3D array whose voxels are labelled
-                by the indices of `self.layer_regexps` augmented by 1.
+            layered_volume: numpy 3D array whose voxels are labelled by the indices of
+            `self.metadata["layers"]["names"]` augmented by 1.
         Returns:
-            meshes: list of the layers meshes, together with the
-                    mesh of the complement of the whole region.
-                    Each mesh is used to define the upper boundary of
-                    the corresponding layer. Meshes from the first to
-                    the last layer have decreasing sizes: the first mesh encloses
-                    all layers, the second mesh encloses all layers but the first
-                    one, the second mesh encloses all layers but the first two,
-                    and so on so forth.
-                    The last mesh represents the bottom of the last layer.
-                    It has the vertices of the first mesh, but its normal are
-                    inverted.
+            meshes: list of the layers meshes, together with the mesh of the complement of the
+                whole region. Each mesh is used to define the upper boundary of the
+                corresponding layer. Meshes from the first to the last layer have decreasing sizes:
+                the first mesh encloses all layers, the second mesh encloses all layers but the
+                first one, the second mesh encloses all layers but the first two, and so on so
+                forth. The last mesh represents the bottom of the last layer. It has the vertices
+                of the first mesh, but its normal are inverted.
         """
 
     def _compute_dists_and_obtuse_angles(self, volume, direction_vectors):
@@ -143,7 +159,7 @@ class AbstractLayeredAtlas(ABC):
             L.info(
                 "Computing distances for the hemisphere %d of the %s region ...",
                 hemisphere,
-                self.acronym,
+                self.metadata["region"]["name"],
             )
             dists_to_layer_meshes, obtuse = self._compute_dists_and_obtuse_angles(
                 hemisphere_volumes[hemisphere], direction_vectors
@@ -220,64 +236,38 @@ class LayeredAtlas(AbstractLayeredAtlas):
 
     def __init__(
         self,
-        acronym: str,
         annotation: "VoxelData",
         region_map: "RegionMap",
-        layer_regexps: List[str],
+        metadata: dict,
     ):
         """
-        acronym: acronym of the atlas as written in the
-            hierarchy.json file.
-            Example: 'isocortex' or 'CA1', but could be another layered brain structure.
         annotation: annotated volume enclosing the whole brain atlas.
         region_map: Object to navigate the brain regions hierarchy.
-        layer_regexps: list of regular expressions defining the layers in the brain hierarchy.
+        metadata: dict, see json examples in app/data/metadata
         """
 
-        AbstractLayeredAtlas.__init__(self, acronym, annotation, region_map)
-        self.layer_regexps = layer_regexps
-
-    @cached_property
-    def volume(self) -> NDArray[int]:
-        """
-        Get the volume enclosed by the specified layers.
-
-        Returns:
-            layers_volume: numpy 3D array whose voxels are labelled
-                by the indices of `self.layer_regexps` augmented by 1.
-        """
-        number_of_layers = len(self.layer_regexps)
-        L.info(
-            "Creating a volume for each of the %d layers of %s ...",
-            number_of_layers,
-            self.acronym,
-        )
-
-        return layers_volume(
-            self.annotation.raw,
-            self.region_map,
-            layers=self.layer_regexps,
-            region=self.region.raw,
-        )
+        AbstractLayeredAtlas.__init__(self, annotation, region_map, metadata)
 
     def create_layer_meshes(self, layered_volume: NDArray[int]) -> List["trimesh.Trimesh"]:
         """
         Create meshes representing the upper boundary of each layer
         in the laminar region volume, referred to as `layered_volume`.
 
-        The layers are defined via `self.layer_regexps`, a list of regular expressions for region
-        acronyms of the AIBS brain hierarchy.
+        The layers are defined via `self.metadata["layers"]["queries"]`, a list of queries for
+        voxcell.RegionMap.find.
         """
 
         layers_values = np.unique(layered_volume)
         layers_values = layers_values[layers_values > 0]
         assert len(layers_values) == len(
-            self.layer_regexps
-        ), "{} layer indices, {} layer strings".format(len(layers_values), len(self.layer_regexps))
+            self.metadata["layers"]["names"]
+        ), "{} layer indices, {} layer strings".format(
+            len(layers_values), len(self.metadata["region"]["name"])
+        )
         L.info(
             "Creating a watertight mesh for each of the %d layers of %s ...",
             len(layers_values),
-            self.acronym,
+            self.metadata["region"]["name"],
         )
         meshes = []
         for index in tqdm(layers_values):
@@ -287,7 +277,7 @@ class LayeredAtlas(AbstractLayeredAtlas):
         L.info(
             "Trimming inward faces of the %d meshes of %s ...",
             len(meshes),
-            self.acronym,
+            self.metadata["region"]["name"],
         )
         full_mesh_bottom = meshes[0].copy()
         # Inverting normals as we select the complement of the layered atlas
@@ -317,24 +307,11 @@ class ThalamusAtlas(AbstractLayeredAtlas):
     has voxels with labels 549 in both AIBS CCFv2 and CCFv3 mouse brain models.
     """
 
-    @cached_property
-    def volume(self) -> NDArray[int]:
-        """
-        Get the volume of the reticular nucleus of the thalamus and of its
-        complement in the thalamus coloured respectively with labels 1 and 2.
-        """
-        # The first layer is the reticular nucleus (RT) of the Thalamus (TH),
-        # the second layer is the complement of RT within TH.
-        reticular_nucleus = get_region_mask("RT", self.annotation.raw, self.region_map)
-        reticular_nucleus_complement = np.logical_and(self.region.raw, ~reticular_nucleus)
-
-        return 1 * reticular_nucleus + 2 * reticular_nucleus_complement
-
     def create_layer_meshes(self, layered_volume: NDArray[int]) -> List["trimesh.Trimesh"]:
         """
         Create meshes representing the upper boundary of each layer of the thalamus atlas.
         """
-        # Because the lower boundary of the thalamus is too irregular to obtain meaningful to
+        # Because the lower boundary of the thalamus is too irregular to obtain meaningful
         # ray-mesh interesections, we consider instead its convex hull, which provides us with a
         # smooth approximation. See pictures and discussion of
         # https://bbpteam.epfl.ch/project/issues/browse/NSETM-1433
@@ -376,11 +353,11 @@ def save_problematic_voxel_mask(layered_atlas: LayeredAtlas, problems: dict, out
         output_dir: directory in which to save the problematic volume as an nrrd file.
     """
     problematic_volume_path = os.path.join(
-        output_dir, layered_atlas.acronym + "_problematic_voxel_mask.nrrd"
+        output_dir, layered_atlas.metadata["region"]["name"] + "_problematic_voxel_mask.nrrd"
     )
     L.info(
         "Saving problematic volume of %s to file %s ...",
-        layered_atlas.acronym,
+        layered_atlas.metadata["region"]["name"],
         problematic_volume_path,
     )
     before_voxel_mask = problems["before interpolation"]["volume"]

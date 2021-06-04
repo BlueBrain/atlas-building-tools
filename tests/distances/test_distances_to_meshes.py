@@ -322,29 +322,39 @@ class Test_fix_disordered_distances:
         npt.assert_array_equal(distances, exp_distances)
 
 
+def get_obtuse_input(shape):
+    obtuse = np.full(shape, False)
+    obtuse[0][1][4] = True
+    obtuse[0][3][1] = True
+
+    return obtuse
+
+
+@pyt.fixture
+def layered_volume():
+    return np.array(
+        [
+            [
+                [1, 0, 0, 0, 0],
+                [0, 0, 1, 1, 1],
+                [0, 1, 1, 0, 0],
+                [0, 1, 1, 1, 0],
+                [0, 0, 0, 0, 1],
+            ]
+        ]
+    )
+
+
 class Test_report_distance_problems:
     """test the function that reports problems related to distances computations"""
 
-    def test_report_output_format(self):
-        layered_volume = np.array(
-            [
-                [
-                    [1, 0, 0, 0, 0],
-                    [0, 0, 1, 1, 1],
-                    [0, 1, 1, 0, 0],
-                    [0, 1, 1, 1, 0],
-                    [0, 0, 0, 0, 1],
-                ]
-            ]
-        )
-        obtuse = np.full(layered_volume.shape, False)
-        obtuse[0][1][4] = True
-        obtuse[0][3][1] = True
+    def test_report_output_format(self, layered_volume):
+        obtuse = get_obtuse_input(layered_volume.shape)
 
         distances = get_expected_distances_to_meshes()
         distances[1][0, 0, 0] = 0.0
         report, problematic_volume = tested.report_distance_problems(
-            distances, obtuse, layered_volume, max_thicknesses=[0.5], tolerance=2.0
+            distances, layered_volume, obtuse, max_thicknesses=[0.5], tolerance=2.0
         )
         assert (
             report["Proportion of voxels whose rays do not intersect with the bottom mesh"] == 0.1
@@ -402,7 +412,7 @@ class Test_report_distance_problems:
 
         distances[0][0, 1, 3] = -0.5
         report, problematic_volume = tested.report_distance_problems(
-            distances, obtuse, layered_volume, max_thicknesses=[0.5], tolerance=2.0
+            distances, layered_volume, obtuse, max_thicknesses=[0.5], tolerance=2.0
         )
 
         # Inconsitency checks
@@ -431,7 +441,7 @@ class Test_report_distance_problems:
         distances[0][0, 1, 3] = -2.0
         distances[0][0, 1, 4] = -0.5
         report, problematic_volume = tested.report_distance_problems(
-            distances, obtuse, layered_volume, max_thicknesses=[0.5], tolerance=2.0
+            distances, layered_volume, obtuse, max_thicknesses=[0.5], tolerance=2.0
         )
 
         # Inconsitency checks
@@ -456,6 +466,63 @@ class Test_report_distance_problems:
             ]
             == 0.2
         )
+
+    def test_report_no_obtuse_arg(self, layered_volume):
+        distances = get_expected_distances_to_meshes()
+        distances[1][0, 0, 0] = 0.0
+        report, problematic_volume = tested.report_distance_problems(
+            distances, layered_volume, max_thicknesses=[0.5], tolerance=2.0
+        )
+        assert (
+            report["Proportion of voxels whose rays do not intersect with the bottom mesh"] == 0.1
+        )
+        assert report["Proportion of voxels whose rays do not intersect with the top mesh"] == 0.2
+        assert (
+            not "Proportion of voxels whose rays make an obtuse angle with the mesh normal at the intersection point"
+            in report
+        )
+        assert (
+            report[
+                "Proportion of voxels with a distance gap greater than the maximum thickness "
+                "(NaN distances are ignored)"
+            ]
+            == 0.2
+        )
+        # Inconsitency checks
+        assert (
+            report[
+                "Proportion of voxels whose distances to layer boundaries are not ordered consistently"
+            ]
+            == 0.0
+        )
+
+        assert (
+            report[
+                "Proportion of voxels for which the top layer has a non-positive thickness along their"
+                " direction vectors"
+            ]
+            == 0.0
+        )
+
+        assert (
+            report[
+                "Proportion of voxels whose distances to layer boundaries are inconsistent with their"
+                " actual layer location"
+            ]
+            == 0.0
+        )
+
+        assert report["Proportion of voxels with at least one distance-related problem"] == 0.4
+        expected_problematic_volume = [
+            [
+                [True, False, False, False, False],
+                [False, False, True, False, False],
+                [False, False, False, False, False],
+                [False, False, True, False, False],
+                [False, False, False, False, True],
+            ]
+        ]
+        npt.assert_array_equal(problematic_volume, expected_problematic_volume)
 
 
 class Test_interpolate_scalar_field:

@@ -34,57 +34,6 @@ def test_centroid_outfacing_mesh():
     assert len(result.faces) == len(faces)
 
 
-class Test_layers_volume:
-    @staticmethod
-    @patch(
-        "atlas_building_tools.placement_hints.utils.get_region_mask",
-        Mocked_get_region_mask(
-            {"Isocortex": np.array([[[1, 1, 1]]]), "L23": np.array([[[0, 1, 1]]])}
-        ),
-    )
-    def test_layers_volume_specified_layers():
-        volume = tested.layers_volume(
-            "atlas/brain_regions.nrrd",
-            "atlas/hierarchy.json",
-            layers=["@.*23$"],
-            region="Isocortex",
-        )
-        np.testing.assert_array_equal(volume, np.array([[[0, 1, 1]]]))
-
-    @staticmethod
-    @patch(
-        "atlas_building_tools.placement_hints.utils.get_region_mask",
-        Mocked_get_region_mask(
-            {
-                "Isocortex": np.array([[[0, 0, 1, 1, 1, 1]]]),
-                "Layer1": np.array([[[0, 0, 1, 1, 0, 0]]]),
-                "Layer2": np.array([[[0, 0, 0, 0, 1, 0]]]),
-            }
-        ),
-    )
-    def test_layers_volume_gets_layers_in_region():
-        expected_volume = np.array([[[0, 0, 1, 1, 2, 0]]])
-        volume = tested.layers_volume(
-            "", "", region="Isocortex", layers=["@.*{}$".format(i) for i in range(1, 3)]
-        )
-        npt.assert_array_equal(volume, expected_volume)
-
-    @staticmethod
-    @patch(
-        "atlas_building_tools.placement_hints.utils.get_region_mask",
-        Mocked_get_region_mask(
-            {
-                "Isocortex": np.array([[[0, 0, 1, 1, 1, 1]]]),
-                "Layer1": np.array([[[1, 1, 0, 0, 0, 0]]]),
-            }
-        ),
-    )
-    def test_layers_volume_restrict_to_region():
-        expected_volume = np.array([[[0, 0, 0, 0, 0, 0]]])
-        volume = tested.layers_volume("", "", region="Isocortex", layers=["@.*1$"])
-        npt.assert_array_equal(volume, expected_volume)
-
-
 def test_save_placement_hints():
     voxel_size = 10  # um
     saved_files_dict = {}
