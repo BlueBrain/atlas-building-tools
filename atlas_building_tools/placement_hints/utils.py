@@ -153,7 +153,7 @@ def get_convex_hull_boundary(mask: NDArray[bool]) -> "trimesh.Trimesh":
         A surface mesh representing the boundary of the convex hull of the
         `mask` volume.
     """
-    convex_hull = ConvexHull(np.transpose(np.nonzero(mask)))
+    convex_hull = ConvexHull(np.array(np.nonzero(mask)).T)
 
     return trimesh.Trimesh(vertices=convex_hull.points, faces=convex_hull.simplices)
 

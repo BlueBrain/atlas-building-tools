@@ -12,20 +12,17 @@ cells in a specfic slice of the mouse isocortex. The six mouse iscortex layers a
 orthogonal to "cortical depth".
 
 The command `atlas-building-tools cell-densities mtype-densites <OPTIONS>` creates mtypes volumetric densites based
-on the above data together with the atlas placement hints. Placement hints are passed to the command via a path
-to a yaml file of the following form:
+on the above data together with the atlas direction vectors and the overall excitatory and inhibitory neuron densities (nrrd files).
+The paths to the various files and subfolders are passed to the command by means of yaml configuration of the following form
 
 .. code:: yaml
 
-    'layerPlacementHintsPaths':
-        'layer_1': '[PH]layer_1.nrrd'
-        'layer_2': '[PH]layer_2.nrrd'
-        'layer_3': '[PH]layer_3.nrrd'
-        'layer_4': '[PH]layer_4.nrrd'
-        'layer_5': '[PH]layer_5.nrrd'
-        'layer_6': '[PH]layer_6.nrrd'
-        'y': '[PH]y.nrrd'
+    mtypeToProfileMapPath: "data/mtypes/metadata/mapping.tsv",
+    layerSlicesPath: "data/mtypes/metadata/layers.tsv"
+    densityProfilesDirPath: "data/mtypes"
+    excitatoryNeuronDensityPath: "excitatory_neuron_density.nrrd"
+    inhibitoryNeuronDensityPath: "inhibitory_neuron_density.nrrd"
 
 
-The keys of `layerPlacementHintsPaths` are required to be either `y` or of the
-form `layer_<index>` where `index` is a 1-based index.
+The last two paths are optional. If one of them is missing, the corresponding mtypes densities won't be
+computed.

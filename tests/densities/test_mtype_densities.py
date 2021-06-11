@@ -1,32 +1,19 @@
 import tempfile
 import warnings
 from pathlib import Path
-from unittest.mock import patch
 
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pandas.testing as pdt
 import pytest
-import yaml  # type: ignore
-from voxcell import VoxelData  # type: ignore
+from voxcell import RegionMap, VoxelData  # type: ignore
 
 import atlas_building_tools.densities.mtype_densities as tested
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 TESTS_PATH = Path(__file__).parent.parent
 DATA_PATH = TESTS_PATH / "densities" / "data"
-
-
-def create_placement_hints():
-    placement_hints_2 = np.array([[[[3.0, 5.0], [3.0, 5.0], [3.0, 5.0], [3.0, 5.0], [3.0, 5.0]]]])
-    placement_hints_3 = np.array([[[[0.0, 3.0], [0.0, 3.0], [0.0, 3.0], [0.0, 3.0], [0.0, 3.0]]]])
-    placement_hints_y = np.array([[[0.0, 1.0, 2.0, 3.0, 4.0]]])
-    return {
-        "layer_2": placement_hints_2,
-        "layer_3": placement_hints_3,
-        "y": placement_hints_y,
-    }
 
 
 def create_density_profile_collection(mapping_path="mapping.tsv"):
@@ -37,50 +24,68 @@ def create_density_profile_collection(mapping_path="mapping.tsv"):
     )
 
 
+def create_slicer_data():
+    annotation = np.array([[[3, 3, 3, 2, 2]]])
+    hierarchy = {
+        "acronym": "Isocortex",
+        "name": "Isocortex",
+        "id": 0,
+        "children": [
+            {
+                "acronym": "L2",
+                "name": "layer_2",
+                "id": 2,
+                "children": [],
+            },
+            {
+                "acronym": "L3",
+                "name": "layer_3",
+                "id": 3,
+                "children": [],
+            },
+        ],
+    }
+    metadata = {
+        "region": {
+            "name": "Isocortex",
+            "query": "Isocortex",
+            "attribute": "acronym",
+            "with_descendants": True,
+        },
+        "layers": {
+            "names": ["layer_2", "layer_3"],
+            "queries": ["L2", "L3"],
+            "attribute": "acronym",
+            "with_descendants": True,
+        },
+    }
+    direction_vectors = np.array(
+        [[[[0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1]]]], dtype=float
+    )
+
+    return {
+        "annotation": VoxelData(annotation, offset=[1.0, 2.0, 3.0], voxel_dimensions=[1.0] * 3),
+        "hierarchy": hierarchy,
+        "region_map": RegionMap.from_dict(hierarchy),
+        "metadata": metadata,
+        "direction_vectors": direction_vectors,
+    }
+
+
 def create_slice_voxel_indices():
     return [([0], [0], [slice_index]) for slice_index in range(5)]
 
 
 def create_excitatory_neuron_density():
-    return VoxelData(np.array([[[3.0, 1.0, 4.0, 2.0, 2.0]]]), voxel_dimensions=[1.0] * 3)
+    return VoxelData(
+        np.array([[[3.0, 1.0, 4.0, 2.0, 2.0]]]), offset=[1.0, 2.0, 3.0], voxel_dimensions=[1.0] * 3
+    )
 
 
 def create_inhibitory_neuron_density():
-    return VoxelData(np.array([[[4.0, 3.0, 1.0, 2.0, 1.0]]]), voxel_dimensions=[1.0] * 3)
-
-
-def create_placement_hints_config(dirpath: str):
-    return {
-        "layerPlacementHintsPaths": {
-            "layer_2": str(Path(dirpath, "[PH]layer_2.nrrd")),
-            "layer_3": str(Path(dirpath, "[PH]layer_3.nrrd")),
-            "y": str(Path(dirpath, "[PH]y.nrrd")),
-        }
-    }
-
-
-def create_input_volumetric_data(dirpath: str):
-    create_excitatory_neuron_density().save_nrrd(
-        str(Path(dirpath, "excitatory_neuron_density.nrrd"))
+    return VoxelData(
+        np.array([[[4.0, 3.0, 1.0, 2.0, 1.0]]]), offset=[1.0, 2.0, 3.0], voxel_dimensions=[1.0] * 3
     )
-    create_inhibitory_neuron_density().save_nrrd(
-        str(Path(dirpath, "inhibitory_neuron_density.nrrd"))
-    )
-    placement_hints = create_placement_hints()
-    config = create_placement_hints_config(dirpath)
-    for layer, ph_array in placement_hints.items():
-        VoxelData(ph_array, voxel_dimensions=[1.0] * 3).save_nrrd(
-            config["layerPlacementHintsPaths"][layer]
-        )
-
-    with open(Path(dirpath, "placement_hints_config.yaml"), "w") as out:
-        yaml.dump(config, out)
-
-    return {
-        "excitatory_neuron_density": str(Path(dirpath, "excitatory_neuron_density.nrrd")),
-        "inhibitory_neuron_density": str(Path(dirpath, "inhibitory_neuron_density.nrrd")),
-        "placement_hints_config": Path(dirpath, "placement_hints_config.yaml"),
-    }
 
 
 def create_expected_cell_densities():
@@ -169,39 +174,25 @@ def test_density_profile_collection_loading_exc_only(expected_profile_data):
             )
 
 
-def test_load_placement_hints():
-    def _save_ph_to_disk(placement_hints):
-        for ph_data, ph_path in zip(placement_hints.values(), placement_hints_paths.values()):
-            VoxelData(ph_data, voxel_dimensions=[1.0] * 3).save_nrrd(ph_path)
-
-    with tempfile.TemporaryDirectory() as tempdir:
-        placement_hints = create_placement_hints()
-        placement_hints_paths = {
-            name: str(Path(tempdir, f"[PH]{name}.nrrd")) for name in placement_hints
-        }
-        _save_ph_to_disk(placement_hints)
-
-        density_profile_collection = create_density_profile_collection()
-        loaded = density_profile_collection.load_placement_hints(placement_hints_paths)
-        for actual, expected in zip(loaded.values(), placement_hints.values()):
-            npt.assert_array_equal(actual, expected)
-
-        placement_hints_paths["2"] = placement_hints_paths["layer_2"]
-        del placement_hints_paths["layer_2"]
-        _save_ph_to_disk(placement_hints)
-        with pytest.raises(AtlasBuildingToolsError):
-            density_profile_collection.load_placement_hints(placement_hints_paths)
+def test_compute_layer_slice_voxel_indices_assert():
+    data = create_slicer_data()
+    density_profile_collection = create_density_profile_collection(
+        mapping_path="mapping_exc_only.tsv"
+    )
+    # Create empty slices due to oversized direction vectors
+    data["direction_vectors"] = 100.0 * data["direction_vectors"]
+    with pytest.raises(AtlasBuildingToolsError):
+        density_profile_collection.compute_layer_slice_voxel_indices(
+            data["annotation"], data["region_map"], data["metadata"], data["direction_vectors"]
+        )
 
 
-@patch(
-    "atlas_building_tools.densities.mtype_densities.DensityProfileCollection.load_placement_hints",
-    return_value=create_placement_hints(),
-)
-def test_compute_layer_slice_voxel_indices(mocked_loader):
+def test_compute_layer_slice_voxel_indices():
+    data = create_slicer_data()
     density_profile_collection = create_density_profile_collection()
     actual_voxel_indices = density_profile_collection.compute_layer_slice_voxel_indices(
-        {"layer_2": "[PH]layer_2.nrrd", "layer_3": "[PH]layer_3.nrrd", "y": "[PH]y.nrrd"}
-    )  # fake file paths
+        data["annotation"], data["region_map"], data["metadata"], data["direction_vectors"]
+    )
 
     expected = create_slice_voxel_indices()
     for slice_index in range(0, 5):
@@ -234,13 +225,16 @@ def test_create_mtype_density():
 
 def test_create_mtype_densities():
     density_profile_collection = create_density_profile_collection()
+    data = create_slicer_data()
     with tempfile.TemporaryDirectory() as tempdir:
-        paths = create_input_volumetric_data(tempdir)
         density_profile_collection.create_mtype_densities(
-            paths["excitatory_neuron_density"],
-            paths["inhibitory_neuron_density"],
-            paths["placement_hints_config"],
+            data["annotation"],
+            data["region_map"],
+            data["metadata"],
+            data["direction_vectors"],
             tempdir,
+            create_excitatory_neuron_density(),
+            create_inhibitory_neuron_density(),
         )
         expected_cell_densities = create_expected_cell_densities()
         for mtype, expected_cell_density in expected_cell_densities.items():

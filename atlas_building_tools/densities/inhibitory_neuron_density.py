@@ -146,8 +146,8 @@ def compute_inhibitory_neuron_density(  # pylint: disable=too-many-arguments
             "neuron_count": round(np.sum(neuron_density) * voxel_volume * inhibitory_proportion),
         }
         inhibitory_data["region_masks"] = {
-            "whole brain": np.ones(annotation.shape, dtype=bool)
-        }  # type: ignore
+            "whole brain": np.ones(annotation.shape, dtype=bool)  # type: ignore
+        }
 
     inhibitory_neuron_intensity = compute_inhibitory_neuron_intensity(
         compensate_cell_overlap(gad1, annotation, gaussian_filter_stdv=1.0),

@@ -18,7 +18,7 @@ setup(
     python_requires=">=3.6.0",
     install_requires=[
         "click>=7.0",
-        "cgal_pybind>=0.1.0",
+        "cgal_pybind>=0.1.1",
         "cached-property>=1.5.2",
         "networkx>=2.4",
         "nptyping>=1.0.1",

@@ -61,9 +61,9 @@ def compute_streamlines_intersections(
 
     return cgal_pybind.compute_streamlines_intersections(
         np.asarray(layers, dtype=np.uint8),
-        np.asarray(direction_vectors.raw, dtype=np.float32),
         np.asarray(direction_vectors.offset, dtype=np.float32),
         np.asarray(direction_vectors.voxel_dimensions, dtype=np.float32),
+        np.asarray(direction_vectors.raw, dtype=np.float32),
         first_layer,
         second_layer,
     )

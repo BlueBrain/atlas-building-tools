@@ -32,16 +32,19 @@ Lexicon:
 import logging
 import warnings
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import yaml  # type: ignore
+from cgal_pybind import slice_volume
 from nptyping import NDArray  # type: ignore
 from tqdm import tqdm
-from voxcell import VoxelData
 
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
+
+if TYPE_CHECKING:
+    from voxcell import RegionMap, VoxelData  # type: ignore
+
 
 VoxelIndices = Tuple[NDArray[int], NDArray[int], NDArray[int]]
 logging.basicConfig(level=logging.INFO)
@@ -236,8 +239,8 @@ class DensityProfileCollection:
                 a single column of non-negative float numbers, one cell number for each slice
                 defined in `layer_slices_path`.
 
-            Returns:
-                DensityProfileCollection object.
+        Returns:
+            DensityProfileCollection object.
         '''
         # fmt: on
         mtype_to_profile_map = pd.read_csv(str(mtype_to_profile_map_path), sep=r"\s+")
@@ -272,57 +275,51 @@ class DensityProfileCollection:
 
         return cls(mtype_to_profile_map, layer_slices_map, density_profiles)
 
-    def load_placement_hints(
-        self,
-        placement_hints_paths: Dict[str, str],
-    ) -> Dict[str, "VoxelData"]:
+    @staticmethod
+    def slice_layer(
+        layer_mask: NDArray[bool],
+        annotation: "VoxelData",
+        vector_field: NDArray[float],
+        slice_count: int,
+    ) -> NDArray[int]:
         """
-        Load placement hints nrrd files.
+        Split `layer_mask` into `slice_count` slices of approximately equal thickness.
 
-        This can take some time, depending on the volume resolution and the available RAM.
+        The numbering of slices follows the stream of `vector_field`: vectors flow through slices
+        with increasing indices.
+
+        The splitting is based on the positions of voxels on the streamlines of `vector_field` and
+        the streamlines lengths.
 
         Args:
-            placement_hints_paths: dict whose keys are layer names (str) and whose values
-                are paths (str) to the corresponding placement hints nrrd files.
-                Example:
-                    {
-                        'layer_1': '[PH]layer_1.nrrd',
-                        'layer_2': '[PH]layer_2.nrrd',
-                        ...
-                        'y': '[PH]y.nrrd'
-                    }
+            layer_mask: 3D boolean mask of the layer to split with shape (W, H, D) where W, H and
+                D are integer dimensions.
+            annotation: annotated volume of the brain region of interest. It holds an int array of
+                shape (W, H, D).
+            vector_field: 3D unit vector field defined on the layer domain. It holds a float32 array
+                of shape (W, H, D).
 
         Returns:
-            dict whose keys are layer names and whose values are VoxelData objects holding the
-            corresponding layer placement hints array (float array of shape (W, H, D, 2) if
-            (W, H, D) is the shape of the underlying annotated volume).
-
-        Raises:
-            AtlasBuildingErrors if the keys of `placement_hints_paths` do not coincide with
-            with those of `self.layer_slices` or with the extra "y" key.
-
+            An int array of shape (W, H, D) where every voxel in `layer_mask` is labeled by a
+            slice index in [1, `slice_count`]. Voxels labeled by i define the i-th slice of
+            `layer mask`.
         """
-        layer_keys = sorted(list(self.layer_slices_map))
-        layer_keys.append("y")
-        for ph_name in placement_hints_paths.keys():
-            if ph_name not in layer_keys:
-                raise AtlasBuildingToolsError(
-                    f"Got unexpected key in placement_hints_paths: {ph_name}.\n"
-                    f"Expected keys: {layer_keys}.\n"
-                )
 
-        L.info("Loading placement hints nrrd files ...")
-        placement_hints = {
-            name: VoxelData.load_nrrd(filepath).raw
-            for (name, filepath) in placement_hints_paths.items()
-        }
-        L.info("Placement hints loaded.")
-
-        return placement_hints
+        return slice_volume(
+            layer_mask,
+            annotation.offset,
+            annotation.voxel_dimensions,
+            vector_field,
+            thicknesses=[1.0] * slice_count,
+            resolution=0.5,
+        )
 
     def compute_layer_slice_voxel_indices(
         self,
-        placement_hints_paths: Dict[str, str],
+        annotation: "VoxelData",
+        region_map: "RegionMap",
+        metadata: Dict,
+        direction_vectors: NDArray[np.float32],
     ) -> Dict[int, VoxelIndices]:
         """
         Compute the voxel indices of each layer slice defined in `self.layer_slices_map`.
@@ -333,38 +330,58 @@ class DensityProfileCollection:
         `self.layer_slices_map`.
 
         Args:
-            placement_hints_paths: dict whose keys are layer names (str) and whose values
-                are paths (str) to the corresponding placement hints nrrd files.
-                Example:
-                    {
-                        'layer_1': '[PH]layer_1.nrrd',
-                        'layer_2': '[PH]layer_2.nrrd',
-                        ...
-                        'y': '[PH]y.nrrd'
-                    }
+            annotation: VoxelData object holding an int array of shape (W, H, D) where W, H and D
+                are integer dimensions; this array is the annotated volume of the brain region of
+                interest.
+            region_map: RegionMap object to navigate the brain regions hierarchy.
+            metadata: dict describing the region of interest and its layers.
+            direction_vectors: 3D vector field defined over the `annotation` volume. This is a
+                float32 array of shape (W, H, D, 3).
+
         Returns:
             dict whose keys are layer slice indices and whose values are the voxel indices for
             each slice. To each slice index corresponds a tuple (X, Y, Z) whose components are
             arrays of shape (N, ) where N is the number of voxels in the corresponding slice.
         """
-        placement_hints = self.load_placement_hints(placement_hints_paths)
+        # pylint: disable=too-many-locals
+
+        L.info("Computing the mask of each layer ...")
+        isocortex_ids = region_map.find(
+            metadata["region"]["query"],
+            attr=metadata["region"]["attribute"],
+            with_descendants=metadata["region"]["with_descendants"],
+        )
+        layers_info = metadata["layers"]
+        layer_ids = {
+            layers_info["names"][i]: region_map.find(
+                layers_info["queries"][i],
+                attr=layers_info["attribute"],
+                with_descendants=layers_info["with_descendants"],
+            )
+            for i in range(len(layers_info["names"]))
+        }
+        layer_masks = {
+            layer_name: np.isin(annotation.raw, list(layer_ids[layer_name] & isocortex_ids))
+            for layer_name in layers_info["names"]
+        }
 
         L.info("Computing the voxel indices of each layer slice ...")
         layer_slice_voxel_indices: Dict[int, VoxelIndices] = {}
-        phy = placement_hints["y"]
-        for layer, range_ in tqdm(self.layer_slices_map.items()):
-            phy1 = placement_hints[layer][..., 1]
-            phy0 = placement_hints[layer][..., 0]
-            layer_thickness = phy1 - phy0
-            for i, slice_index in enumerate(range_):
-                mask = phy >= phy0 + (i / len(range_)) * layer_thickness
-                upper_bound = phy0 + ((i + 1) / len(range_)) * layer_thickness
-                # Handle the edge case of the last slice of the stop layer
-                if layer == self.stop_layer and slice_index == range_.stop - 1:
-                    mask = np.logical_and(mask, phy <= upper_bound)
-                else:
-                    mask = np.logical_and(mask, phy < upper_bound)
-                layer_slice_voxel_indices[slice_index] = np.where(mask)
+        vector_field = np.asarray(direction_vectors, dtype=np.float32)
+        for layer_name, range_ in tqdm(self.layer_slices_map.items()):
+            slices = self.slice_layer(
+                layer_masks[layer_name],
+                annotation,
+                vector_field,
+                len(range_),
+            )
+            for i, slice_index in enumerate(range_, 1):
+                layer_slice_voxel_indices[slice_index] = np.where(slices == i)
+                if len(next(iter(layer_slice_voxel_indices[slice_index]))) == 0:
+                    raise AtlasBuildingToolsError(
+                        f"Slice with index {slice_index} is empty. Cannot compute mtype density"
+                        f" reliably"
+                    )
 
         return layer_slice_voxel_indices
 
@@ -408,12 +425,15 @@ class DensityProfileCollection:
             str(Path(output_dirpath, mtype + "_density.nrrd"))
         )
 
-    def create_mtype_densities(
+    def create_mtype_densities(  # pylint: disable=too-many-arguments
         self,
-        excitatory_neuron_density_path: Union[str, Path],
-        inhibitory_neuron_density_path: Union[str, Path],
-        placement_hints_config_path: Union[str, Path],
+        annotation: "VoxelData",
+        region_map: "RegionMap",
+        metadata: Dict,
+        direction_vectors: NDArray[np.float32],
         output_dirpath: Union[str, Path],
+        excitatory_neuron_density: Optional["VoxelData"] = None,
+        inhibitory_neuron_density: Optional["VoxelData"] = None,
     ) -> None:
         """
         Create and save to file a density field for each specified mtype.
@@ -421,54 +441,48 @@ class DensityProfileCollection:
         Density nrrd files are saved in `output_dirpath` under the name `mtype`_density.nrrd.
 
         Args:
-            excitatory_neuron_density_path: path to the density nrrd file holding the
-                density field of excitatory neurons.
-            inhibitory_neuron_density_path: path to the density nrrd file holding the
-                density field of inhbitory neurons.
-            placement_hints_config_path: path to the yaml file holding the
-                the placement hints configuration. Here is an example of yaml content:
-                'layerPlacementHintsPaths':
-                    'layer_1': '[PH]layer_1.nrrd'
-                    'layer_2': '[PH]layer_2.nrrd'
-                    'layer_3': '[PH]layer_3.nrrd'
-                    'layer_4': '[PH]layer_4.nrrd'
-                    'layer_5': '[PH]layer_5.nrrd'
-                    'layer_6': '[PH]layer_6.nrrd'
-                    'y': '[PH]y.nrrd'
+            annotation: VoxelData object holding an int array of shape (W, H, D) where W, H and D
+                are integer dimensions; this array is the annotated volume of the brain region of
+                interest.
+            region_map: RegionMap object to navigate the brain regions hierarchy.
+            metadata: dict describing the region of interest and its layers.
+            direction_vectors: 3D vector field defined over the `annotation` volume. This is a
+                float32 array of shape (W, H, D, 3).
+            excitatory_neuron_density: VoxelData holding the density field of excitatory neurons.
+                This array is a float array of shape (W, H, D)
+            inhibitory_neuron_density_path: VoxelData holding the density field of inhibitory
+                neurons. This array is a float array of shape (W, H, D).
             output_dirpath: directory path where to save the created density files.
         """
 
-        config = yaml.load(open(str(placement_hints_config_path)), Loader=yaml.FullLoader)
         layer_slice_voxel_indices = self.compute_layer_slice_voxel_indices(
-            config["layerPlacementHintsPaths"]
+            annotation, region_map, metadata, direction_vectors
         )
-        excitatory_neuron_density = VoxelData.load_nrrd(str(excitatory_neuron_density_path))
-        inhibitory_neuron_density = VoxelData.load_nrrd(str(inhibitory_neuron_density_path))
-
         Path(output_dirpath).mkdir(exist_ok=True)
 
-        L.info(
-            "Creating density files for the %d excitatory mtypes ...",
-            len(self.excitatory_mtypes),
-        )
-        for mtype in tqdm(self.excitatory_mtypes):
-            self.create_density(
-                mtype,
-                "excitatory",
-                excitatory_neuron_density,
-                layer_slice_voxel_indices,
-                output_dirpath,
+        if excitatory_neuron_density is not None:
+            L.info(
+                "Creating density files for the %d excitatory mtypes ...",
+                len(self.excitatory_mtypes),
             )
-
-        L.info(
-            "Creating density files for the %d inhibitory mtype ...",
-            len(self.inhibitory_mtypes),
-        )
-        for mtype in tqdm(self.inhibitory_mtypes):
-            self.create_density(
-                mtype,
-                "inhibitory",
-                inhibitory_neuron_density,
-                layer_slice_voxel_indices,
-                output_dirpath,
+            for mtype in tqdm(self.excitatory_mtypes):
+                self.create_density(
+                    mtype,
+                    "excitatory",
+                    excitatory_neuron_density,
+                    layer_slice_voxel_indices,
+                    output_dirpath,
+                )
+        if inhibitory_neuron_density is not None:
+            L.info(
+                "Creating density files for the %d inhibitory mtype ...",
+                len(self.inhibitory_mtypes),
             )
+            for mtype in tqdm(self.inhibitory_mtypes):
+                self.create_density(
+                    mtype,
+                    "inhibitory",
+                    inhibitory_neuron_density,
+                    layer_slice_voxel_indices,
+                    output_dirpath,
+                )

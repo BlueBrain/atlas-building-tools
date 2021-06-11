@@ -7,7 +7,7 @@
 
     },
     "layers": {
-        "names": ["layer 1", "layer 2", "layer3", "layer 4", "layer 5", "layer 6"],
+        "names": ["layer_1", "layer_2", "layer_3", "layer_4", "layer_5", "layer_6"],
         "queries": ["@.*;L1$", "@.*;L2$", "@.;L3*$", "@.*;L4$", "@.*;L5$", "@.*;L6$"],
         "attribute": "acronym",
         "with_descendants": true

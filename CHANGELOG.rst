@@ -3,6 +3,8 @@ Changelog
 
 Version 0.1.2
 --------------
+- Upgrades the dependency on cgal-pybind in setup.py: cgal-pybind>=0.1.1 [`BBPP82-614`_]
+- Uses a volume slicer based on lengths of streamlines to compute of m-type volumetric densities [`BBPP82-614`_]
 - Stores metadata json files for mouse isocortex, CA1 and thalamus in app/data/metadata [`NSETM-1474`_]
 - Uses metadata json files in app/data/metadata as default files for the computation of placement hints [`NSETM-1474`_]
 - Removes the proportion of voxels with the so-called "obtuse angle" issue from the distance report generated after distance interpolation [`NSETM-1474`_]
@@ -44,6 +46,7 @@ Version 0.1.0 (2021-04-27)
 - CLI to turn the excel measurement compilation gaba_papers.xlsx of D. Rodarie into a CSV file.
 
 
+.. _`BBPP82-614`: https://bbpteam.epfl.ch/project/issues/browse/BBPP82-614
 .. _`NSETM-1487`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1487
 .. _`NSETM-1475`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1475
 .. _`NSETM-1474`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1474
