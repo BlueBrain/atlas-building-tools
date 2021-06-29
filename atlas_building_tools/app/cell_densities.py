@@ -25,7 +25,7 @@ of the soma density in a population of interest.
 It is assumed throughout that such intensities depend "almost" linearly on the cell density when
 restricted to a brain region, but we shall not give a precise meaning to the word "almost".
 """
-
+# pylint: disable=too-many-lines
 import json
 import logging
 import os
@@ -64,6 +64,9 @@ from atlas_building_tools.densities.measurement_to_density import (
     remove_non_density_measurements,
 )
 from atlas_building_tools.densities.mtype_densities import DensityProfileCollection
+from atlas_building_tools.densities.refined_inhibitory_neuron_densities import (
+    create_inhibitory_neuron_densities,
+)
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 DATA_PATH = Path(Path(__file__).parent, "data")
@@ -820,10 +823,10 @@ def measurements_to_average_densities(
     required=True,
     help="Path where to write the data frame containing the average cell density of every region"
     "found in the brain hierarchy (see --hierarchy-path option) for the cell types marked by the "
-    "gene markers listed in the gene configuration file (see --gene-config-path option). The output"
-    " file is a CSV file whose index is a list of region names and with two columns for each cell"
-    " type: <cell_type> and <cell_type>_standard_deviation. Cell types are derived from marker "
-    "names: <cell_type> = <marker>+.",
+    "gene markers listed in the gene configuration file (see --gene-config-path option). "
+    "The output file is a CSV file whose first column is a list of region names. The other columns"
+    " come in pairs for each cell type: <cell_type> and <cell_type>_standard_deviation. Cell types"
+    " are derived from marker names: <cell_type> = <marker>+.",
 )
 @click.option(
     "--fitting-maps-output-path",
@@ -850,7 +853,7 @@ def fit_average_densities(
     literature (`average_densities_path`) to estimate average cell densities in regions where
     no record is available.
 
-    In addition to records from the scientific literature, we consider as input of our fitting
+    In addition to the records from the scientific literature, we consider as input of our fitting
     the average densities of the brain regions where neurons are either all inhibitory or all
     excitatory. These regions are listed in `homogenous_regions_path`. The volumetric density
     `neuron_density_path` is used to compute the average density of inhibitory neurons (a.k.a
@@ -870,7 +873,7 @@ def fit_average_densities(
     mouse brain. The isocortex was singled out because its layer densities and cell type
     compositions are quite similar across its subregions.
 
-    Each fitted density value v of `fitted_densities_output_path` comes along with standard
+    Each fitted density value of `fitted_densities_output_path` comes along with standard
     deviation.
 
     The standard deviations are computed differently depending on whether the output value is a
@@ -939,3 +942,95 @@ def fit_average_densities(
     if fitting_maps_output_path is not None:
         with open(fitting_maps_output_path, mode="w+") as file_:
             json.dump(fitting_maps, file_, indent=1, separators=(",", ": "))
+
+
+@app.command()
+@click.option(
+    "--hierarchy-path",
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help="Path to hierarchy.json or 1.json",
+)
+@click.option(
+    "--annotation-path",
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help=("Path to the whole mouse brain annotation file."),
+)
+@click.option(
+    "--neuron-density-path",
+    type=EXISTING_FILE_PATH,
+    required=True,
+    help=(
+        "Path to the overall neuron volumetric density nrrd file obtained as output of the command "
+        "`glia-cell-densities`."
+    ),
+)
+@click.option(
+    "--average-densities-path",
+    required=True,
+    help="Path to the average densities data frame, i.e., the output of measurement-to-density."
+    "The format of this CSV file is described in the main help section of compile-measurements. It"
+    " contains only measurements of type 'cell density'.",
+)
+@click.option(
+    "--output-dir",
+    required=False,
+    help="Path to the directory where the volumetric inhibitory neuron density files (nrrd) will"
+    " be saved. If it doesn't exist already, the directory will be created.",
+)
+@log_args(L)
+def inhibitory_neuron_densities(
+    hierarchy_path,
+    annotation_path,
+    neuron_density_path,
+    average_densities_path,
+    output_dir,
+):
+    """
+    Create volumetric cell densities of brain regions in `hierarchy_path` for the cell types
+    labelling the columns of the data frame stored in `average_densities_path`.
+
+    This function support the use case of "Atlas of inhibitory neurons in the mouse brain" by
+    D. Rodarie et al., 2021. The densities to be computed in this case are those of GAD67+
+    (inhibitory neurons) and those of the neuron subtypes PV+, SST+ and VIP+.
+
+    The function modifies the estimates in `average_densities` to make them consistent
+    accross cell types: the average density of GAD67+ cells in a leaf region L should be
+    at most the sum of the average densities of its subtypes under scrutiny (e.g. PV+, SST+ and
+    VIP+) and should not exceed the neuron density of L.
+
+    Whenever possible, modified densities are kept in the range [initial value - std deviation,
+    initial value + std deviation] for the standard deviations specified in `average_densities`.
+    """
+
+    annotation = VoxelData.load_nrrd(annotation_path)
+    neuron_density = VoxelData.load_nrrd(neuron_density_path)
+    with open(hierarchy_path, "r") as file_:
+        hierarchy = json.load(file_)
+        if "msg" in hierarchy:
+            L.warning("Top-most object contains 'msg'; assuming AIBS JSON layout")
+            if len(hierarchy["msg"]) > 1:
+                raise AtlasBuildingToolsError("Unexpected JSON layout (more than one 'msg' child)")
+            hierarchy = hierarchy["msg"][0]
+
+    # Consistency check
+    assert_properties([annotation, neuron_density])
+
+    average_densities_df = pd.read_csv(average_densities_path)
+    average_densities_df = average_densities_df.set_index("brain_region")
+    volumetric_densities = create_inhibitory_neuron_densities(
+        hierarchy,
+        annotation.raw,
+        _get_voxel_volume_in_mm3(annotation),
+        neuron_density.raw,
+        average_densities_df,
+    )
+
+    if not Path(output_dir).exists():
+        os.makedirs(output_dir)
+
+    for cell_type, volumetric_density in volumetric_densities.items():
+        annotation.with_data(volumetric_density).save_nrrd(
+            str(Path(output_dir, f"{cell_type}_density.nrrd"))
+        )

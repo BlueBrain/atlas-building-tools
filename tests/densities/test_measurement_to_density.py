@@ -62,15 +62,6 @@ def volumes(voxel_volume=2):
     )
 
 
-def test_compute_region_volumes(annotation, volumes):
-    pdt.assert_frame_equal(
-        volumes,  # expected
-        tested.compute_region_volumes(
-            annotation, voxel_volume=2.0, hierarchy_info=get_hierarchy_info()
-        ),
-    )
-
-
 @pytest.fixture
 def cell_counts(voxel_volume=2):
     counts = voxel_volume * np.array([5.0, 4.0, 1.0, 1.0, 1.0])

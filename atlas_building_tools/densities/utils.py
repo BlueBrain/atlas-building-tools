@@ -469,3 +469,39 @@ def get_hierarchy_info(
     return pd.DataFrame(
         {"brain_region": region_names, "child_id_set": child_id_sets}, index=region_ids
     )
+
+
+def compute_region_volumes(
+    annotation: NDArray[int],
+    voxel_volume: float,
+    hierarchy_info: "pd.DataFrame",
+) -> "pd.DataFrame":
+    """
+    Compute the volume in mm^3 of every brain region in `annotation` whose id can be found by
+    `region_map`.
+
+    Args:
+        annotation: int array of shape (W, H, D) holding the annotation of the whole AIBS
+            mouse brain. (The integers W, H and D are the dimensions of the array).
+        voxel_volume: volume in mm^3 of a voxel in any of the volumetric input arrays.
+            This is (25 * 1e-6) ** 3 for an AIBS atlas nrrd file with 25um resolution.
+        hierarchy_info: data frame returned by
+            :func:`atlas_building_tools.densities.utils.get_hierarchy_info`.
+
+    Returns:
+        DataFrame of the following form (values are fake):
+        5    brain region                    volume
+        10   Basic cell groups and regions   2000
+        123  Cerebrum                         700
+             ...                             ...
+        The index is the sorted list of all region identifiers.
+    """
+    volumes = [
+        np.count_nonzero(np.isin(annotation, list(set_))) * voxel_volume
+        for set_ in hierarchy_info["child_id_set"]
+    ]
+
+    return pd.DataFrame(
+        {"brain_region": hierarchy_info["brain_region"], "volume": volumes},
+        index=hierarchy_info.index,
+    )

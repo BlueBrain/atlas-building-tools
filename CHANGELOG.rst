@@ -1,14 +1,18 @@
 Changelog
 =========
 
-Version 0.1.3
+Version 0.1.4
 --------------
-- Turns warning on missing cairosvg module into a note in the main CLI help [`NSETM_1513`] 
+- Make average inhibitory neuron densities consistent and create refined volumetric density files [`NSETM-1506`_]
+- Turns warning on missing cairosvg module into a note in the main CLI help [`NSETM_1513`]
+
+Version 0.1.3 (2021-07-01)
+--------------------------
 - Adds a function creating a boolean mask of cylinder-shaped subregion of a 3D volume [`NSETM-1320`_]
 
 
-Version 0.1.2
---------------
+Version 0.1.2 (2021-06-22)
+--------------------------
 - Upgrades the dependency on cgal-pybind in setup.py: cgal-pybind>=0.1.1 [`BBPP82-614`_]
 - Uses a volume slicer based on lengths of streamlines to compute of m-type volumetric densities [`BBPP82-614`_]
 - Stores metadata json files for mouse isocortex, CA1 and thalamus in app/data/metadata [`NSETM-1474`_]
@@ -26,7 +30,7 @@ Version 0.1.2
 - The flatmap CLI has changed: it consumes now a json metadata file defining the ROI and its layers
 
 
-Version 0.1.1 (2010-05-14)
+Version 0.1.1 (2021-05-14)
 --------------------------
 
 - Uses cgal-pydind==0.1.0 and lowers the version required for openpyxl, rtree and trimesh [`NSETM-1454`_]
@@ -51,8 +55,8 @@ Version 0.1.0 (2021-04-27)
 - CLI to compute a flat map based on the streamlines of a laminar brain region
 - CLI to turn the excel measurement compilation gaba_papers.xlsx of D. Rodarie into a CSV file.
 
-
 .. _`NSETM-1513`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1513
+.. _`NSETM-1506`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1506
 .. _`NSETM-1320`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1320
 .. _`BBPP82-614`: https://bbpteam.epfl.ch/project/issues/browse/BBPP82-614
 .. _`NSETM-1487`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1487

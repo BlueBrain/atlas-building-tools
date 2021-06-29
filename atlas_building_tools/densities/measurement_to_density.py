@@ -18,7 +18,7 @@ import pandas as pd
 from nptyping import NDArray  # type: ignore
 from voxcell import RegionMap  # type: ignore
 
-from atlas_building_tools.densities.utils import get_hierarchy_info
+from atlas_building_tools.densities.utils import compute_region_volumes, get_hierarchy_info
 
 
 def get_parent_region(region_name: str, region_map: RegionMap) -> Union[str, None]:
@@ -42,43 +42,6 @@ def get_parent_region(region_name: str, region_map: RegionMap) -> Union[str, Non
     return region_map.get(parent_id, attr="name") if parent_id is not None else None
 
 
-def compute_region_volumes(
-    annotation: NDArray[int],
-    voxel_volume: float,
-    hierarchy_info: "pd.DataFrame",
-) -> "pd.DataFrame":
-    """
-    Compute the volume in mm^3 of every brain region in `annotation` whose id can be found by
-    `region_map`.
-
-    Args:
-        annotation: int array of shape (W, H, D) holding the annotation of the whole AIBS
-            mouse brain. (The integers W, H and D are the dimensions of the array).
-        voxel_volume: volume in mm^3 of a voxel in any of the volumetric input arrays.
-            This is (25 * 1e-6) ** 3 for an AIBS atlas nrrd file with 25um resolution.
-        hierarchy_info: data frame returned by
-            :func:`atlas_building_tools.densities.cell_densities_from_measurements.
-            get_hierarchy_info`.
-
-    Returns:
-        DataFrame of the following form (values are fake):
-        5    brain region                    volume
-        10   Basic cell groups and regions   2000
-        123  Cerebrum                         700
-             ...                             ...
-        The index is the sorted list of all region identifiers.
-    """
-    volumes = [
-        np.count_nonzero(np.isin(annotation, list(set_))) * voxel_volume
-        for set_ in hierarchy_info["child_id_set"]
-    ]
-
-    return pd.DataFrame(
-        {"brain_region": hierarchy_info["brain_region"], "volume": volumes},
-        index=hierarchy_info.index,
-    )
-
-
 def compute_region_cell_counts(
     annotation: NDArray[int],
     cell_density: NDArray[float],
@@ -98,8 +61,7 @@ def compute_region_cell_counts(
         voxel_volume: volume in mm^3 of a voxel in any of the volumetric input arrays.
             This is (25 * 1e-6) ** 3 for an AIBS atlas nrrd file with 25um resolution.
         hierarchy_info: data frame returned by
-            :func:`atlas_building_tools.densities.cell_densities_from_measurements.
-            get_hierarchy_info`.
+            :func:`atlas_building_tools.densities.utils.get_hierarchy_info`.
 
     Returns:
         DataFrame of the following form (values are fake):
@@ -136,8 +98,7 @@ def compute_region_densities(
             of the AIBS mouse brain. A voxel value represents the average cell density in that
             voxel expressed in number of cells per mm^3.
         hierarchy_info: data frame returned by
-            :func:`atlas_building_tools.densities.cell_densities_from_measurements.
-            get_hierarchy_info`.
+            :func:`atlas_building_tools.densities.utils.get_hierarchy_info`.
 
     Returns:
         DataFrame of the following form (values are fake):
@@ -306,8 +267,7 @@ def cell_count_per_slice_to_density(
         voxel_dimensions:
         voxel_volume: volume in mm^3 of a voxel in any of the volumetric input arrays.
         hierarchy_info: data frame returned by
-            :func:`atlas_building_tools.densities.cell_densities_from_measurements.
-            get_hierarchy_info`.
+            :func:`atlas_building_tools.densities.utils.get_hierarchy_info`.
     """
 
     # Thickness of a coronal slice in number of voxels

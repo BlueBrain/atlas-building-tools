@@ -343,3 +343,23 @@ def test_get_hierarchy_info(region_map):
     pdt.assert_frame_equal(
         get_hierarchy_info(), tested.get_hierarchy_info(region_map, root="Central lobule")
     )
+
+
+@pytest.fixture
+def volumes(voxel_volume=2):
+    hierarchy_info = get_hierarchy_info()
+    volumes = voxel_volume * np.array([9.0, 8.0, 2.0, 2.0, 3.0])
+    return pd.DataFrame(
+        {"brain_region": hierarchy_info["brain_region"], "volume": volumes},
+        index=hierarchy_info.index,
+    )
+
+
+def test_compute_region_volumes(volumes):
+    annotation = np.array([[[920, 10710, 10710], [10709, 10708, 976], [10708, 10710, 10709]]])
+    pdt.assert_frame_equal(
+        volumes,  # expected
+        tested.compute_region_volumes(
+            annotation, voxel_volume=2.0, hierarchy_info=get_hierarchy_info()
+        ),
+    )

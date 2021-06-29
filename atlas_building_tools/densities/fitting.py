@@ -43,7 +43,7 @@ def create_dataframe_from_known_densities(
 ) -> "pd.DataFrame":
     """
     Create a data frame with `region_names` as index and with two columns for each cell type in
-    `avergage_densities["cell_type"]`.
+    `average_densities["cell_type"]`.
 
     The data frame is partially filled with the values of `average_densities`.
 
@@ -563,9 +563,9 @@ def linear_fitting(
     Returns:
         tuple (densities, fitting_coefficients)
             densities:
-                data frame holding an estimate average density for every region in `region_map` and
+                data frame holding an average density estimate for every region in `region_map` and
                 every cell type marked by the gene markers of `gene_mark_volumes`.
-                The output data frame has column `standard_deviation`.
+                The output data frame has a column `standard_deviation`.
             fitting_coefficients: dict returned by
                 :fun:`atlas_building_tools.densities.fitting.compute_fitting_coefficients`.
     """
