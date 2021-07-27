@@ -19,18 +19,14 @@ L = logging.getLogger(__name__)
 
 try:
     import cairosvg
-
 except ImportError:
     cairosvg = None
-    L.info("cairosvg not found. Disabling cell-detection CLI.")
-
-if cairosvg:
-    # pylint: disable=ungrouped-imports
-    from atlas_building_tools.app import cell_detection
+else:
+    from atlas_building_tools.app import cell_detection  # pylint: disable=ungrouped-imports
 
 
 def cli():
-    """The CLI entry point"""
+    """The main CLI entry point"""
     logging.basicConfig(level=logging.INFO)
     group = {
         "cell-densities": cell_densities.app,
@@ -41,9 +37,12 @@ def cli():
         "placement-hints": placement_hints.app,
         "region-splitter": region_splitter.app,
     }
+    help_str = "The main CLI entry point."
     if cairosvg:
         group["cell-detection"] = cell_detection.app
+    else:
+        help_str += "\n\nNote: the cell-detection CLI is disabled since cairosvg was not found."
 
-    app = click.Group("atlas_building_tools", group)
+    app = click.Group("atlas_building_tools", group, help=help_str)
     app = click.version_option(VERSION)(app)
     app()
