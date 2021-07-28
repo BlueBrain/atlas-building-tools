@@ -12,7 +12,12 @@ from typing import List, Optional
 import click
 import voxcell  # type: ignore
 
-from atlas_building_tools.app.utils import EXISTING_FILE_PATH, log_args, set_verbose  # type: ignore
+from atlas_building_tools.app.utils import (  # type: ignore
+    EXISTING_FILE_PATH,
+    common_atlas_options,
+    log_args,
+    set_verbose,
+)
 from atlas_building_tools.placement_hints.compute_placement_hints import compute_placement_hints
 from atlas_building_tools.placement_hints.layered_atlas import (
     LayeredAtlas,
@@ -138,18 +143,7 @@ def app(verbose):
 
 
 @app.command()
-@click.option(
-    "--annotation-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to the whole AIBS mouse brain annotation nrrd file."),
-)
-@click.option(
-    "--hierarchy-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to hierarchy.json."),
-)
+@common_atlas_options
 @click.option(
     "--metadata-path",
     type=EXISTING_FILE_PATH,
@@ -199,18 +193,7 @@ def ca1(annotation_path, hierarchy_path, metadata_path, direction_vectors_path, 
 
 
 @app.command()
-@click.option(
-    "--annotation-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to the whole mouse brain annotation nrrd file."),
-)
-@click.option(
-    "--hierarchy-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to hierarchy.json."),
-)
+@common_atlas_options
 @click.option(
     "--metadata-path",
     type=EXISTING_FILE_PATH,
@@ -265,18 +248,7 @@ def isocortex(annotation_path, hierarchy_path, metadata_path, direction_vectors_
 
 
 @app.command()
-@click.option(
-    "--annotation-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to the whole mouse brain annotation nrrd file."),
-)
-@click.option(
-    "--hierarchy-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to hierarchy.json."),
-)
+@common_atlas_options
 @click.option(
     "--metadata-path",
     type=EXISTING_FILE_PATH,

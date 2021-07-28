@@ -41,6 +41,7 @@ from atlas_building_tools.app.utils import (
     EXISTING_FILE_PATH,
     assert_meta_properties,
     assert_properties,
+    common_atlas_options,
     log_args,
     set_verbose,
 )
@@ -102,18 +103,7 @@ def app(verbose):
 
 
 @app.command()
-@click.option(
-    "--annotation-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("The path to the whole mouse brain annotation file."),
-)
-@click.option(
-    "--hierarchy-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help="The path to the hierarchy file, i.e., AIBS 1.json.",
-)
+@common_atlas_options
 @click.option(
     "--nissl-path",
     type=EXISTING_FILE_PATH,
@@ -177,18 +167,7 @@ def cell_density(annotation_path, hierarchy_path, nissl_path, output_path, soma_
 
 
 @app.command()
-@click.option(
-    "--annotation-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("The path to the whole mouse brain annotation file."),
-)
-@click.option(
-    "--hierarchy-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help="The path to the hierarchy file, i.e., AIBS 1.json.",
-)
+@common_atlas_options
 @click.option(
     "--cell-density-path",
     type=EXISTING_FILE_PATH,
@@ -326,18 +305,7 @@ def glia_cell_densities(
 
 
 @app.command()
-@click.option(
-    "--annotation-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("The path to the whole mouse brain annotation file."),
-)
-@click.option(
-    "--hierarchy-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help="The path to the hierarchy file, i.e., AIBS 1.json.",
-)
+@common_atlas_options
 @click.option(
     "--gad1-path",
     type=EXISTING_FILE_PATH,
@@ -448,18 +416,7 @@ def inhibitory_and_excitatory_neuron_densities(
 
 
 @app.command()
-@click.option(
-    "--annotation-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("The path to the whole mouse brain annotation file."),
-)
-@click.option(
-    "--hierarchy-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help="The path to the hierarchy file, i.e., AIBS 1.json.",
-)
+@common_atlas_options
 @click.option(
     "--metadata-path",
     type=EXISTING_FILE_PATH,
@@ -662,18 +619,7 @@ def compile_measurements(
 
 
 @app.command()
-@click.option(
-    "--annotation-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("The path to the whole mouse brain annotation file."),
-)
-@click.option(
-    "--hierarchy-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help="The path to the hierarchy file, i.e., AIBS 1.json.",
-)
+@common_atlas_options
 @click.option(
     "--cell-density-path",
     type=EXISTING_FILE_PATH,
@@ -771,18 +717,7 @@ def measurements_to_average_densities(
 
 
 @app.command()
-@click.option(
-    "--hierarchy-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help="Path to hierarchy.json or 1.json",
-)
-@click.option(
-    "--annotation-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to the whole mouse brain annotation file."),
-)
+@common_atlas_options
 @click.option(
     "--neuron-density-path",
     type=EXISTING_FILE_PATH,
@@ -945,18 +880,7 @@ def fit_average_densities(
 
 
 @app.command()
-@click.option(
-    "--hierarchy-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help="Path to hierarchy.json or 1.json",
-)
-@click.option(
-    "--annotation-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to the whole mouse brain annotation file."),
-)
+@common_atlas_options
 @click.option(
     "--neuron-density-path",
     type=EXISTING_FILE_PATH,

@@ -3,6 +3,7 @@ Changelog
 
 Version 0.1.4
 --------------
+- Create and re-use a common atlas option group [`NSETM_1513`]
 - Make average inhibitory neuron densities consistent and create refined volumetric density files [`NSETM-1506`_]
 - Turns warning on missing cairosvg module into a note in the main CLI help [`NSETM_1513`]
 

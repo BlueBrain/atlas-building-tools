@@ -105,10 +105,10 @@ def test_combine_markers():
             tested.app,
             [
                 "combine-markers",
-                "--hierarchy",
-                str(Path(TEST_PATH, "1.json")),
-                "--brain-annotation",
+                "--annotation-path",
                 "annotation.nrrd",
+                "--hierarchy-path",
+                str(Path(TEST_PATH, "1.json")),
                 "--config",
                 str(Path(TEST_PATH, "markers_config.yaml")),
             ],

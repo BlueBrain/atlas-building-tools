@@ -126,3 +126,38 @@ def assert_meta_properties(atlases):
         raise AtlasBuildingToolsError("Need to have the same voxel_dimensions for all files")
     if not compare_all(atlases, lambda x: x.offset, comp=np.allclose):
         raise AtlasBuildingToolsError("Need to have the same offset for all files")
+
+
+def common_atlas_options(function):
+    """
+    Common atlas options.
+
+    Args:
+        function: the command function to be wrapped with common options.
+
+    Returns:
+        the `function` decorated with the common options.
+        Example usage in app:
+            @app.command()
+            @common_atlas_options
+            @click.option(...)
+            ...
+            def combine_annotations(...):
+    """
+    function = click.option(
+        "--annotation-path",
+        type=EXISTING_FILE_PATH,
+        required=True,
+        help=(
+            "The path to the whole mouse brain annotation file (nrrd). See the main command "
+            "description for possible restrictions."
+        ),
+    )(function)
+    function = click.option(
+        "--hierarchy-path",
+        type=EXISTING_FILE_PATH,
+        required=True,
+        help="The path to the hierarchy file, i.e., AIBS 1.json or BBP hierarchy.json.",
+    )(function)
+
+    return function

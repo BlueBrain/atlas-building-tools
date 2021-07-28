@@ -8,6 +8,7 @@ import voxcell  # type: ignore
 from atlas_building_tools.app.utils import (
     EXISTING_FILE_PATH,
     assert_meta_properties,
+    common_atlas_options,
     log_args,
     set_verbose,
 )
@@ -72,18 +73,7 @@ def cerebellum(annotation_path, output_path):
 
 
 @app.command()
-@click.option(
-    "--annotation-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to the annotation nrrd file."),
-)
-@click.option(
-    "--hierarchy-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to hierarchy.json or AIBS 1.json."),
-)
+@common_atlas_options
 @click.option("--output-path", required=True, help="Path of file to write.")
 @log_args(L)
 def isocortex(annotation_path, hierarchy_path, output_path):

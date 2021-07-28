@@ -5,7 +5,12 @@ import logging
 import click
 import voxcell  # type: ignore
 
-from atlas_building_tools.app.utils import EXISTING_FILE_PATH, log_args, set_verbose
+from atlas_building_tools.app.utils import (
+    EXISTING_FILE_PATH,
+    common_atlas_options,
+    log_args,
+    set_verbose,
+)
 from atlas_building_tools.region_splitter import isocortex_layer_23
 
 L = logging.getLogger(__name__)
@@ -20,18 +25,7 @@ def app(verbose):
 
 
 @app.command()
-@click.option(
-    "--hierarchy-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to the whole mouse brain hierarchy file."),
-)
-@click.option(
-    "--annotation-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to the whole mouse brain annotation nrrd file."),
-)
+@common_atlas_options
 @click.option(
     "--direction-vectors-path",
     type=EXISTING_FILE_PATH,
@@ -42,8 +36,8 @@ def app(verbose):
 @click.option("--output-annotation-path", required=True, help="path of file to write")
 @log_args(L)
 def split_isocortex_layer_23(
-    hierarchy_path,
     annotation_path,
+    hierarchy_path,
     direction_vectors_path,
     output_hierarchy_path,
     output_annotation_path,

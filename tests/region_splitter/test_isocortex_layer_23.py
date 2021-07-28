@@ -180,14 +180,11 @@ def test_edit_hierarchy_full_json_file():
     assert len(isocortex_layer_3_ids) == len(isocortex_layer_23_ids)
 
 
-def test_split_isocortex_layer_23():
-    ratio = 2.0 / 5.0
+def get_splitting_input_data():
     padding = 1
     x_width = 1
-    y_width = 55
-    z_width = 55
-    layer_3_top = padding + int((1.0 - ratio) * y_width)
-    raw = np.zeros((2 * padding + x_width, 2 * padding + y_width, 2 * padding + z_width), dtype=int)
+    width = 55  # width along the y and z axes
+    raw = np.zeros((2 * padding + x_width, 2 * padding + width, 2 * padding + width), dtype=int)
     # The actual AIBS ids as of 2020.04.21.
     layer_23_ids = [
         41,
@@ -246,42 +243,60 @@ def test_split_isocortex_layer_23():
         480149294,
         480149322,
     ]
+
+    ratio = 2.0 / 5.0
+    layer_3_top = padding + int((1.0 - ratio) * width)
     layer_2_ids = [195, 524, 606, 747]
     for i, id_ in enumerate(layer_23_ids):
-        raw[padding : (padding + x_width), padding : (padding + y_width), padding + i] = id_
+        raw[padding : (padding + x_width), padding : (padding + width), padding + i] = id_
     for i, id_ in enumerate(layer_2_ids):
         raw[
             padding : (padding + x_width),
-            (layer_3_top + 1) : (padding + y_width),
+            (layer_3_top + 1) : (padding + width),
             padding + i,
         ] = id_
 
     direction_vectors = np.full(raw.shape + (3,), np.nan)
     direction_vectors[
         padding : (padding + x_width),
-        padding : (padding + y_width),
-        padding : (padding + z_width),
+        padding : (padding + width),
+        padding : (padding + width),
         :,
     ] = [0.0, 1.0, 0.0]
 
-    isocortex_data = VoxelData(raw, (1.0, 1.0, 1.0))
+    return {
+        "annotation": VoxelData(raw, (1.0, 1.0, 1.0)),
+        "direction_vectors": direction_vectors,
+        "layer_3_top": layer_3_top,
+        "ratio": ratio,
+    }
+
+
+def test_split_isocortex_layer_23():
     allen_hierarchy = None
     with open(str(Path(TEST_PATH, "1.json"))) as h_file:
         allen_hierarchy = json.load(h_file)
-    tested.split(allen_hierarchy, isocortex_data, direction_vectors, ratio)
+
+    data = get_splitting_input_data()
+    tested.split(allen_hierarchy, data["annotation"], data["direction_vectors"], data["ratio"])
     isocortex_hierarchy = tested.get_isocortex_hierarchy(allen_hierarchy)
     modified_region_map = RegionMap.from_dict(isocortex_hierarchy)
     isocortex_layer_2_ids = modified_region_map.find("@.*2$", attr="acronym")
     isocortex_layer_3_ids = modified_region_map.find("@.*[^/]3$", attr="acronym")
     assert len(modified_region_map.find("@.*2/3$", attr="acronym")) == len(isocortex_layer_3_ids)
     npt.assert_array_equal(
-        np.unique(raw), sorted({0} | isocortex_layer_2_ids | isocortex_layer_3_ids)
+        np.unique(data["annotation"].raw),
+        sorted({0} | isocortex_layer_2_ids | isocortex_layer_3_ids),
     )
-    layer_2_mask = np.isin(raw, list(isocortex_layer_2_ids))
-    layer_3_mask = np.isin(raw, list(isocortex_layer_3_ids))
-    npt.assert_array_equal(raw > 0, np.logical_or(layer_2_mask, layer_3_mask))
+    layer_2_mask = np.isin(data["annotation"].raw, list(isocortex_layer_2_ids))
+    layer_3_mask = np.isin(data["annotation"].raw, list(isocortex_layer_3_ids))
+    npt.assert_array_equal(data["annotation"].raw > 0, np.logical_or(layer_2_mask, layer_3_mask))
 
-    layer_2_indices = np.where(np.isin(raw, list(isocortex_layer_2_ids)))
-    layer_3_indices = np.where(np.isin(raw, list(isocortex_layer_3_ids)))
-    assert np.count_nonzero(layer_2_indices[1] > layer_3_top) >= 0.95 * len(layer_2_indices[1])
-    assert np.count_nonzero(layer_3_indices[1] <= layer_3_top) >= 0.95 * len(layer_3_indices[1])
+    layer_2_indices = np.where(np.isin(data["annotation"].raw, list(isocortex_layer_2_ids)))
+    layer_3_indices = np.where(np.isin(data["annotation"].raw, list(isocortex_layer_3_ids)))
+    assert np.count_nonzero(layer_2_indices[1] > data["layer_3_top"]) >= 0.95 * len(
+        layer_2_indices[1]
+    )
+    assert np.count_nonzero(layer_3_indices[1] <= data["layer_3_top"]) >= 0.95 * len(
+        layer_3_indices[1]
+    )

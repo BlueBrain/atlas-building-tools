@@ -10,7 +10,12 @@ import pandas as pd
 import voxcell  # type: ignore
 import yaml  # type: ignore
 
-from atlas_building_tools.app.utils import EXISTING_FILE_PATH, log_args, set_verbose
+from atlas_building_tools.app.utils import (
+    EXISTING_FILE_PATH,
+    common_atlas_options,
+    log_args,
+    set_verbose,
+)
 from atlas_building_tools.combination import annotations_combinator, markers_combinator
 
 L = logging.getLogger(__name__)
@@ -30,7 +35,7 @@ def app(verbose):
     "--hierarchy",
     type=EXISTING_FILE_PATH,
     required=True,
-    help="Path to hierarchy.json or 1.json",
+    help="Path to AIBS 1.json file or BBP hierarchy.json file.",
 )
 @click.option(
     "--brain-annotation-ccfv2",
@@ -94,18 +99,7 @@ def combine_annotations(
 
 
 @app.command()
-@click.option(
-    "--hierarchy",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help="Path to hierarchy.json or 1.json",
-)
-@click.option(
-    "--brain-annotation",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to the whole mouse brain annotation file."),
-)
+@common_atlas_options
 @click.option(
     "--config",
     type=EXISTING_FILE_PATH,
@@ -118,7 +112,7 @@ def combine_annotations(
     ),
 )
 @log_args(L)
-def combine_markers(hierarchy, brain_annotation, config):
+def combine_markers(annotation_path, hierarchy_path, config):
     """Generate and save the combined glia files and the global celltype scaling factors
 
     This function performs the operations indicated by the formula of the
@@ -138,8 +132,8 @@ def combine_markers(hierarchy, brain_annotation, config):
       'A Cell Atlas for the Mouse Brain' by C. Eroe et al. 2018,
       i.e., the proportions of each glia cell type in the whole mouse brain.\n
     """
-    hierarchy = voxcell.RegionMap.load_json(hierarchy)
-    annotation = voxcell.VoxelData.load_nrrd(brain_annotation)
+    annotation = voxcell.VoxelData.load_nrrd(annotation_path)
+    hierarchy = voxcell.RegionMap.load_json(hierarchy_path)
     config = yaml.load(open(config), Loader=yaml.FullLoader)
     glia_celltype_densities = pd.DataFrame(config["cellDensity"])
     combination_data = pd.DataFrame(config["combination"])
