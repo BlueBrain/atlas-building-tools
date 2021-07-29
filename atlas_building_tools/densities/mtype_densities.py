@@ -307,7 +307,8 @@ class DensityProfileCollection:
 
         return slice_volume(
             layer_mask,
-            annotation.offset,
+            # default offset can be of type float if voxcell<=3.0.1
+            np.asarray(annotation.offset, dtype=np.float32),
             annotation.voxel_dimensions,
             vector_field,
             thicknesses=[1.0] * slice_count,

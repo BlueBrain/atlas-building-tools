@@ -73,7 +73,7 @@ def compute_region_cell_counts(
     """
     cell_counts = [
         np.sum(cell_density[np.isin(annotation, list(set_))]) * voxel_volume
-        for set_ in hierarchy_info["child_id_set"]
+        for set_ in hierarchy_info["descendant_id_set"]
     ]
 
     return pd.DataFrame(
@@ -109,7 +109,7 @@ def compute_region_densities(
         The index is the sorted list of all region identifiers.
     """
     densities = []
-    for set_ in hierarchy_info["child_id_set"]:
+    for set_ in hierarchy_info["descendant_id_set"]:
         mask = np.isin(annotation, list(set_))
         densities.append(np.sum(cell_density[mask]) / np.count_nonzero(mask))
 
@@ -281,7 +281,7 @@ def cell_count_per_slice_to_density(
     cell_counts_per_slice = measurements[mask_50um]
     hierarchy_info = hierarchy_info.set_index("brain_region")
     for index, row in cell_counts_per_slice.iterrows():
-        id_set = hierarchy_info.loc[row["brain_region"], "child_id_set"]
+        id_set = hierarchy_info.loc[row["brain_region"], "descendant_id_set"]
         average_slice_volume = voxel_volume * get_average_voxel_count_per_slice(
             id_set, annotation, thickness
         )

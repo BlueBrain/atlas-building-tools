@@ -16,10 +16,10 @@ from itertools import count
 from typing import TYPE_CHECKING, Any, Dict, Iterator, Set
 
 import numpy as np  # type: ignore
-from nptyping import NDArray  # type: ignore
-from tqdm import tqdm
 
 # pylint: disable=ungrouped-imports
+from cgal_pybind import slice_volume
+from nptyping import NDArray  # type: ignore
 from voxcell import RegionMap  # type: ignore
 
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
@@ -169,9 +169,6 @@ def _edit_layer_23(
         hierarchy: brain regions hierarchy dict.
         region_map: map to navigate the brain regions hierarchy.
         volume: whole brain annotated volume.
-            - keys are the region identifiers on layer 2/3
-                which should be replaced by new ids corresponding to layer 3,
-            - values are the new identifiers to be used.
         layer_23_ids: the set of all layer 2/3 identifiers,
             i.e., the identifiers whose corresponding acronyms and names
             end with '2/3'.
@@ -200,85 +197,6 @@ def _edit_layer_23(
     for id_ in layer_23_ids:
         change_volume(id_, new_layer_ids[id_]["layer_2"], layer_2_mask)
         change_volume(id_, new_layer_ids[id_]["layer_3"], ~layer_2_mask)
-
-
-def _compute_distance_to_boundary(
-    start: NDArray[int],
-    volume_mask: NDArray[bool],
-    direction_vectors: NDArray[float],
-    direction: int,
-) -> float:
-    """
-    Compute the distance to the volume boundary following the specified direction.
-
-    Args:
-        start: 3D index of the voxel for which the computation is queried.
-        volume_mask: boolean array of shape (W, H, D) holding the mask of a volume.
-        direction_vectors: float array of shape (W, H, D, 3) holding a field of 3D unit vectors
-            defined over the input volume.
-        direction: Either 1 (forward) or -1 (backward). The value 1 means that
-            we follow the direction vectors. The value -1 means that we follow the negated
-            direction vectors.
-
-    Returns:
-        the distance to the boundary of the volume along direction vectors.
-    """
-
-    def _is_in_volume(voxel: NDArray[int], volume_mask: NDArray[bool]) -> bool:
-        """
-        Indicates whether `voxel`lies in the maske volume.
-
-        Args:
-            voxel: 3D index of the input voxel.
-            volume_mask: boolean mask of shape (W, H, D); mask of a 3D brain region.
-        Retuns:
-            True, if `voxel` is the `volume_mask`, False otherwise.
-        """
-        return volume_mask[tuple(voxel.astype(int))]
-
-    delta = 0.5
-    distance = 0.0
-    current = start.copy()
-    while _is_in_volume(current, volume_mask):
-        current = current + direction_vectors[tuple(current.astype(int))] * delta * direction
-        distance += delta
-
-    return distance
-
-
-def _get_shallowest_layer_mask(
-    volume_mask: NDArray[bool],
-    thickness_ratio: float,
-    direction_vectors: NDArray[float],
-):
-    """
-    Get the mask of the voxels with cortical depth at most `thickness_ratio` of the full thickness.
-
-    The distance is taken from the top of the volume to the voxel along fiber tracts.
-    Fiber tracts are approximated by polygonal lines built out of the input direction vectors.
-
-    Args:
-        volume_mask: boolean array of shape (W, H, D) holding the mask of a volume to split
-            according to the specified `thickness_ratio`.
-        thickness_ratio: ratio used to determine if a voxel belongs to the returned mask.
-        direction_vectors: float array of shape (W, H, D, 3) holding a field of 3D unit vectors
-            defined over the input volume.
-
-    Returns:
-      boolean array of shape (W, H, D), mask of the voxels whose cortical depth is at most
-      `thickness_ratio` of the volume thickness.
-
-    """
-    layer_mask = np.zeros_like(volume_mask)
-    voxels = np.array(np.where(volume_mask)).T
-
-    for voxel in tqdm(voxels):  # pylint: disable=not-an-iterable
-        forward_distance = _compute_distance_to_boundary(voxel, volume_mask, direction_vectors, 1)
-        backward_distance = _compute_distance_to_boundary(voxel, volume_mask, direction_vectors, -1)
-        ratio = forward_distance / (forward_distance + backward_distance)
-        layer_mask[tuple(voxel)] = bool(ratio <= thickness_ratio)
-
-    return layer_mask
 
 
 def split(
@@ -314,11 +232,18 @@ def split(
         "@.*2(/3)?$", attr="acronym", with_descendants=True
     )
 
-    L.info("Computing the mask of the voxels of thickness at most %f", thickness_ratio)
-    layer_2_mask = _get_shallowest_layer_mask(
-        np.isin(annotation.raw, list(layers_2_and_3_ids)),
-        thickness_ratio,
-        direction_vectors,
+    L.info("Splitting the layer 2/3 volume using a thickness ratio of %f ...", thickness_ratio)
+    # The voxels labeled with 1 (resp. 2) are the voxels whose cortical depth is at most
+    # (resp. greater than) `thickness_ratio` times the full thickness of layer 2/3.
+    # Note: direction vectors flow from the deepest layer to the shallowest layer.
+    splitting = slice_volume(
+        volume=np.isin(annotation.raw, list(layers_2_and_3_ids)),
+        # Default offset can be of type float if voxcell<=3.0.1
+        offset=np.array(annotation.offset, dtype=np.float32),
+        voxel_dimensions=annotation.voxel_dimensions,
+        vector_field=np.asarray(direction_vectors, dtype=np.float32),
+        thicknesses=[1.0 - thickness_ratio, thickness_ratio],
+        resolution=0.5,
     )
     layer_23_ids = isocortex_ids & region_map.find("@.*2/3$", attr="acronym", with_descendants=True)
 
@@ -328,5 +253,5 @@ def split(
         region_map,
         annotation.raw,
         layer_23_ids,
-        layer_2_mask,
+        splitting == 2,  # the voxels of layer 2 are the shallowest; they are located in slice 2.
     )

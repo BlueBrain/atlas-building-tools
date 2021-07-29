@@ -327,7 +327,7 @@ def get_hierarchy_info():
                 "Lobule II, Purkinje layer",
                 "Lobule II, molecular layer",
             ],
-            "child_id_set": [
+            "descendant_id_set": [
                 {920, 976, 10708, 10709, 10710},
                 {976, 10708, 10709, 10710},
                 {10708},

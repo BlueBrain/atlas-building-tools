@@ -16,6 +16,15 @@ TESTS_PATH = Path(__file__).parent.parent
 DATA_PATH = TESTS_PATH / "densities" / "data"
 
 
+def test_slice_layer():
+    raw = np.array([[[0, 1, 2, 3, 0]]], dtype=int)
+    annotation = VoxelData(raw, (1.0, 1.0, 1.0))
+    vector_field = np.array([[[[0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1]]]]).astype(np.float32)
+    mask = np.array([[[0, 1, 1, 1, 0]]]).astype(bool)
+    actual = tested.DensityProfileCollection.slice_layer(mask, annotation, vector_field, 3)
+    npt.assert_array_equal(actual, np.array([[[0, 1, 2, 3, 0]]]))
+
+
 def create_density_profile_collection(mapping_path="mapping.tsv"):
     return tested.DensityProfileCollection.load(
         DATA_PATH / "meta" / mapping_path,

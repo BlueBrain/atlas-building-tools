@@ -2,15 +2,15 @@ Changelog
 =========
 
 Version 0.1.4
---------------
-- Create and re-use a common atlas option group [`NSETM_1513`]
-- Make average inhibitory neuron densities consistent and create refined volumetric density files [`NSETM-1506`_]
+-------------
+- Uses the volume slicer of `nse/cgal-pybind` to split layer 2/3 of the AIBS mouse isocortex [`NSETM_1513`]
+- Creates and re-uses a common atlas option group [`NSETM_1513`]
+- Makes average inhibitory neuron densities consistent and create refined volumetric density files [`NSETM-1506`_]
 - Turns warning on missing cairosvg module into a note in the main CLI help [`NSETM_1513`]
 
 Version 0.1.3 (2021-07-01)
 --------------------------
 - Adds a function creating a boolean mask of cylinder-shaped subregion of a 3D volume [`NSETM-1320`_]
-
 
 Version 0.1.2 (2021-06-22)
 --------------------------
@@ -30,10 +30,8 @@ Version 0.1.2 (2021-06-22)
 - Adds CLI to interpolate NaN direction vectors by valid ones but also direction vectors specified by a mask [`NSETM-1343`_]
 - The flatmap CLI has changed: it consumes now a json metadata file defining the ROI and its layers
 
-
 Version 0.1.1 (2021-05-14)
 --------------------------
-
 - Uses cgal-pydind==0.1.0 and lowers the version required for openpyxl, rtree and trimesh [`NSETM-1454`_]
 - Adds 3 consistency checks for distances to layer boundaries wrt to direction vectors (placement hints) [`NSETM-1343`_]
 - Enlarges the mask of distance-wise problematic voxels with voxels whose distances are inconsistent according to the above checks [`NSETM-1343`_]
