@@ -1,20 +1,4 @@
 include:
-- project: 'nse/ci'
-  ref: main
-  file:
-    - /ci/lib/tox-bb5.yml
-    - /ci/jobs/check-version.yml
-    - /ci/jobs/check-packaging.yml
-    - /ci/jobs/py38.yml
-    - /ci/jobs/coverage.yml
-    - /ci/jobs/build-package.yml
-    - /ci/jobs/publish-package.yml
-    - /ci/jobs/tag.yml
-
-
-.tox-template:
-  variables:
-    EXTRA_MODULES:
-      unstable:ultraliser
-      unstable:regiodesics
+  - project: nse/ci
+    file: /ci/pipelines/nse.atlas-building-tools.yml
 

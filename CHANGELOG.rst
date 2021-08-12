@@ -3,6 +3,7 @@ Changelog
 
 Version 0.1.4
 -------------
+- migration from gerrit to gitlab: `https://bbpgitlab.epfl.ch/nse/atlas-building-tools`
 - Uses the volume slicer of `nse/cgal-pybind` to split layer 2/3 of the AIBS mouse isocortex [`NSETM_1513`]
 - Creates and re-uses a common atlas option group [`NSETM_1513`]
 - Makes average inhibitory neuron densities consistent and create refined volumetric density files [`NSETM-1506`_]
