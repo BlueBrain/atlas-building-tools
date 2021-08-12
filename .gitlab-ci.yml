@@ -16,10 +16,6 @@ include:
 .tox-template:
   variables:
     EXTRA_MODULES:
-      unstable:graphviz
-      unstable:cmake
-      unstable:gcc
-      unstable:git
       unstable:ultraliser
       unstable:regiodesics
       unstable:py-rtree
