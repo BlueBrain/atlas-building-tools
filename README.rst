@@ -44,7 +44,7 @@ with its latest sources. Prior to running
 
 .. code-block:: bash
 
-    git clone ssh://${USERNAME}@bbpcode.epfl.ch/nse/atlas-building-tools
+    git clone git@bbpgitlab.epfl.ch:nse/atlas-building-tools.git
     cd atlas-building-tools
     pip install -e .
 
@@ -169,7 +169,7 @@ These formatting operations will help you pass the linting check `testenv:lint` 
 .. _`authalic map`: https://doc.cgal.org/latest/Surface_mesh_parameterization/classCGAL_1_1Surface__mesh__parameterization_1_1Discrete__authalic__parameterizer__3.html
 .. _`BBP Cell Atlas`: https://portal.bluebrain.epfl.ch/resources/models/cell-atlas/
 .. _brew: https://brew.sh/
-.. _cgal-pybind: https://bbpcode.epfl.ch/code/#/admin/projects/common/cgal-pybind
+.. _cgal-pybind: https://bbpgitlab.epfl.ch/nse/cgal-pybind
 .. _CGAL: https://www.cgal.org/
 .. _conda: https://docs.conda.io/en/latest/
 .. _libspatialindex: https://libspatialindex.org/

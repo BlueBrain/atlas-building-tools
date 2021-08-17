@@ -43,7 +43,12 @@ def split_isocortex_layer_23(
     output_annotation_path,
 ):
     """Split the layer 2/3 of the AIBS mouse isocortex and save modified hierarchy and
-    annotations."""
+    annotation files.
+
+    Two new identifiers are created for each subregion of the AIBS mouse iscortex whose name
+    and acronym ends with "2/3". The modification of the hierarchy file is independent
+    of the input annotated volume.
+    """
     L.info("Loading files ...")
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
     with open(hierarchy_path, "r") as h_file:
@@ -52,7 +57,7 @@ def split_isocortex_layer_23(
     # Splits and updates in place hierarchy and annotations
     L.info("Splitting layer 2/3 in layer 2 and layer 3 ...")
     isocortex_layer_23.split(hierarchy, annotation, direction_vectors.raw)
-    L.info("Saving modified annotation and hierarchy files ...")
-    annotation.save_nrrd(output_annotation_path)
+    L.info("Saving modified hierarchy and annotation files ...")
     with open(output_hierarchy_path, "w") as out:
         json.dump(hierarchy, out, indent=1, separators=(",", ": "))
+    annotation.save_nrrd(output_annotation_path)

@@ -152,27 +152,54 @@ def edit_hierarchy(
         edit_hierarchy(child, new_layer_ids, id_generator)
 
 
-def _edit_layer_23(
+def _edit_layer_23_hierarchy(
     hierarchy: HierarchyDict,
     region_map: RegionMap,
-    volume: NDArray[int],
-    layer_23_ids: Set[int],
-    layer_2_mask: NDArray[bool],
-) -> None:
+) -> Dict[int, Dict[str, int]]:
     """
     Edit layer 2/3 into 2 and 3.
 
-    Edit in place `hierarchy` and `volume` to perform the splitting of layer 2/3 into layer 2 and
+    Edit in place `hierarchy` to perform the splitting of layer 2/3 into layer 2 and
     layer 3.
 
     Args:
         hierarchy: brain regions hierarchy dict.
         region_map: map to navigate the brain regions hierarchy.
+
+    Returns:
+        dict of the same form as the argument `new_layer_ids` of
+        :fun:`atlas_building_tools.region_splitter.isocortex_layer_23.edit_hierarchy`
+
+    """
+
+    new_layer_ids: Dict[int, Dict[str, int]] = defaultdict(dict)
+    isocortex_hierarchy = get_isocortex_hierarchy(hierarchy)
+    edit_hierarchy(isocortex_hierarchy, new_layer_ids, create_id_generator(region_map))
+
+    return new_layer_ids
+
+
+def _edit_layer_23_volume(
+    volume: NDArray[int],
+    layer_2_mask: NDArray[bool],
+    layer_23_ids: Set[int],
+    new_layer_ids: Dict[int, Dict[str, int]],
+) -> None:
+    """
+    Edit layer 2/3 into 2 and 3.
+
+    Edit in place `volume` to perform the splitting of layer 2/3 into layer 2 and
+    layer 3.
+
+    Args:
         volume: whole brain annotated volume.
+        layer_2_mask: binary mask of the voxels sitting in layer 2.
         layer_23_ids: the set of all layer 2/3 identifiers,
             i.e., the identifiers whose corresponding acronyms and names
             end with '2/3'.
-        layer_2_mask: binary mask of the voxels sitting in layer 2.
+        new_layer_ids:
+            dict of the same form as the argument `new_layer_ids` of
+            :fun:`atlas_building_tools.region_splitter.isocortex_layer_23,py.edit_hierarchy`
     """
 
     def change_volume(id_: int, new_id: int, layer_mask: NDArray[bool]) -> None:
@@ -190,10 +217,6 @@ def _edit_layer_23(
         if np.any(change_to_layer):
             volume[change_to_layer] = new_id
 
-    new_layer_ids: Dict[int, Dict[str, int]] = defaultdict(dict)
-    isocortex_hierarchy = get_isocortex_hierarchy(hierarchy)
-    edit_hierarchy(isocortex_hierarchy, new_layer_ids, create_id_generator(region_map))
-
     for id_ in layer_23_ids:
         change_volume(id_, new_layer_ids[id_]["layer_2"], layer_2_mask)
         change_volume(id_, new_layer_ids[id_]["layer_3"], ~layer_2_mask)
@@ -207,6 +230,9 @@ def split(
 ) -> None:
     """
     Splits in place layer 2/3 into layer 2 and layer 3 based on a relative thickness ratio.
+
+    The `hierarchy` dict and the `annotation` are modified in-place.
+    Edits performed in `hierarchy` are independend of the content of `annotation`,
 
     The ratio is used to determined which voxels of layer 2/3 should sit in
     layer 2 or layer 3.
@@ -247,11 +273,14 @@ def split(
     )
     layer_23_ids = isocortex_ids & region_map.find("@.*2/3$", attr="acronym", with_descendants=True)
 
-    L.info("Editing annotation and hierarchy files ...")
-    _edit_layer_23(
-        hierarchy,
-        region_map,
+    L.info("Editing hierarchy ...")
+    new_layer_ids = _edit_layer_23_hierarchy(
+        hierarchy, region_map
+    )  # `hierarchy` is edited in-place
+    L.info("Editing annotation ...")
+    _edit_layer_23_volume(
         annotation.raw,
-        layer_23_ids,
         splitting == 2,  # the voxels of layer 2 are the shallowest; they are located in slice 2.
+        layer_23_ids,
+        new_layer_ids,
     )
