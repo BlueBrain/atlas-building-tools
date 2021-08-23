@@ -1,18 +1,14 @@
-.. |name| replace:: Atlas-Building-Tools
+Overview
+=========
 
-Welcome to |name| documentation!
-==========================================
+This project contains the tools to create the data files the `BBP Cell Atlas`_ is built on.
+The creation of atlas files is the first step towards the `creation of a circuit`_.
 
-Introduction
-============
-
-This repository contains the tools to create the data files the `BBP Cell Atlas`_ is built on.
-
-The tools of this project are based on the methods of `A Cell Atlas for the Mouse Brain`_ by Csaba Eroe et al., 2018.
+The tools implementation is based on the methods of `A Cell Atlas for the Mouse Brain`_ by Csaba Eroe et al., 2018.
 The source code was originally written by Csaba Eroe, Dimitri Rodarie, Hugo Dictus, Lu Huanxiang, Wajerowicz Wojciech and Jonathan Lurie.
 
 Atlas building tools operate on data files coming from the `Allen Institute for Brain Science (AIBS)`_.
-These data files were obtained via different experiments performed on P56 wild-type mouse brains.
+These data files were obtained via experiments performed on P56 wild-type mouse brains.
 
 The tools allow to:
 
@@ -24,6 +20,7 @@ The tools allow to:
 * compute cell densities for several cell types including neurons and glia cells in the whole mouse brain
 * flatten a laminar brain region by collapsing the streamlines of its fiber tracts direction field, i.e., create a flat map to be used by `white-matter-projections`_
 
+Tools can be used through a command line interface.
 
 Installation
 ============
@@ -35,9 +32,18 @@ This python project depends on:
 * the BBP python-C++ bindings cgal-pybind_
 
 To install `atlas-buidling-tools` on BB5, run the following command:
+
 .. code-block:: bash
 
     module load unstable py-atlas-building-tools
+
+Check the version of the installed programm with::
+
+    atlas-building-tools --version
+
+Check which commands are available with::
+
+    atlas-building-tools --help
 
 The remaining installation instructions are only relevant if you want to install `atlas-buidling-tools` on BB5
 with its latest sources. Prior to running
@@ -181,3 +187,4 @@ These formatting operations will help you pass the linting check `testenv:lint` 
 .. _Rtree: https://pypi.org/project/Rtree/
 .. _Ultraliser: https://bbpcode.epfl.ch/browse/code/viz/Ultraliser/tree/
 .. _white-matter-projections: https://bbpcode.epfl.ch/browse/code/nse/white-matter-projections/tree/
+.. _`creation of a circuit`: https://bbpteam.epfl.ch/documentation/projects/circuit-build/latest/tutorial.html

@@ -32,8 +32,8 @@ def app(verbose):
     required=True,
     help=("Path to the mouse isocortex direction vectors nrrd file."),
 )
-@click.option("--output-hierarchy-path", required=True, help="path of file to write")
-@click.option("--output-annotation-path", required=True, help="path of file to write")
+@click.option("--output-hierarchy-path", required=True, help="Path of the json file to write")
+@click.option("--output-annotation-path", required=True, help="Path of the nrrd file to write")
 @log_args(L)
 def split_isocortex_layer_23(
     annotation_path,

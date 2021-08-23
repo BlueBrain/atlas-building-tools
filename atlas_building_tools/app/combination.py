@@ -35,7 +35,7 @@ def app(verbose):
     "--hierarchy",
     type=EXISTING_FILE_PATH,
     required=True,
-    help="Path to AIBS 1.json file or BBP hierarchy.json file.",
+    help="Path to AIBS 1.json file or an equivalent BBP hierarchy.json file.",
 )
 @click.option(
     "--brain-annotation-ccfv2",
@@ -55,7 +55,7 @@ def app(verbose):
     required=True,
     help=("More recent brain annotation file with missing leaf regions."),
 )
-@click.option("--output-path", required=True, help="path of file to write")
+@click.option("--output-path", required=True, help="Path of the nrrd file to write")
 @log_args(L)
 def combine_annotations(
     hierarchy,
@@ -65,22 +65,31 @@ def combine_annotations(
     output_path,
 ):
     # pylint: disable=line-too-long
-    """Generate and save the combined annotation file
+    """Generate and save the combined annotation file.
 
     The annotation file `brain_annotation_ccfv3` is the annotation file containing
-     the least complete annotation.\n
+    the least complete annotation. There are two use cases: a resolution of 10 or 25 um.
 
-    There are so far only two use cases, one for each resolution (10 um or 25 um).
-    For a resolution of 10 um, the path arguments should be the following:\n
+    For a resolution of 10 um, the path arguments should be the following:
 
-     - hierarchy = path to 1.json from AIBS
-    (http://api.brain-map.org/api/v2/structure_graph_download/1.json)\n
-     - brain_annotation_ccfv2 = path to annotation_10_2011.nrrd
-     (http://download.alleninstitute.org/informatics-archive/current-release/mouse_ccf/annotation/mouse_2011/annotation_10.nrrd)\n
-     - fiber_annotation = path to annotationFiber_10_2011.nrrd
-     (http://download.alleninstitute.org/informatics-archive/current-release/mouse_ccf/annotation/mouse_2011/annotationFiber_10.nrrd)\n
-     - brain_annotation_ccfv3 = path to annotation_10_2017.nrrd
-     (http://download.alleninstitute.org/informatics-archive/current-release/mouse_ccf/annotation/ccf_2017/annotation_10.nrrd)\n
+    \b
+    - `hierarchy` is the path to a copy of
+    http://api.brain-map.org/api/v2/structure_graph_download/1.json
+
+    \b
+    - `brain_annotation_ccfv2` is the path to a copy of
+    ``AIBS_ANNOTATION_URL``/mouse_2011/annotation_10.nrrd
+
+    \b
+    - `fiber_annotation` is the path to a copy of
+    ``AIBS_ANNOTATION_URL``/mouse_2011/annotationFiber_10_2011.nrrd
+
+    \b
+    - `brain_annotation_ccfv3` s the path to a copy of
+    ``AIBS_ANNOTATION_URL``/ccf_2017/annotation_10.nrrd
+
+    where ``AIBS_ANNOTATION_URL`` is
+    http://download.alleninstitute.org/informatics-archive/current-release/mouse_ccf/annotation.
     """
 
     region_map = voxcell.RegionMap.load_json(hierarchy)
@@ -113,24 +122,27 @@ def combine_annotations(
 )
 @log_args(L)
 def combine_markers(annotation_path, hierarchy_path, config):
-    """Generate and save the combined glia files and the global celltype scaling factors
+    """Generate and save the combined glia files and the global celltype scaling factors.
 
     This function performs the operations indicated by the formula of the
     'Glia differentiation' section in 'A Cell Atlas for the Mouse Brain' by
     C. Eroe et al., 2018.
-     https://www.frontiersin.org/articles/10.3389/fninf.2018.00084/full.
+    See https://www.frontiersin.org/articles/10.3389/fninf.2018.00084/full.
 
-     The output consists in:
+    The output consists in:
 
-     * A 3D volumetric file for each cell type (oligodendrocyte, astrocyte, microglia)
-      representing the average density of each cell type, up to a uniform constant factor.\n
+    \b
+    - A 3D volumetric nrrd file for each cell type (oligodendrocyte, astrocyte, microglia)
+    representing the average density of each cell type, up to a uniform constant factor.
 
-     * A 3D volumetric file representing the overall average density of the glia in the
-      whole mouse brain up to the same uniform constant factor.\n
+    \b
+    - A 3D volumetric nrrd file representing the overall average density of the glia in the
+    whole mouse brain up to the same uniform constant factor.
 
-     * The global celltype scaling factors S_celltype of the 'Glia differentiation section in
-      'A Cell Atlas for the Mouse Brain' by C. Eroe et al. 2018,
-      i.e., the proportions of each glia cell type in the whole mouse brain.\n
+    \b
+    - The global cell type scaling factors S_celltype of the 'Glia differentiation' section in
+    'A Cell Atlas for the Mouse Brain' by C. Eroe et al. 2018,
+    i.e., the proportions of each glia cell type in the whole mouse brain.
     """
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
     hierarchy = voxcell.RegionMap.load_json(hierarchy_path)

@@ -17,8 +17,8 @@ This script computes and saves the following cell densities under the form of de
     - excitatory neuron density
 
 Density estimates are based on datasets produced by in-situ hybridization experiments of the
- Allen Institute for Brain Science (AIBS). We used in particular AIBS genetic marker datasets and
-  the Nissl volume of the Allen Mouse Brain Annotation Atlas.
+Allen Institute for Brain Science (AIBS). We used in particular AIBS genetic marker datasets and
+the Nissl volume of the Allen Mouse Brain Annotation Atlas.
 Genetic marker stained intensity and Nissl stained intensity are assumed to be a good indicator
 of the soma density in a population of interest.
 
@@ -70,11 +70,14 @@ from atlas_building_tools.densities.refined_inhibitory_neuron_densities import (
 )
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
-DATA_PATH = Path(Path(__file__).parent, "data")
+DATA_PATH = Path(__file__).parent / "data"
+ABT_PATH = Path(__file__).parent.parent.parent
 HOMOGENOUS_REGIONS_PATH = DATA_PATH / "measurements" / "homogenous_regions"
-MARKERS_README_PATH = DATA_PATH / "markers" / "README.rst"
-MTYPES_README_PATH = DATA_PATH / "mtypes" / "README.rst"
-METADATA_PATH = Path(Path(__file__).parent, "data", "metadata")
+HOMOGENOUS_REGIONS_REL_PATH = HOMOGENOUS_REGIONS_PATH.relative_to(ABT_PATH)
+MARKERS_README_REL_PATH = (DATA_PATH / "markers" / "README.rst").relative_to(ABT_PATH)
+MTYPES_README_REL_PATH = (DATA_PATH / "mtypes" / "README.rst").relative_to(ABT_PATH)
+METADATA_PATH = DATA_PATH / "data" / "metadata"
+METADATA_REL_PATH = METADATA_PATH.relative_to(ABT_PATH)
 
 L = logging.getLogger(__name__)
 
@@ -128,7 +131,7 @@ def app(verbose):
 )
 @log_args(L)
 def cell_density(annotation_path, hierarchy_path, nissl_path, output_path, soma_radii):
-    """Compute and save the overall mouse brain cell density.\n
+    """Compute and save the overall mouse brain cell density.
 
     The input Nissl stain volume of AIBS is turned into an actual density field complying with
     the cell counts of several regions.
@@ -137,12 +140,14 @@ def cell_density(annotation_path, hierarchy_path, nissl_path, output_path, soma_
     The output density field array is a float64 array of shape (W, H, D) where (W, H, D)
     is the shape of the input annotated volume.
 
-    The computation of the overall cell density is based on:\n
-        * the Nissl stain intensity, which is supposed to represent the overall cell density, up to
-            to region-dependent constant scaling factors.\n
-        * cell counts from the scientific literature, which are used to determine a local \n
-            linear dependency factor for each region where a cell count is available.\n
-        * the optional soma radii, used to operate a correction.
+    The computation of the overall cell density is based on:
+
+    \b
+    - the Nissl stain intensity, which is supposed to represent the overall cell density, up to
+    to region-dependent constant scaling factors.
+    - cell counts from the scientific literature, which are used to determine a local
+    linear dependency factor for each region where a cell count is available.
+    - the optional soma radii, used to operate a correction.
     """
 
     annotation = VoxelData.load_nrrd(annotation_path)
@@ -225,37 +230,46 @@ def glia_cell_densities(
     glia_proportions_path,
     output_dir,
 ):  # pylint: disable=too-many-arguments, too-many-locals
-    """Compute and save the glia cell densities.\n
+    """Compute and save the glia cell densities.
 
     Density is expressed as a number of cells per mm^3.
     The output density field arrays are float64 arrays of shape (W, H, D) where (W, H, D)
     is the shape of the input annotated volume.
 
-    The computation is based on:\n
-        * an estimate of the overall cell density\n
-        * estimates of unconstrained densities for the different glia cell types\n
-        * glia cell counts from the scientific literature\n
+    The computation is based on:
 
-    The cell counts and the overall cell density are used to constrain the glia cell densities\n
-    so that:\n
-        * they do not exceed voxel-wise the overall cell density\n
-        * the density sums multiplied by the voxel volume match the provided cell counts\n
+    \b
+    - an estimate of the overall cell density
+    - estimates of unconstrained densities for the different glia cell types
+    - glia cell counts from the scientific literature
 
-    An optimization process is responsible for enforcing these constraints while keeping\n
-    the output densities as close as possible to the unconstrained input densities.\n
+    The cell counts and the overall cell density are used to constrain the glia cell densities
+    so that:
+
+    \b
+    - they do not exceed voxel-wise the overall cell density
+    - the density sums multiplied by the voxel volume match the provided cell counts
+
+    An optimization process is responsible for enforcing these constraints while keeping
+    the output densities as close as possible to the unconstrained input densities.
+
     Note: optimization is not fully implemented and the current process only returns a
     feasible point.
 
-    The ouput glia densities are saved in the specified output directory under the following\n
-    names:\n
-        * glia_density.nrrd (overall glia density) \n
-        * astrocyte_density.nrrd \n
-        * oligodendrocyte_density.nrrd \n
-        * microglia_density.nrrd \n
+    The ouput glia densities are saved in the specified output directory under the following
+    names:
+
+    \b
+    - glia_density.nrrd (overall glia density)
+    - astrocyte_density.nrrd
+    - oligodendrocyte_density.nrrd
+    - microglia_density.nrrd
 
     In addition, the overall neuron cell density is inferred from the overall cell density and
-    the glia cell density and saved in the same directory under the name:\n
-        * neuron_density.
+    the glia cell density and saved in the same directory under the name:
+
+    \b
+    - neuron_density.
     """
 
     annotation = VoxelData.load_nrrd(annotation_path)
@@ -337,7 +351,7 @@ def glia_cell_densities(
         '"Brain-wide Maps Reveal Stereotyped Cell-Type- Based Cortical Architecture '
         'and Subcortical Sexual Dimorphism" by Kim et al., 2017. '
         "https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc1.xlsx. "
-        "Defaults to atlas_building_tools/app/data/measurements/mmc1.xlsx."
+        "Defaults to `atlas_building_tools/app/data/measurements/mmc1.xlsx`."
     ),
 )
 @click.option(
@@ -357,33 +371,39 @@ def inhibitory_and_excitatory_neuron_densities(
     inhibitory_neuron_counts_path,
     output_dir,
 ):  # pylint: disable=too-many-arguments
-    """Compute and save the inhibitory and excitatory neuron densities.\n
+    """Compute and save the inhibitory and excitatory neuron densities.
 
     Density is expressed as a number of cells per mm^3.
     The output density field arrays are float64 arrays of shape (W, H, D) where (W, H, D)
     is the shape of the input annotated volume.
 
-    The computation is based on:\n
-        * an estimate of the overall neuron density\n
-        * estimates of unconstrained inhibitory and excitatory neuron densities provided by
-        the GAD1 and Nrn1 markers intensities respectively.
+    The computation is based on:
+
+    \b
+    - an estimate of the overall neuron density
+    - estimates of unconstrained inhibitory and excitatory neuron densities provided by
+    the GAD1 and Nrn1 markers intensities respectively.
 
     The overall neuron density and region-specific neuron counts from the scientific literature are
-     used to constrain the inhibitory and excitatory neuron densities so that:\n
-        * they do not exceed voxel-wise the overall neuron cell density\n
-        * the ratio (inhibitory neuron count / excitatory neuron count) matches a prescribed value
-        wherever it is constrained.
+    used to constrain the inhibitory and excitatory neuron densities so that:
 
-    An optimization process is responsible for enforcing these constraints while keeping\n
-    the output densities as close as possible to the unconstrained input densities.\n
+    \b
+    - they do not exceed voxel-wise the overall neuron cell density
+    - the ratio (inhibitory neuron count / excitatory neuron count) matches a prescribed value
+    wherever it is constrained.
+
+    An optimization process is responsible for enforcing these constraints while keeping
+    the output densities as close as possible to the unconstrained input densities.
 
     Note: optimization is not fully implemented and the current process only returns a
     feasible point.
 
-    The ouput densities are saved in the specified output directory under the following\n
-    names:\n
-        * inhibitory_neuron_density.nrrd \n
-        * excitatory_neuron_density.nrrd \n
+    The ouput densities are saved in the specified output directory under the following
+    names:
+
+    \b
+    - inhibitory_neuron_density.nrrd
+    - excitatory_neuron_density.nrrd
     """
 
     annotation = VoxelData.load_nrrd(annotation_path)
@@ -423,7 +443,7 @@ def inhibitory_and_excitatory_neuron_densities(
     required=False,
     help=(
         "(Optional) Path to the metadata json file. Defaults to "
-        f"{str(METADATA_PATH / 'isocortex_metadata.json')}"
+        f"`{str(METADATA_REL_PATH / 'isocortex_metadata.json')}`"
     ),
     default=str(METADATA_PATH / "isocortex_metadata.json"),
 )
@@ -431,13 +451,13 @@ def inhibitory_and_excitatory_neuron_densities(
     "--direction-vectors-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=("Path to the mouse isocortex direction vectors file, e.g., direction_vectors.nrrd."),
+    help=("Path to the mouse isocortex direction vectors file, e.g., `direction_vectors.nrrd`."),
 )
 @click.option(
     "--mtypes-config-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=f"Path to the yaml configuration file. See {MTYPES_README_PATH} for an example.",
+    help=f"Path to the yaml configuration file. See {MTYPES_README_REL_PATH} for an example.",
 )
 @click.option(
     "--output-dir",
@@ -466,7 +486,7 @@ def mtype_densities(
 
     The streamlines of the direction vectors filed are used to divide layers into slices, i.e.,
     sublayers of equal thickness along the cortical axis. The number of slices per layer is
-    specified by the field layerSlicesPath of the configuration file (defaults to layers.tsv).
+    specified by the field layerSlicesPath of the configuration file (defaults to `layers.tsv`).
 
     Neuron densities are expressed in number of neurons per voxel.
 
@@ -474,7 +494,7 @@ def mtype_densities(
     "A Derived Positional Mapping of Inhibitory Subtypes in the Somatosensory Cortex"
     by D. Keller et al., 2019., https://www.frontiersin.org/articles/10.3389/fnana.2019.00078/full.
     These datasets and associated metadata files can be found in
-    atlas_building_tools/app/data/mtypes. This command uses the latter files used by default.
+    `atlas_building_tools/app/data/mtypes`. This command uses the latter files used by default.
     """
 
     L.info("Collecting density profiles ...")
@@ -547,52 +567,59 @@ def compile_measurements(
     homogenous_regions_output_path,
 ):
     """
-    Compile the cell density related measurements of mmc3.xlsx and gaba_papers.xsls into a CSV file.
+    Compile the cell density related measurements of mmc3.xlsx and `gaba_papers.xsls` into a CSV
+    file.
 
     In addition to various measurements found in the scientific literature, a list of AIBS mouse
     brain regions with homogenous neuron type is saved to `homogenous_regions_output_path`.
 
-    Two input excel files containing measurements are handled:\n
-    * mm3c.xls from the supplementary materials of
-        'Brain-wide Maps Reveal Stereotyped Cell-Type-Based Cortical Architecture and Subcortical
-        Sexual Dimorphism' by Kim et al., 2017.
-        https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc3.xlsx\n
+    Two input excel files containing measurements are handled:
 
-    * atlas_building_tools/app/data/measurements/gaba_papers.xlsx, a compilation of measurements
-        from the scientifc literature made by Rodarie Dimitri (BBP).\n
+    \b
+    - `mm3c.xls` from the supplementary materials of
+    'Brain-wide Maps Reveal Stereotyped Cell-Type-Based Cortical Architecture and Subcortical
+    Sexual Dimorphism' by Kim et al., 2017.
+    https://ars.els-cdn.com/content/image/1-s2.0-S0092867417310693-mmc3.xlsx
+    - `atlas_building_tools/app/data/measurements/gaba_papers.xlsx`, a compilation of measurements
+    from the scientifc literature made by Rodarie Dimitri (BBP).
 
     This command extracts measurements from the above two files and gathers them into a unique
-    CSV file with the following columns:\n
+    CSV file with the following columns:
 
-    * brain_region (str), a mouse brain region name, not necessarily compliant
-      with AIBS 1.json file. Thus some filtering must be done when working with AIBS\n
-      annotated files.\n
-    * cell type (str, e.g, 'PV+' for cells reacting to parvalbumin, 'inhibitory neuron' for\n
-    non-specific inhibitory neuron)\n
-    * measurement (float)\n
-    * standard_deviation (non-negative float)\n
-    * measurement_type (str), see measurement types below\n
-    * measurement_unit (str), see measurement units below\n
-    * comment (str), a comment on how the measurement has been obtained\n
-    * source_title (str), the title of the article where the measurement can be exracted\n
-    * specimen_age (str, e.g., '8 week old', 'P56', '3 month old'), age of the mice used to obtain
-      the measurement\n
+    \b
+    - brain_region (str), a mouse brain region name, not necessarily compliant
+    with AIBS 1.json file. Thus some filtering must be done when working with AIBS
+    annotated files.
+    - ``cell type`` (str, e.g, 'PV+' for cells reacting to parvalbumin, 'inhibitory neuron'
+    for non-specific inhibitory neuron)
+    - ``measurement`` (float)
+    - ``standard_deviation`` (non-negative float)
+    - ``measurement_type`` (str), see measurement types below
+    - ``measurement_unit`` (str), see measurement units below
+    - ``comment`` (str), a comment on how the measurement has been obtained
+    - ``source_title`` (str), the title of the article where the measurement can be exracted
+    - ``specimen_age`` (str, e.g., '8 week old', 'P56', '3 month old'), age of the mice used to
+    obtain the measurement
 
-    The different measurement types are, for a given brain region R and a given cell type T:\n
-    * 'cell density', number of cells of type T per mm^3 in R\n
-    * 'cell count', number of cells of type T in R\n
-    * 'neuron proportion', number of cells of type T / number of neurons in R
-    (a cell of type T is assumed to be a neuron, e.g., T = GAD67+)\n
-    * 'cell proportion', number of cells of type T / number of cells in R\n
-    * 'cell count per slice', number of cells of type T per slice of R\n
+    The different measurement types are, for a given brain region R and a given cell type T:
+
+    \b
+    - ``cell density``, number of cells of type T per mm^3 in R
+    - ``cell count``, number of cells of type T in R
+    - ``neuron proportion``, number of cells of type T / number of neurons in R
+    (a cell of type T is assumed to be a neuron, e.g., T = GAD67+)
+    - ``cell proportion``, number of cells of type T / number of cells in R
+    - ``cell count per slice``, number of cells of type T per slice of R
 
     Measurement units:
-    * 'cell density': 'number of cells per mm^3'\n
-    * 'neuron proportion': None (empty)\n
-    * 'cell proportion': None (empty)\n
-    * 'cell count per slice': e.g, number of cells per 50-micrometer-thick slice\n
 
-    See atlas_building_tools/densities/excel_reader.py for more information.
+    \b
+    - ``cell density``: 'number of cells per mm^3'
+    - ``neuron proportion``: None (empty)
+    - ``cell proportion``: None (empty)
+    - ``cell count per slice``: e.g, number of cells per 50-micrometer-thick slice
+
+    See `atlas_building_tools/densities/excel_reader.py` for more information.
 
     Note: This function should be deprecated once its output has been stored permanently as the
     the unique source of density-related measurements for the AIBS mouse brain. New measurements
@@ -646,8 +673,8 @@ def compile_measurements(
     type=str,
     required=True,
     help="Path where to write the output average cell densities (.csv file), that is, a data frame"
-    " of the same format as the input measurements file (see --measurements-path )but comprising "
-    "only measurements of type `cell density`.",
+    " of the same format as the input measurements file (see --measurements-path) but comprising "
+    "only measurements of type ``cell density``.",
 )
 @log_args(L)
 def measurements_to_average_densities(
@@ -658,7 +685,7 @@ def measurements_to_average_densities(
     measurements_path,
     output_path,
 ):  # pylint: disable=too-many-arguments
-    """Compute and save average cell densities based on measurements and AIBS region volumes.\n
+    """Compute and save average cell densities based on measurements and AIBS region volumes.
 
     Measurements from Dimitri Rodarie's compilation, together with volumes from the AIBS mouse brain
     (`annotation`) and precomputed volumetric cell densities (`cell_density_path` and
@@ -735,7 +762,7 @@ def measurements_to_average_densities(
         "Path to the gene markers configuration file. This yaml file contains the paths to the "
         "gene marker volumes (nrrd files from AIBS) that will be used to estimate average cell "
         "densities accross all AIBS brain regions: PV, SST, VIP and GAD67. See "
-        f"{MARKERS_README_PATH}."
+        f"`{MARKERS_README_REL_PATH}`."
     ),
 )
 @click.option(
@@ -743,14 +770,14 @@ def measurements_to_average_densities(
     required=True,
     help="Path to the average densities data frame, i.e., the output of measurement-to-density."
     "The format of this CSV file is described in the main help section of compile-measurements. It"
-    " contains only measurements of type 'cell density'.",
+    " contains only measurements of type ``cell density``.",
 )
 @click.option(
     "--homogenous-regions-path",
     type=EXISTING_FILE_PATH,
     required=False,
     help=f"Optional path to the CSV file containing names of regions whose neurons are "
-    f"either all inhibitory or all excitatory. Defaults to {HOMOGENOUS_REGIONS_PATH}.",
+    f"either all inhibitory or all excitatory. Defaults to `{HOMOGENOUS_REGIONS_REL_PATH}`.",
     default=HOMOGENOUS_REGIONS_PATH,
 )
 @click.option(
@@ -760,8 +787,8 @@ def measurements_to_average_densities(
     "found in the brain hierarchy (see --hierarchy-path option) for the cell types marked by the "
     "gene markers listed in the gene configuration file (see --gene-config-path option). "
     "The output file is a CSV file whose first column is a list of region names. The other columns"
-    " come in pairs for each cell type: <cell_type> and <cell_type>_standard_deviation. Cell types"
-    " are derived from marker names: <cell_type> = <marker>+.",
+    " come in pairs for each cell type: ``<cell_type>`` and ``<cell_type>_standard_deviation``."
+    " Cell types are derived from marker names: ``<cell_type> = <marker>+``.",
 )
 @click.option(
     "--fitting-maps-output-path",
@@ -798,6 +825,8 @@ def fit_average_densities(
     (number of cells per mm^3) of a cell type T in a brain region R depends linearily on the
     average intensity of a gene marker of T. The conversion factor is a constant which depends only
     on T and on which of the following three groups R belongs to:
+
+    \b
     - isocortex
     - cerebellum
     - the rest
@@ -819,10 +848,12 @@ def fit_average_densities(
     times the standard deviation of the linear fitting.
 
     Notes:
+
+    \b
     - 2D points for which the average marker intensity or the average cell density or is 0.0 are
-        filtered out before fitting.
+    filtered out before fitting.
     - some regions can have NaN density values for one or more cell types because they are not
-        covered by the selected slices of the volumetric gene marker intensities.
+    covered by the selected slices of the volumetric gene marker intensities.
     """
 
     annotation = VoxelData.load_nrrd(annotation_path)
@@ -895,7 +926,7 @@ def fit_average_densities(
     required=True,
     help="Path to the average densities data frame, i.e., the output of measurement-to-density."
     "The format of this CSV file is described in the main help section of compile-measurements. It"
-    " contains only measurements of type 'cell density'.",
+    " contains only measurements of type ``cell density``.",
 )
 @click.option(
     "--output-dir",

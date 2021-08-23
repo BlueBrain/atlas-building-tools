@@ -24,13 +24,13 @@ L = logging.getLogger(__name__)
 @click.group()
 @click.option("-v", "--verbose", count=True)
 def app(verbose):
-    """Run the different direction vectors CLI
+    """Run the different direction vectors CLI.
 
     Direction vectors are 3D unit vectors associated to voxels of a brain region.
     They represent the directions of the fiber tracts and their streamlines are assumed
     to cross orthogonally layers in laminar brain regions.
 
-    Direction vectors are used in are used in placement-algorithm to set cells orientations.
+    Direction vectors are used in placement-algorithm to set cells orientations.
 
     Direction vectors are also used to compute placement hints (see the placement_hints module)
     and split layer 2/3 of the AIBS mouse isocortex.
@@ -52,7 +52,7 @@ def app(verbose):
 )
 @log_args(L)
 def cerebellum(annotation_path, output_path):
-    """Generate and save the direction vectors of the AIBS mouse cerebellum
+    """Generate and save the direction vectors of the AIBS mouse cerebellum.
 
     This command relies on the computation of the gradient of a Gaussian blur
     applied to specific parts of the cerebellum.
@@ -61,9 +61,12 @@ def cerebellum(annotation_path, output_path):
     where (W, H, D) is the shape the input annotation array.
 
     Note: At the moment, direction vectors are generated only for the following cerebellum
-    subregions:\n
-        - the flocculus\n
-        - the lingula\n
+    subregions:
+
+    \b
+        - the flocculus
+        - the lingula
+
     The vector [nan, nan, nan] is assigned to any voxel outside the above two regions.
 
     """
@@ -77,7 +80,7 @@ def cerebellum(annotation_path, output_path):
 @click.option("--output-path", required=True, help="Path of file to write.")
 @log_args(L)
 def isocortex(annotation_path, hierarchy_path, output_path):
-    """Generate and save the direction vectors of the mouse isocortex
+    """Generate and save the direction vectors of the mouse isocortex.
 
     This command relies on Regiodesics.
 
@@ -109,7 +112,7 @@ def isocortex(annotation_path, hierarchy_path, output_path):
 @click.option("--output-path", required=True, help="Path of file to write.")
 @log_args(L)
 def thalamus(annotation_path, hierarchy_path, output_path):
-    """Generate and save the direction vectors of the mouse thalamus
+    """Generate and save the direction vectors of the mouse thalamus.
 
     This command relies on the computation of the gradient of a Gaussian blur
     applied to the reticular nucleus of the thalamus and its complement inside

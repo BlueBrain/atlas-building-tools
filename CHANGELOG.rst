@@ -4,15 +4,16 @@ Changelog
 
 Version 0.1.5
 -------------
-- Make a clearer separation between the splitting of layer 2/3 in terms of hierarchy (json) and the splitting the annotated AIBS volume (nrrd) [`NSETM-1513`]
+- Uses sphinx's autodoc and sphinx-click to generated HTML documentation of the command line interface [`NSETM-1484`_]
+- Makes a clearer separation between the splitting of layer 2/3 in terms of hierarchy (json) and the splitting the annotated AIBS volume (nrrd) [`NSETM-1513`_]
 
 Version 0.1.4 (2021-08-12)
 --------------------------
-- migration from gerrit to gitlab: `https://bbpgitlab.epfl.ch/nse/atlas-building-tools` [`NSETM-1562`]
-- Uses the volume slicer of `nse/cgal-pybind` to split layer 2/3 of the AIBS mouse isocortex [`NSETM-1513`]
-- Creates and re-uses a common atlas option group [`NSETM-1513`]
+- migration from gerrit to gitlab: `https://bbpgitlab.epfl.ch/nse/atlas-building-tools` [`NSETM-1562`_]
+- Uses the volume slicer of `nse/cgal-pybind` to split layer 2/3 of the AIBS mouse isocortex [`NSETM-1513`_]
+- Creates and re-uses a common atlas option group [`NSETM-1513`_]
 - Makes average inhibitory neuron densities consistent and create refined volumetric density files [`NSETM-1506`_]
-- Turns warning on missing cairosvg module into a note in the main CLI help [`NSETM-1513`]
+- Turns warning on missing cairosvg module into a note in the main CLI help [`NSETM-1513`_]
 
 Version 0.1.3 (2021-07-01)
 --------------------------
@@ -60,6 +61,7 @@ Version 0.1.0 (2021-04-27)
 - CLI to compute a flat map based on the streamlines of a laminar brain region
 - CLI to turn the excel measurement compilation gaba_papers.xlsx of D. Rodarie into a CSV file.
 
+.. _`NSETM-1484`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1484
 .. _`NSETM-1562`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1562
 .. _`NSETM-1513`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1513
 .. _`NSETM-1506`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1506

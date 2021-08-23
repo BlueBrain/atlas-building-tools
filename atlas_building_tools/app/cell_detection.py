@@ -2,41 +2,49 @@
 AIBS P56 Mouse brain.
 
 The input image files are
- * (jpg) 2D images of brain slices coming from a Nissl staining experiment.
- * (svg) annotated slice images of the same brain.
+
+- (jpg) 2D images of brain slices coming from a Nissl staining experiment.
+- (svg) annotated slice images of the same brain.
 
 The image file list was originally obtained through the http request with url
 
-'http://api.brain-map.org/api/v2/data/query.xml?num_rows=all&&start_row=0&criteria=model::'
-'AtlasImage,rma::criteria,atlas_data_set(atlases[id$eq1]),graphic_objects(graphic_group_label'
-'[id$eq28])'
+.. code-block:: text
+
+  <http://api.brain-map.org/api/v2/data/query.xml?num_rows=all&&start_row=0&criteria=model::AtlasImage,rma::criteria,atlas_data_set(atlases[id$eq1]),graphic_objects(graphic_group_label[id$eq28])>
 
 followed by download requests with urls of the form
 
-http://api.brain-map.org/api/v2/section_image_download/{id_}.
+``<http://api.brain-map.org/api/v2/section_image_download/{id_}>``.
 
-The output of the previous requests consists of 132 pairs of images with names of the form <id>.jpg
-and <id>.svg, e.g., 100960204.png and 100960204.svg. Files with the same id have the same
-dimensions. Overall max width: 11072 pixels, max height: 8528 pixels.
+The output of the previous requests consists of 132 pairs of images with names of the form
+``<id>.jpg`` and ``<id>.svg``, e.g., `100960204.jpg` and `100960204.svg`.
+Files with the same id have the same dimensions.
+Overall max width: 11072 pixels, max height: 8528 pixels.
 
 These are the images corresponding to 132 coronal sections evenly spaced at 100 um intervals
 and annotated to detail numerous brain structures, see http://mouse.brain-map.org/static/atlas
 and the two technical AIBS white papers:
 
-- http://help.brain-map.org/download/attachments/2818169/AllenReferenceAtlas_v1_2008_102011.pdf'
-'?version=1&modificationDate=1319477213862&api=v2
-- http://help.brain-map.org/download/attachments/2818169/AllenReferenceAtlas_v2_2011.pdf?version'
-'=1&modificationDate=1319667383440&api=v2
+- AllenReferenceAtlas_v1_2008
 
+.. code-block:: text
 
-Note: We first need to convert svg files to png files so as to handle the latter as 2D arrays for
-comparison with the input jpg files. Cells are identified as local maxima of the pixel intensity of
-the jpg nissl images.
+  <http://help.brain-map.org/download/attachments/2818169/AllenReferenceAtlas_v1_2008_102011.pdf?version=1&modificationDate=1319477213862&api=v2>
 
-Lexicon:
-    * AIBS stands for 'Allen Institute for Brain Science'
-    (https://alleninstitute.org/what-we-do/brain-science/)
+- AllenReferenceAtlas_v2_2011
+
+.. code-block:: text
+
+  <http://help.brain-map.org/download/attachments/2818169/AllenReferenceAtlas_v2_2011.pdf?version=1&modificationDate=1319667383440&api=v2>
+
+**Note:** We first need to convert svg files to png files so as to handle the latter as 2D arrays
+for comparison with the input jpg files. Cells are identified as local maxima of the pixel intensity
+of the jpg nissl images.
+
+**Lexicon:** AIBS stands for
+`Allen Institute for Brain Science <https://alleninstitute.org/what-we-do/brain-science/>`_.
 """
+
 import json
 import logging
 from pathlib import Path
@@ -87,7 +95,7 @@ def svg_to_png(
     remove_strokes,
     output_dir,
 ):
-    """Convert svg files into png files.\n
+    """Convert svg files into png files.
 
     Strokes are optionally removed.
     """
@@ -128,18 +136,20 @@ def extract_color_map(
 
     Extract the structure_id's and the corresponding pairs from each AIBS svg annotation file in
     the input directory.
-    These pairs are structured under the form of a dict {hexdecimal_color_code: structure_id} and
-    saved into a json file.
+    These pairs are structured under the form of a dict ``{hexdecimal_color_code: structure_id}``
+    and saved into a json file.
 
     See http://help.brain-map.org/display/api/Downloading+and+Displaying+SVG
-    for information on AIBS svg files and how to fetch them.\n
+    for information on AIBS svg files and how to fetch them.
 
-    Output example:\n
-       {\n
-           "#188064": 893,\n
-           "#11ad83": 849,\n
-           "#40a666": 810,\n
-       }
+    Output example:
+
+    \b
+    {
+        "#188064": 893,
+        "#11ad83": 849,
+        "#40a666": 810,
+    }
     """
     filepaths = [Path.resolve(f) for f in Path(input_dir).glob("*.svg")]
     color_map = {}
@@ -181,7 +191,7 @@ def compute_average_soma_radius(
     color_map_path,
     output_path,
 ):
-    """Compute average soma radii for different regions and save to file.\n
+    """Compute average soma radii for different regions and save to file.
 
     For each region where somas can been detected, the function estimates
     the radii of somas and save the mean value over each region.

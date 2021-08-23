@@ -4,18 +4,18 @@ This command takes as input a field of 3D unit vectors and outputs a field of qu
 under the format (w, x, y, z) defined over the annotated volume.
 
 If v is a 3D direction vector, the corresponding quaternion is defined by the formula
-q = e cross v + (e dot v + |e||v|) where
-  * e = (0, 1, 0),
-  * |.| denotes the 3D Euclidean norm,
-  * cross denotes the cross product,
-  * dot denotes the scalar product.
+``q = e cross v + (e dot v + |e||v|)`` where
 
-In particular q maps e to v, i.e., q e q^{-1} = v.
-If q is interpreted as an orientation, i.e., a 3D orthonormal frame, this implies that
+- ``e = (0, 1, 0)``,
+- ``|.|`` denotes the 3D Euclidean norm,
+- ``cross`` denotes the cross product,
+- ``dot`` denotes the scalar product.
+
+In particular q maps e to v, i.e., ``q e q^{-1} = v``.
+If ``q`` is interpreted as an orientation, i.e., a 3D orthonormal frame, this implies that
 the y-axis of q is directed along e. The latter is a requirement of the morphology orientation
 convention used by the placement algorithm, see
 https://bbpteam.epfl.ch/documentation/projects/placement-algorithm/latest/index.html.
-
 """
 import logging
 
@@ -50,7 +50,7 @@ def cmd(
     direction_vectors_path: str,
     output_path: str,
 ) -> None:
-    """Turn direction vectors into quaternions interpreted as 3D orientations"""
+    """Turn direction vectors into quaternions interpreted as 3D orientations."""
 
     direction_vectors = voxcell.VoxelData.load_nrrd(direction_vectors_path)
     quaternions = vector_to_quaternion(direction_vectors.raw)

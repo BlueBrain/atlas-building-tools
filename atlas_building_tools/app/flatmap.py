@@ -47,7 +47,7 @@ def app(verbose):
     required=True,
     help=(
         "Path to the direction vectors of the brain region (nrrd file)."
-        "This is a 3D unit vector field defined on the brain regions. It streamlines reflects"
+        "This is a 3D unit vector field defined on the brain regions. Its streamlines reflect"
         " the spatial distribution of fiber tracts."
     ),
 )
@@ -67,9 +67,8 @@ def app(verbose):
     help=(
         "Path to the metadata file of the brain region (json file). This file encloses the "
         "definitions of the region and of its layers given through regular expressions that can "
-        "be read by voxcell.RegionMap.find. See"
-        " atlas-building-tools/atlas_building_tools/data/metadata for examples."
-        "The fields 'region' and 'layers' are in this case mandatory."
+        "be read by ``voxcell.RegionMap.find``. See `atlas_building_tools/data/metadata` for"
+        " examples. The fields ``region`` and ``layers`` are in this case mandatory."
     ),
 )
 @click.option(
@@ -123,7 +122,7 @@ def streamlines_flatmap(
     resolution,
 ):  # pylint: disable=too-many-arguments, too-many-locals
     """Generate and save the flatmap of a brain region obtained by collapsing
-    the direction vectors streamlines.\n
+    the direction vectors streamlines.
 
     The brain region to be flattened is assumed to be laminar, i.e., foliated by layers.
     The brain region is bundled with its 3D direction vectors whose streamlines are used to
