@@ -1,33 +1,11 @@
 """
-Create a density field for each mtype listed in app/data/mapping.tsv
+Create a density field for each mtype listed in `app/data/mtypes/density_profiles/mapping.tsv`.
 
-Volumetric density nrrd files are created for each mtype listed in mapping.tsv.
-This module re-use the overall excitatory and inhibitory neuron densities computed in
-app/cell_densities.
+This input file can be replaced by user's custom file of the same format.
 
-Each mtype is assigned a neuron density profile, that is, a list of cells counts corresponding to
-the layer slices (a. k. a. bins) defined in app/data/meta/layers.tsv.
-The delination of the layer slices, or sub-layers, within the annotated 3D volume of the AIBS mouse
-isocortex is based on the placement hints computed in app/placement_hints. Placement hints's
-distance information allows us to split each layer into slices of approximately the same thickness
-along the cortical axis, as presribed by app/data/meta/layers.tsv.
-
-The input neuron density profiles have been obtained in
-"A Derived Positional Mapping of Inhibitory Subtypes in the Somatosensory Cortex", 2019
-by D. Keller et al.
-
-Lexicon:
-    * mtype: morphological type, e.g., L23_DBC, L5_TPC:C or L6_UPC (iscortex mtypes are listed in
-        mapping.tsv).
-    * synapse class: class of the synapses of a pre-synaptic neuron. Either 'inhibitory' or
-        'excitatory'.
-    * layer slice: layers are sliced along the "cortical depth axis", resulting in sublayers of
-        equal thickness.
-        In "A Derived Positional Mapping of Inhibitory Subtypes in the Somatosensory Cortex",
-        our layer slices are called "bins" so as to avoid confusion with actual rat brain slices
-        cut orthogonally to the sagital axis. A layer slice in our sense is laminar refinement of
-        a layer, orthogonal to the "cortical depth axis".
-
+Volumetric density nrrd files are created for each mtype listed in either `mapping.tsv`.
+This module re-uses the overall excitatory and inhibitory neuron densities computed in
+mod:`app/cell_densities`.
 """
 import logging
 import warnings
@@ -42,23 +20,47 @@ from tqdm import tqdm
 
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from voxcell import RegionMap, VoxelData  # type: ignore
 
 
 VoxelIndices = Tuple[NDArray[int], NDArray[int], NDArray[int]]
 logging.basicConfig(level=logging.INFO)
 logging.captureWarnings(True)
-L = logging.getLogger("mtype_densities")
+L = logging.getLogger(__name__)
 
 
 class DensityProfileCollection:
     """
     Class to manage neuron density profiles.
 
-    * load profiles from files
-    * assemble a full profile for each specified mtype
-    * create a neuron density file (nrrd) for each mtype
+    - load profiles from files
+    - assemble a full profile for each specified mtype
+    - create a neuron density file (nrrd) for each mtype
+
+    Each mtype is assigned a neuron density profile, that is, a list of cells counts corresponding
+    to the layer slices (a. k. a. bins) defined in app/data/meta/layers.tsv.
+    The delination of the layer slices, or sub-layers, within the annotated 3D volume of the
+    AIBS mouse isocortex is based on the placement hints computed in app/placement_hints.
+    Placement hints's distance information allows us to split each layer into slices of
+    approximately the same thickness along the cortical axis, as presribed by
+    `app/data/meta/layers.tsv`.
+
+    The input neuron density profiles have been obtained in
+    "A Derived Positional Mapping of Inhibitory Subtypes in the Somatosensory Cortex", 2019
+    by D. Keller et al.
+
+    Lexicon:
+        - mtype: morphological type, e.g., L23_DBC, L5_TPC:C or L6_UPC (iscortex mtypes are
+            listed in `mapping.tsv`).
+        - synapse class: class of the synapses of a pre-synaptic neuron. Either 'inhibitory' or
+            'excitatory'.
+        - layer slice: layers are sliced along the "cortical depth axis", resulting in sublayers
+            of equal thickness.
+            In "A Derived Positional Mapping of Inhibitory Subtypes in the Somatosensory Cortex",
+            our layer slices are called "bins" so as to avoid confusion with actual rat brain
+            slices cut orthogonally to the sagital axis. A layer slice in our sense is laminar
+            refinement of a layer, orthogonal to the "cortical depth axis".
     """
 
     def __init__(

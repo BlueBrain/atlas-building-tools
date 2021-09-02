@@ -63,7 +63,7 @@ def test_save_placement_hints():
 class Test_detailed_mesh_mask:
     def test_get_space_occupied_by_triangles(self):
         expected_mesh_mask = np.array(
-            [[[1, 0, 0, 0, 0], [1, 1, 0, 0, 0], [1, 1, 1, 0, 0], [0, 0, 0, 0, 0]]], dtype=np.bool
+            [[[1, 0, 0, 0, 0], [1, 1, 0, 0, 0], [1, 1, 1, 0, 0], [0, 0, 0, 0, 0]]], dtype=bool
         )
 
         vertices = np.array([[0, 0.5, 0.5], [0, 2.5, 0.5], [0, 2.5, 2.5]])

@@ -9,7 +9,7 @@ import pandas.testing as pdt
 import pytest
 from voxcell import RegionMap, VoxelData  # type: ignore
 
-import atlas_building_tools.densities.mtype_densities as tested
+import atlas_building_tools.densities.mtype_densities_from_profiles as tested
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 TESTS_PATH = Path(__file__).parent.parent

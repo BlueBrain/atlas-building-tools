@@ -1,6 +1,6 @@
 """Generic Atlas files tools"""
 
-from typing import Tuple, Union
+from typing import Dict, Tuple, Union
 
 import numpy as np  # type: ignore
 from nptyping import NDArray  # type: ignore
@@ -252,6 +252,9 @@ def create_layered_volume(
         A numpy array of the same shape as the input volume, i.e., (W, H, D). Voxels are labeled by
         the 1-based indices of the layers defined in `metadata`. Voxels out of the region defined in
         `metadata` are labeled with the 0 index.
+
+    Raises:
+        AtlasBuildingErrors if `metadata` has an incorrect format.
     """
 
     assert_metadata_content(metadata)
@@ -272,3 +275,26 @@ def create_layered_volume(
         layers[np.isin(annotated_volume, list(layer_ids & region_ids))] = index
 
     return layers
+
+
+def get_layer_masks(
+    annotated_volume: NDArray[int],
+    region_map: "RegionMap",
+    metadata: dict,
+) -> Dict[str, NDArray[bool]]:
+    """
+    Create a 3D boolean mask of each layer in `metadata`.
+
+    Args:
+        annotated_volume: int array of shape (W, H, D) where W, H and D are integer dimensions;
+            this array is the annotated volume of the brain region of interest.
+        region_map: RegionMap object to navigate the brain regions hierarchy.
+        metadata: dict describing the region of interest and its layers. See `app/datat/metadata`
+            for examples.
+
+    Returns: dict whose keys are the regions names from `metadata` and whose values
+        are boolean masks of the corresponding regions in `annotated_volume`.
+    """
+    layers = create_layered_volume(annotated_volume, region_map, metadata)
+
+    return {name: layers == i for (i, name) in enumerate(metadata["layers"]["names"], 1)}

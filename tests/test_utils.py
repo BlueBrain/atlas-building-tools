@@ -154,7 +154,7 @@ def test_copy_array():
 
 
 def test_compute_boundary():
-    v_1 = np.zeros((5, 5, 5), dtype=np.bool)
+    v_1 = np.zeros((5, 5, 5), dtype=bool)
     v_1[1:4, 1:4, 1:4] = True
     v_2 = ~v_1
     boundary = tested.compute_boundary(v_1, v_2)
@@ -162,7 +162,7 @@ def test_compute_boundary():
     expected[2, 2, 2] = False
     npt.assert_array_equal(boundary, expected)
 
-    v_1 = np.zeros((5, 5, 5), dtype=np.bool)
+    v_1 = np.zeros((5, 5, 5), dtype=bool)
     v_1[0:2, :, 1:4] = True
     v_2 = np.zeros_like(v_1)
     v_2[2:, :, 1:4] = True
@@ -224,7 +224,7 @@ def get_metadata(region_fullname="Isocortex"):
             "with_descendants": True,
         },
         "layers": {
-            "names": ["layer_1", "layer_2_3", "layer_5"],
+            "names": ["layer_1", "layer_23", "layer_5"],
             "queries": ["@.*1$", "@.*2/3$", "@.*5$"],
             "attribute": "acronym",
             "with_descendants": True,
@@ -232,13 +232,18 @@ def get_metadata(region_fullname="Isocortex"):
     }
 
 
-def test_create_layered_volume():
-    region_map = RegionMap.from_dict(get_hierarchy_excerpt())
+@pytest.fixture
+def region_map():
+    return RegionMap.from_dict(get_hierarchy_excerpt())
 
+
+@pytest.fixture
+def annotated_volume():
+    return np.array([[[107, 107, 107, 12993, 219, 219, 219, 299, 299, 299]]], dtype=np.uint32)
+
+
+def test_create_layered_volume(region_map, annotated_volume):
     metadata = get_metadata("Isocortex")
-    annotated_volume = np.array(
-        [[[107, 107, 107, 12993, 219, 219, 219, 299, 299, 299]]], dtype=np.uint32
-    )
     expected_layers_volume = np.array([[[1, 1, 1, 1, 2, 2, 2, 3, 3, 3]]], dtype=np.uint8)
     actual = tested.create_layered_volume(annotated_volume, region_map, metadata)
     npt.assert_array_equal(expected_layers_volume, actual)
@@ -249,12 +254,19 @@ def test_create_layered_volume():
     npt.assert_array_equal(expected_layers_volume, actual)
 
 
-def test_assert_metadata_content():
-    region_map = RegionMap.from_dict(get_hierarchy_excerpt())
-    annotated_volume = np.array(
-        [[[107, 107, 107, 12993, 219, 219, 219, 299, 299, 299]]], dtype=np.uint32
-    )
+def test_get_layer_masks(region_map, annotated_volume):
+    metadata = get_metadata("Isocortex")
+    expected_layer_masks = {
+        "layer_1": np.array([[[1, 1, 1, 1, 0, 0, 0, 0, 0, 0]]], dtype=bool),
+        "layer_23": np.array([[[0, 0, 0, 0, 1, 1, 1, 0, 0, 0]]], dtype=bool),
+        "layer_5": np.array([[[0, 0, 0, 0, 0, 0, 0, 1, 1, 1]]], dtype=bool),
+    }
+    actual = tested.get_layer_masks(annotated_volume, region_map, metadata)
+    for layer_name in expected_layer_masks:
+        npt.assert_array_equal(expected_layer_masks[layer_name], actual[layer_name])
 
+
+def test_assert_metadata_content(region_map, annotated_volume):
     with pytest.raises(AtlasBuildingToolsError):
         metadata = get_metadata("Isocortex")
         del metadata["layers"]

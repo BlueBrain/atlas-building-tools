@@ -38,8 +38,9 @@ import yaml  # type: ignore
 from voxcell import RegionMap, VoxelData  # type: ignore
 
 from atlas_building_tools.app.utils import (
+    ABT_PATH,
+    DATA_PATH,
     EXISTING_FILE_PATH,
-    assert_meta_properties,
     assert_properties,
     common_atlas_options,
     log_args,
@@ -64,20 +65,14 @@ from atlas_building_tools.densities.measurement_to_density import (
     measurement_to_average_density,
     remove_non_density_measurements,
 )
-from atlas_building_tools.densities.mtype_densities import DensityProfileCollection
 from atlas_building_tools.densities.refined_inhibitory_neuron_densities import (
     create_inhibitory_neuron_densities,
 )
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
-DATA_PATH = Path(__file__).parent / "data"
-ABT_PATH = Path(__file__).parent.parent.parent
 HOMOGENOUS_REGIONS_PATH = DATA_PATH / "measurements" / "homogenous_regions"
 HOMOGENOUS_REGIONS_REL_PATH = HOMOGENOUS_REGIONS_PATH.relative_to(ABT_PATH)
 MARKERS_README_REL_PATH = (DATA_PATH / "markers" / "README.rst").relative_to(ABT_PATH)
-MTYPES_README_REL_PATH = (DATA_PATH / "mtypes" / "README.rst").relative_to(ABT_PATH)
-METADATA_PATH = DATA_PATH / "data" / "metadata"
-METADATA_REL_PATH = METADATA_PATH.relative_to(ABT_PATH)
 
 L = logging.getLogger(__name__)
 
@@ -432,119 +427,6 @@ def inhibitory_and_excitatory_neuron_densities(
     excitatory_neuron_density = neuron_density.raw - inhibitory_neuron_density
     annotation.with_data(np.asarray(excitatory_neuron_density, dtype=float)).save_nrrd(
         str(Path(output_dir, "excitatory_neuron_density.nrrd"))
-    )
-
-
-@app.command()
-@common_atlas_options
-@click.option(
-    "--metadata-path",
-    type=EXISTING_FILE_PATH,
-    required=False,
-    help=(
-        "(Optional) Path to the metadata json file. Defaults to "
-        f"`{str(METADATA_REL_PATH / 'isocortex_metadata.json')}`"
-    ),
-    default=str(METADATA_PATH / "isocortex_metadata.json"),
-)
-@click.option(
-    "--direction-vectors-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to the mouse isocortex direction vectors file, e.g., `direction_vectors.nrrd`."),
-)
-@click.option(
-    "--mtypes-config-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=f"Path to the yaml configuration file. See {MTYPES_README_REL_PATH} for an example.",
-)
-@click.option(
-    "--output-dir",
-    required=True,
-    help="Path to output directory. It will be created if it doesn't exist already.",
-)
-@log_args(L)
-def mtype_densities(
-    annotation_path,
-    hierarchy_path,
-    metadata_path,
-    direction_vectors_path,
-    mtypes_config_path,
-    output_dir,
-):  # pylint: disable=too-many-locals
-    """
-    Create neuron density nrrd files for the mtypes listed in the mapping tsv file.
-
-    Somatosensory cortex layers are subdivided into slices (a.k.a bins). Each mtype in
-    the mapping tsv file (see configuration file description) is assigned a density profile,
-    that is, the list of the numbers of neurons with this mtype in each slice. From this, a
-    relative density profile is derived, i.e. the list of the neuron proportions in each slice.
-    Using the overall inhibitory neuron and excitatory neuron densities together with the relative
-    density profiles, we obtain a volumetric neuron density for each mtype under the form of nrrd
-    files.
-
-    The streamlines of the direction vectors filed are used to divide layers into slices, i.e.,
-    sublayers of equal thickness along the cortical axis. The number of slices per layer is
-    specified by the field layerSlicesPath of the configuration file (defaults to `layers.tsv`).
-
-    Neuron densities are expressed in number of neurons per voxel.
-
-    The density profile datasets were obtained in
-    "A Derived Positional Mapping of Inhibitory Subtypes in the Somatosensory Cortex"
-    by D. Keller et al., 2019., https://www.frontiersin.org/articles/10.3389/fnana.2019.00078/full.
-    These datasets and associated metadata files can be found in
-    `atlas_building_tools/app/data/mtypes`. This command uses the latter files used by default.
-    """
-
-    L.info("Collecting density profiles ...")
-
-    config = yaml.load(open(mtypes_config_path), Loader=yaml.FullLoader)
-
-    density_profile_collection = DensityProfileCollection.load(
-        config["mtypeToProfileMapPath"],
-        config["layerSlicesPath"],
-        config["densityProfilesDirPath"],
-    )
-
-    L.info("Density profile collection successfully instantiated.")
-    with open(metadata_path, "r") as file_:
-        metadata = json.load(file_)
-    region_map = RegionMap.load_json(hierarchy_path)
-
-    annotation = VoxelData.load_nrrd(annotation_path)
-    direction_vectors = VoxelData.load_nrrd(direction_vectors_path)
-
-    inhibitory_neuron_density = None
-    excitatory_neuron_density = None
-
-    if "inhibitoryNeuronDensityPath" in config:
-        inhibitory_neuron_density = VoxelData.load_nrrd(config["inhibitoryNeuronDensityPath"])
-    if "excitatoryNeuronDensityPath" in config:
-        excitatory_neuron_density = VoxelData.load_nrrd(config["excitatoryNeuronDensityPath"])
-
-    if inhibitory_neuron_density is None and inhibitory_neuron_density is None:
-        raise AtlasBuildingToolsError(
-            "No neuron density files were provided. Expected: excitatory neuron density, or"
-            "inhibitory neuron density or both."
-        )
-
-    # Check metadata consistency
-    voxeldata = [annotation, direction_vectors]
-    for density in [inhibitory_neuron_density, excitatory_neuron_density]:
-        if density is not None:
-            voxeldata.append(density)
-
-    assert_meta_properties(voxeldata)
-
-    density_profile_collection.create_mtype_densities(
-        annotation,
-        region_map,
-        metadata,
-        np.asarray(direction_vectors.raw, dtype=np.float32),
-        output_dir,
-        excitatory_neuron_density,
-        inhibitory_neuron_density,
     )
 
 

@@ -17,6 +17,7 @@ To check which commands are available, run::
    orientation_field
    placement_hints
    cell_densities
+   mtype_densities
    cell_detection
    flatmap
 

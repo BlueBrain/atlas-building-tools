@@ -9,6 +9,7 @@ from atlas_building_tools.app import (
     combination,
     direction_vectors,
     flatmap,
+    mtype_densities,
     orientation_field,
     placement_hints,
     region_splitter,
@@ -30,6 +31,7 @@ def cli():
     logging.basicConfig(level=logging.INFO)
     group = {
         "cell-densities": cell_densities.app,
+        "mtype-densities": mtype_densities.app,
         "combination": combination.app,
         "direction-vectors": direction_vectors.app,
         "flatmap": flatmap.app,

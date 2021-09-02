@@ -6,6 +6,7 @@ from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 from datetime import datetime
 from functools import wraps
+from pathlib import Path
 
 import click
 import numpy as np
@@ -15,6 +16,8 @@ from atlas_building_tools.exceptions import AtlasBuildingToolsError
 EXISTING_FILE_PATH = click.Path(exists=True, readable=True, dir_okay=False, resolve_path=True)
 EXISTING_DIR_PATH = click.Path(exists=True, readable=True, dir_okay=True, resolve_path=True)
 LOG_DIRECTORY = "."
+DATA_PATH = Path(__file__).parent / "data"
+ABT_PATH = Path(__file__).parent.parent.parent
 
 
 def set_verbose(logger, verbose):

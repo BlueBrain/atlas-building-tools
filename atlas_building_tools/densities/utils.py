@@ -11,7 +11,7 @@ from nptyping import NDArray  # type: ignore
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 from atlas_building_tools.utils import copy_array
 
-if TYPE_CHECKING:  # pragme: no cover
+if TYPE_CHECKING:  # pragma: no cover
     from voxcell import RegionMap  # type: ignore
 
 
