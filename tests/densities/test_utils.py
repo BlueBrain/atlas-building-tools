@@ -304,6 +304,13 @@ def get_hierarchy():
                                 "parent_structure_id": 976,
                                 "children": [],
                             },
+                            {
+                                "id": 666666,
+                                "acronym": "CENT2gr",
+                                "name": "Lobule II, granular layer",
+                                "parent_structure_id": 976,
+                                "children": [],
+                            },
                         ],
                     }
                 ],
@@ -317,7 +324,7 @@ def region_map():
     return RegionMap.from_dict(get_hierarchy())
 
 
-def get_hierarchy_info():
+def get_hierarchy_info_duplicate():
     return pd.DataFrame(
         {
             "brain_region": [
@@ -326,29 +333,67 @@ def get_hierarchy_info():
                 "Lobule II, granular layer",
                 "Lobule II, Purkinje layer",
                 "Lobule II, molecular layer",
+                "Lobule II, granular layer",
             ],
             "descendant_id_set": [
-                {920, 976, 10708, 10709, 10710},
-                {976, 10708, 10709, 10710},
+                {920, 976, 10708, 10709, 10710, 666666},
+                {976, 10708, 10709, 10710, 666666},
                 {10708},
                 {10709},
                 {10710},
+                {666666},
             ],
         },
-        index=[920, 976, 10708, 10709, 10710],
+        index=[920, 976, 10708, 10709, 10710, 666666],
     )
 
 
-def test_get_hierarchy_info(region_map):
+def get_hierarchy_info_unique():
+    return pd.DataFrame(
+        {
+            "brain_region": [
+                "Central lobule",
+                "Lobule II",
+                "Lobule II, granular layer",
+                "Lobule II, molecular layer",
+                "Lobule II, Purkinje layer",
+            ],
+            "id_set": [
+                {920},
+                {976},
+                {10708, 666666},
+                {10710},
+                {10709},
+            ],
+            "descendant_id_set": [
+                {920, 976, 10708, 10709, 10710, 666666},
+                {976, 10708, 10709, 10710, 666666},
+                {10708, 666666},
+                {10710},
+                {10709},
+            ],
+        },
+    )
+
+
+def test_get_hierarchy_info_duplicate(region_map):
     pdt.assert_frame_equal(
-        get_hierarchy_info(), tested.get_hierarchy_info(region_map, root="Central lobule")
+        get_hierarchy_info_duplicate(),
+        tested.get_hierarchy_info(region_map, root="Central lobule", unique_names=False),
+    )
+
+
+def test_get_hierarchy_info_unique(region_map):
+    pdt.assert_frame_equal(
+        get_hierarchy_info_unique(),
+        tested.get_hierarchy_info(region_map, root="Central lobule", unique_names=True),
     )
 
 
 @pytest.fixture
 def volumes(voxel_volume=2):
-    hierarchy_info = get_hierarchy_info()
-    volumes = voxel_volume * np.array([9.0, 8.0, 2.0, 2.0, 3.0])
+    hierarchy_info = get_hierarchy_info_unique()
+    volumes = voxel_volume * np.array([9.0, 8.0, 2.0, 3.0, 2.0])
     return pd.DataFrame(
         {"brain_region": hierarchy_info["brain_region"], "volume": volumes},
         index=hierarchy_info.index,
@@ -360,6 +405,6 @@ def test_compute_region_volumes(volumes):
     pdt.assert_frame_equal(
         volumes,  # expected
         tested.compute_region_volumes(
-            annotation, voxel_volume=2.0, hierarchy_info=get_hierarchy_info()
+            annotation, voxel_volume=2.0, hierarchy_info=get_hierarchy_info_unique()
         ),
     )

@@ -23,14 +23,14 @@ def test_create_dataframe_from_known_densities():
             "brain_region": ["Isocortex", "Isocortex", "Isocortex", "Cerebellum", "Cerebrum"],
             "measurement": [1.0, 2.0, 3.0, 4.0, 5.0],
             "standard_deviation": [0.1, 0.2, 0.3, 0.4, 0.5],
-            "cell_type": ["PV+", "SST+", "PV+", "inhibitory", "VIP+"],
+            "cell_type": ["PV+", "SST+", "PV+", "inhibitory neuron", "VIP+"],
         }
     )
     region_names = ["Cerebellum", "Cerebrum", "Isocortex", "Thalamus"]
     expected = pd.DataFrame(
         {
-            "inhibitory": [4.0, np.nan, np.nan, np.nan],
-            "inhibitory_standard_deviation": [0.4, np.nan, np.nan, np.nan],
+            "inhibitory_neuron": [4.0, np.nan, np.nan, np.nan],
+            "inhibitory_neuron_standard_deviation": [0.4, np.nan, np.nan, np.nan],
             "pv+": [np.nan, np.nan, 2.0, np.nan],
             "pv+_standard_deviation": [np.nan, np.nan, 0.2, np.nan],
             "sst+": [np.nan, np.nan, 2.0, np.nan],
@@ -126,17 +126,17 @@ def test_fill_in_homogenous_regions(hierarchy_info):
             "Basic cell groups and regions",
             "Central lobule",
             "Declive (VI)",
+            "Declive (VI), molecular layer",
+            "Declive (VI), Purkinje layer",
             "Lobule II",
             "Lobule II, granular layer",
             "Lobule II, Purkinje layer",
-            "Declive (VI), Purkinje layer",
-            "Declive (VI), molecular layer",
         ]
     )
     input_densities_dataframe = pd.DataFrame(
         {
-            "inhibitory": np.full((8,), np.nan),
-            "inhibitory_standard_deviation": np.full((8,), np.nan),
+            "inhibitory_neuron": np.full((8,), np.nan),
+            "inhibitory_neuron_standard_deviation": np.full((8,), np.nan),
             "pv+": np.full((8,), np.nan),
             "pv+_standard_deviation": np.full((8,), np.nan),
             "sst+": [0.1, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
@@ -157,8 +157,8 @@ def test_fill_in_homogenous_regions(hierarchy_info):
     )
     expected = pd.DataFrame(
         {
-            "inhibitory": [np.nan, np.nan, 0.0, 0.4, 0.5, 0.4, 0.0, 0.0],
-            "inhibitory_standard_deviation": [np.nan, np.nan, 0.0, 0.4, 0.5, 0.4, 0.0, 0.0],
+            "inhibitory_neuron": [np.nan, np.nan, 0.0, 0.0, 0.0, 0.4, 0.5, 0.4],
+            "inhibitory_neuron_standard_deviation": [np.nan, np.nan, 0.0, 0.0, 0.0, 0.4, 0.5, 0.4],
             "pv+": np.full((8,), np.nan),
             "pv+_standard_deviation": np.full((8,), np.nan),
             "sst+": [0.1, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan],
@@ -181,6 +181,7 @@ def test_fill_in_homogenous_regions(hierarchy_info):
     tested.fill_in_homogenous_regions(
         homogenous_regions, annotation, neuron_density, input_densities_dataframe, hierarchy_info
     )
+
     pdt.assert_frame_equal(input_densities_dataframe, expected)
 
     cell_density_stddevs = {
@@ -240,17 +241,17 @@ def test_compute_average_intensities(hierarchy_info):
             "Basic cell groups and regions",
             "Central lobule",
             "Declive (VI)",  # 936
+            "Declive (VI), molecular layer",
+            "Declive (VI), Purkinje layer",
             "Lobule II",  # 976
             "Lobule II, granular layer",
             "Lobule II, Purkinje layer",
-            "Declive (VI), Purkinje layer",
-            "Declive (VI), molecular layer",
         ]
     )
     expected = pd.DataFrame(
         {
-            "gad67": [7.0 / 4.0, 1.0, 2.0, 1.0, np.nan, np.nan, np.nan, np.nan],
-            "pv": [10.0 / 7.0, 2.0, 1.0, 2.0, np.nan, np.nan, np.nan, np.nan],
+            "gad67": [7.0 / 4.0, 1.0, 2.0, np.nan, np.nan, 1.0, np.nan, np.nan],
+            "pv": [10.0 / 7.0, 2.0, 1.0, np.nan, np.nan, 2.0, np.nan, np.nan],
         },
         index=hierarchy_info["brain_region"],
     )
@@ -277,17 +278,17 @@ def get_fitting_input_data_():
     h = get_hierarchy_info_()
     intensities = pd.DataFrame(
         {
-            "gad67": [7.0 / 4.0, 1.0, 2.0, 1.0, np.nan, np.nan, np.nan, np.nan],
-            "pv": [10.0 / 7.0, 2.0, 1.0, 2.0, np.nan, np.nan, np.nan, np.nan],
+            "gad67": [7.0 / 4.0, 1.0, 2.0, np.nan, np.nan, 1.0, np.nan, np.nan],
+            "pv": [10.0 / 7.0, 2.0, 1.0, np.nan, np.nan, 2.0, np.nan, np.nan],
         },
         index=h["brain_region"],
     )
     densities = pd.DataFrame(
         {
-            "gad67+": [7.0 / 2.0, 2.0, 4.0, 2.0, np.nan, np.nan, np.nan, np.nan],
-            "gad67+_standard_deviation": [1.0, 0.0, 3.0, 0.0, np.nan, np.nan, np.nan, np.nan],
-            "pv+": [30.0 / 7.0, 6.0, 3.0, 6.0, np.nan, np.nan, np.nan, np.nan],
-            "pv+_standard_deviation": [2.0, 1.0, 3.0, 4.0, np.nan, np.nan, np.nan, np.nan],
+            "gad67+": [7.0 / 2.0, 2.0, 4.0, np.nan, np.nan, 2.0, np.nan, np.nan],
+            "gad67+_standard_deviation": [1.0, 0.0, 3.0, np.nan, np.nan, 0.0, np.nan, np.nan],
+            "pv+": [30.0 / 7.0, 6.0, 3.0, np.nan, np.nan, 6.0, np.nan, np.nan],
+            "pv+_standard_deviation": [2.0, 1.0, 3.0, np.nan, np.nan, 4.0, np.nan, np.nan],
         },
         index=h["brain_region"],
     )
@@ -360,27 +361,27 @@ def test_fit_unknown_densities(hierarchy_info, fitting_coefficients):
     }
     intensities = pd.DataFrame(
         {
-            "gad67": [7.0 / 4.0, 1.0, 2.0, 1.0, 1.5, np.nan, np.nan, 1.0],
-            "pv": [10.0 / 7.0, 2.0, 1.0, 2.0, 0.75, np.nan, np.nan, 0.5],
+            "gad67": [7.0 / 4.0, 1.0, 2.0, np.nan, 1.0, 1.0, 1.5, np.nan],
+            "pv": [10.0 / 7.0, 2.0, 1.0, np.nan, 0.5, 2.0, 0.75, np.nan],
         },
         index=hierarchy_info["brain_region"],
     )
     densities = pd.DataFrame(
         {
-            "gad67+": [7.0 / 2.0, 2.0, 4.0, 2.0, np.nan, np.nan, np.nan, np.nan],
-            "gad67+_standard_deviation": [1.0, 0.0, 3.0, 0.0, np.nan, np.nan, np.nan, np.nan],
-            "pv+": [30.0 / 7.0, 6.0, 3.0, 6.0, np.nan, np.nan, np.nan, np.nan],
-            "pv+_standard_deviation": [2.0, 1.0, 3.0, 4.0, np.nan, np.nan, np.nan, np.nan],
+            "gad67+": [7.0 / 2.0, 2.0, 4.0, np.nan, np.nan, 2.0, np.nan, np.nan],
+            "gad67+_standard_deviation": [1.0, 0.0, 3.0, np.nan, np.nan, 0.0, np.nan, np.nan],
+            "pv+": [30.0 / 7.0, 6.0, 3.0, np.nan, np.nan, 6.0, np.nan, np.nan],
+            "pv+_standard_deviation": [2.0, 1.0, 3.0, np.nan, np.nan, 4.0, np.nan, np.nan],
         },
         index=hierarchy_info["brain_region"],
     )
 
     expected = pd.DataFrame(
         {
-            "gad67+": [7.0 / 2.0, 2.0, 4.0, 2.0, 3.0, np.nan, np.nan, 2.0],
-            "gad67+_standard_deviation": [1.0, 0.0, 3.0, 0.0, 1.5, np.nan, np.nan, 2.0],
-            "pv+": [30.0 / 7.0, 6.0, 3.0, 6.0, 2.25, np.nan, np.nan, 1.5],
-            "pv+_standard_deviation": [2.0, 1.0, 3.0, 4.0, 2.25, np.nan, np.nan, 0.75],
+            "gad67+": [7.0 / 2.0, 2.0, 4.0, np.nan, 2.0, 2.0, 3.0, np.nan],
+            "gad67+_standard_deviation": [1.0, 0.0, 3.0, np.nan, 2.0, 0.0, 1.5, np.nan],
+            "pv+": [30.0 / 7.0, 6.0, 3.0, np.nan, 1.5, 6.0, 2.25, np.nan],
+            "pv+_standard_deviation": [2.0, 1.0, 3.0, np.nan, 0.75, 4.0, 2.25, np.nan],
         },
         index=hierarchy_info["brain_region"],
     )
@@ -446,9 +447,9 @@ def get_fitting_input_data():
     densities = pd.DataFrame(
         {
             "brain_region": region_names,
-            "cell_type": ["inhibitory", "pv+", "inhibitory", "pv+"],
+            "cell_type": ["inhibitory neuron", "pv+", "inhibitory neuron", "pv+"],
             "measurement": [10.0, 5.0, 3.0, 2.0],
-            "measurement_type": ["cell_density", "cell_density", "cell_density", "cell_density"],
+            "measurement_type": ["cell density", "cell density", "cell density", "cell density"],
             "standard_deviation": [1.0, 2.0, 0.0, 1.0],
         },
         index=region_names,
@@ -516,7 +517,7 @@ def test_linear_fitting_exception_homogenous_regions():
             data["homogenous_regions"],
         )
 
-    data["average_densities"].at["Thalamus", "measurement_type"] = "cell_density"
+    data["average_densities"].at["Thalamus", "measurement_type"] = "cell density"
     data["average_densities"].at["Thalamus", "measurement"] = -1.0
 
     with pytest.raises(AtlasBuildingToolsError):

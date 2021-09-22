@@ -22,8 +22,8 @@ def _get_inhibitory_neuron_densities_result(runner):
         "annotation.nrrd",
         "--neuron-density-path",
         "neuron_density.nrrd",
-        "--average-densities-path",
-        "average_densities.csv",
+        "--fitted-densities-path",
+        "fitted_densities.csv",
         "--output-dir",
         "output_dir",
     ]
@@ -45,7 +45,7 @@ def test_inhibitory_neuron_densities():
         with open("hierarchy.json", "w") as file_:
             json.dump(input_["hierarchy"], file_, indent=1, separators=(",", ": "))
         input_["average_densities"]["brain_region"] = input_["average_densities"].index
-        input_["average_densities"].to_csv("average_densities.csv", index=False)
+        input_["average_densities"].to_csv("fitted_densities.csv", index=False)
 
         result = _get_inhibitory_neuron_densities_result(runner)
 

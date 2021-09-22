@@ -7,6 +7,7 @@ import pandas as pd
 import scipy.misc
 import scipy.ndimage
 from nptyping import NDArray  # type: ignore
+from tqdm import tqdm
 
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 from atlas_building_tools.utils import copy_array
@@ -438,7 +439,9 @@ def get_aibs_region_names(region_map: "RegionMap") -> Set[str]:
 
 
 def get_hierarchy_info(
-    region_map: "RegionMap", root: str = "Basic cell groups and regions"
+    region_map: "RegionMap",
+    root: str = "Basic cell groups and regions",
+    unique_names: bool = True,
 ) -> "pd.DataFrame":
     """
     Returns the name and the descendant_id_set of each region that can be found by `region_map`.
@@ -448,15 +451,30 @@ def get_hierarchy_info(
         root: (Optional) root of the hierarchy tree used by `region_map`. Defaults to
             "Basic cell groups and regions" which corresponds to the AIBS whole mouse
             brain in AIBS 1.json.
+        unique_names: (Optional) if True, the brain_region column of the output data frame
+            won't contain any duplicate. An additional column, namely the id_set column, is created.
+            It contains, for each unique region name, the sets of identifiers associated to
+            it according to `region_map`. This addresses the situation of a several integer
+            identifiers associated to the same region name. Although this doesn't happen with the
+            vanilla AIBS 1.json file, this happens after the splitting of layer 2/3 of the AIBS
+            Mouse P56 isocortex.
 
     Returns:
-        a dataframe with index a list if region ids and two columns (values are fake)
-                 descendant_id_set    brain region
-            1    {1, 3}          "Cerebellum"
-            3    {1, 3, 100}     "Isocortex"
+        if `unique_names` is True, a dataframe with three columns
+        (values are fake)
+                 id_set   descendant_id_set    brain_region
+                 {1}         {1, 3}            "Cerebellum"
+                 {2, 4, 10}  {2, 4, 10, 11}    "Isocortex"
                  ...             ...
-        Tne index consists in the sorted list of the identifiers of every region recorded in
-        `region_map` under root. The column `descendant_id_set` holds the list the identifiers the
+        Otherwise, returns a dataframe with index a list of unique region ids and two columns
+        (values are fake)
+                 descendant_id_set    brain_region
+            1    {1, 3}               "Cerebellum"
+            2    {2, 4, 10}           "Isocortex"
+            3    {666666}             "Cerebellum"
+                 ...             ...
+        The index consists in the sorted list of the identifiers of every region recorded in
+        `region_map` under root. The column `descendant_id_set` holds the set of identifiers of the
         children of every region, including the region itself. `brain region` is the list of every
         region name.
 
@@ -467,10 +485,28 @@ def get_hierarchy_info(
         region_map.find(id_, attr="id", with_descendants=True) for id_ in region_ids
     ]
     region_names = [region_map.get(id_, attr="name") for id_ in region_ids]
-
-    return pd.DataFrame(
+    data_frame = pd.DataFrame(
         {"brain_region": region_names, "descendant_id_set": descendant_id_sets}, index=region_ids
     )
+
+    if not unique_names:
+        return data_frame
+
+    merge_dict: Dict[str, Dict[str, Set[int]]] = {
+        name: {"id_set": set(), "descendant_id_set": set()} for name in set(region_names)
+    }
+    for id_ in data_frame.index:
+        region_name = data_frame.at[id_, "brain_region"]
+        merge_dict[region_name]["id_set"] |= {id_}
+        merge_dict[region_name]["descendant_id_set"] |= data_frame.at[id_, "descendant_id_set"]
+
+    return pd.DataFrame(
+        {
+            "brain_region": list(merge_dict),
+            "id_set": [v["id_set"] for v in merge_dict.values()],
+            "descendant_id_set": [v["descendant_id_set"] for v in merge_dict.values()],
+        }
+    ).sort_values(by=["brain_region"], key=lambda col: col.str.lower(), ignore_index=True)
 
 
 def compute_region_volumes(
@@ -492,18 +528,16 @@ def compute_region_volumes(
 
     Returns:
         DataFrame of the following form (values are fake):
-        5    brain region                    volume
+        5    brain_region                    volume
         10   Basic cell groups and regions   2000
         123  Cerebrum                         700
              ...                             ...
         The index is the sorted list of all region identifiers.
     """
-    volumes = [
-        np.count_nonzero(np.isin(annotation, list(set_))) * voxel_volume
-        for set_ in hierarchy_info["descendant_id_set"]
-    ]
+    volumes = []
+    for set_ in tqdm(hierarchy_info["descendant_id_set"]):
+        volumes.append(np.count_nonzero(np.isin(annotation, list(set_))) * voxel_volume)
 
     return pd.DataFrame(
         {"brain_region": hierarchy_info["brain_region"], "volume": volumes},
-        index=hierarchy_info.index,
     )

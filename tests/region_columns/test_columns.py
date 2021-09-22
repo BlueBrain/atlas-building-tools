@@ -190,6 +190,4 @@ def test_central_columns():
         ]
     )
 
-    print(spanning_column.raw[1])
-    print((spanning_column.raw == exp_spanning_column)[1])
     assert np.all(exp_spanning_column == spanning_column.raw)

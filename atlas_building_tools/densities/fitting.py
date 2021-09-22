@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 from nptyping import NDArray
 from scipy.optimize import curve_fit
+from tqdm import tqdm
 
 from atlas_building_tools.densities.utils import get_group_names, get_hierarchy_info
 from atlas_building_tools.exceptions import AtlasBuildingToolsError, AtlasBuildingToolsWarning
@@ -66,7 +67,7 @@ def create_dataframe_from_known_densities(
     Returns:
         data frame whose index is `region_names` and with a pair of columns labeled by T and
         T_standard_deviation for each cell type T in `average_cell_densities["cell_type"] (e.g.,
-        T = "pv+", "inhibitory" or "sst+"). Column labels are lower cased.
+        T = "pv+", "inhibitory neuron" or "sst+"). Column labels are lower cased.
     """
 
     assert len(average_densities.index) > 0, (
@@ -78,7 +79,7 @@ def create_dataframe_from_known_densities(
     columns = {}
     cell_types = np.unique(average_densities["cell_type"])
     for cell_type in cell_types:
-        cell_type = cell_type.lower()
+        cell_type = cell_type.lower().replace(" ", "_")
         columns[cell_type] = np.full((region_count,), np.nan)
         columns[cell_type + "_standard_deviation"] = np.full((region_count,), np.nan)
 
@@ -88,7 +89,8 @@ def create_dataframe_from_known_densities(
         density_mask = average_densities["brain_region"] == region_name
         for cell_type in cell_types:
             cell_type_mask = density_mask & (average_densities["cell_type"] == cell_type)
-            result.at[region_name, cell_type.lower()] = np.mean(
+            cell_type = cell_type.lower().replace(" ", "_")
+            result.at[region_name, cell_type] = np.mean(
                 average_densities[cell_type_mask]["measurement"]
             )
             result.at[region_name, cell_type.lower() + "_standard_deviation"] = np.mean(
@@ -138,35 +140,33 @@ def fill_in_homogenous_regions(
     """
 
     hierarchy_info = hierarchy_info.copy()
-    hierarchy_info["id"] = hierarchy_info.index
     hierarchy_info.set_index("brain_region", inplace=True)
-
     inhibitory_mask = homogenous_regions["cell_type"] == "inhibitory"
 
     for region_name in homogenous_regions[inhibitory_mask]["brain_region"]:
-        id_list = list(hierarchy_info.at[region_name, "descendant_id_set"])
-        id_mask = hierarchy_info["id"].isin(id_list)
+        desc_id_set = hierarchy_info.at[region_name, "descendant_id_set"]
+        id_mask = [(id_set & desc_id_set) == id_set for id_set in hierarchy_info["id_set"]]
         for child_region_name in hierarchy_info[id_mask].index:
             region_mask = np.isin(
                 annotation, list(hierarchy_info.at[child_region_name, "descendant_id_set"])
             )
             density = np.mean(neuron_density[region_mask])
-            densities.at[child_region_name, "inhibitory"] = density
+            densities.at[child_region_name, "inhibitory_neuron"] = density
             if cell_density_stddevs is None:
-                densities.at[child_region_name, "inhibitory_standard_deviation"] = density
+                densities.at[child_region_name, "inhibitory_neuron_standard_deviation"] = density
             else:
                 densities.at[
-                    child_region_name, "inhibitory_standard_deviation"
+                    child_region_name, "inhibitory_neuron_standard_deviation"
                 ] = cell_density_stddevs[child_region_name]
 
     excitatory_mask = homogenous_regions["cell_type"] == "excitatory"
 
     for region_name in homogenous_regions[excitatory_mask]["brain_region"]:
-        id_set = hierarchy_info.at[region_name, "descendant_id_set"]
-        id_mask = hierarchy_info["id"].isin(list(id_set))
+        desc_id_set = hierarchy_info.at[region_name, "descendant_id_set"]
+        id_mask = [(id_set & desc_id_set) == id_set for id_set in hierarchy_info["id_set"]]
         for child_region_name in hierarchy_info[id_mask].index:
-            densities.at[child_region_name, "inhibitory"] = 0.0
-            densities.at[child_region_name, "inhibitory_standard_deviation"] = 0.0
+            densities.at[child_region_name, "inhibitory_neuron"] = 0.0
+            densities.at[child_region_name, "inhibitory_neuron_standard_deviation"] = 0.0
 
 
 def compute_average_intensity(
@@ -187,8 +187,8 @@ def compute_average_intensity(
             taken over `volume_mask` without restriction.
     Returns:
         the average intensity over `volume_mask`, restricted to the specified `slices` if
-        any. If the restricted subvolume is empty (e.g., the volume does not intersect of
-        any slice), the returned value is np.nan.
+        any. If the restricted subvolume is empty (e.g., the volume does not intersect any slice),
+        the returned value is ``np.nan```.
     """
 
     if slices is None:
@@ -248,11 +248,14 @@ def compute_average_intensities(
         columns=[marker_name.lower() for marker_name in gene_marker_volumes.keys()],
     )
 
-    for region_name in result.index:
+    L.info(
+        "Computing average intensities for %d markers in %d regions ...",
+        len(gene_marker_volumes),
+        region_count,
+    )
+    for region_name in tqdm(result.index):
+        region_mask = np.isin(annotation, list(hierarchy_info.at[region_name, "descendant_id_set"]))
         for marker, intensity in gene_marker_volumes.items():
-            region_mask = np.isin(
-                annotation, list(hierarchy_info.at[region_name, "descendant_id_set"])
-            )
             result.at[region_name, marker.lower()] = compute_average_intensity(
                 intensity["intensity"], region_mask, intensity["slices"]
             )
@@ -388,10 +391,15 @@ def compute_fitting_coefficients(
         group_name: {cell_type: {"xdata": [], "ydata": [], "sigma": []} for cell_type in cell_types}
         for group_name in groups
     }
-
+    L.info("Computing fitting coefficients in %d groups ...", len(groups))
     for group_name in groups:
-        # Build regression data
-        for region_name in groups[group_name]:
+        L.info(
+            "Building regression data in group %s for %d regions and %d cell types ...",
+            group_name,
+            len(groups[group_name]),
+            len(cell_types),
+        )
+        for region_name in tqdm(groups[group_name]):
             for cell_type in cell_types:
                 intensity = average_intensities.at[region_name, cell_type[:-1]]
                 density = densities.at[region_name, cell_type]
@@ -411,8 +419,8 @@ def compute_fitting_coefficients(
                     clouds[group_name][cell_type]["ydata"].append(density)
                     clouds[group_name][cell_type]["sigma"].append(standard_deviation)
 
-        # Compute regression coefficients
-        for cell_type in cell_types:
+        L.info("Computing regression coefficients %d cell types ...", len(cell_types))
+        for cell_type in tqdm(cell_types):
             cloud = clouds[group_name][cell_type]
             result[group_name][cell_type] = linear_fitting_xy(
                 cloud["xdata"], cloud["ydata"], cloud["sigma"]
@@ -489,7 +497,7 @@ def _check_average_densities_sanity(average_densities: "pd.DataFrame") -> None:
     Raise an error if `average_densities` has NaN or negative entries.
     """
     actual_measurement_types = set(average_densities["measurement_type"])
-    diff = actual_measurement_types - {"cell_density"}
+    diff = actual_measurement_types - {"cell density"}
     if len(diff) > 0:
         raise AtlasBuildingToolsError(
             f"`average_densities` has unexpected measurement types: {diff}"
@@ -553,7 +561,7 @@ def linear_fitting(
             data frame.
         average_densities: a data frame whose columns are described in
             :func:`atlas_building_tools.app.densities.compile_measurements` and where all
-            measurements are of type "cell_density" in number of cells per mm^3.
+            measurements are of type "cell density" in number of cells per mm^3.
         homogenous_regions: data frame with two columns, brain_region and cell_type.
             The brain_region column holds region names and the values of the cell_type column are
             "inhibitory" or "excitatory" depending on whether every neuron of the region is
@@ -571,14 +579,17 @@ def linear_fitting(
             fitting_coefficients: dict returned by
                 :fun:`atlas_building_tools.densities.fitting.compute_fitting_coefficients`.
     """
+    L.info("Checking input data frames sanity ...")
     _check_average_densities_sanity(average_densities)
     _check_homogenous_regions_sanity(homogenous_regions)
 
     hierarchy_info = get_hierarchy_info(region_map, root="root")
+    L.info("Creating a data frame from known densities ...")
     densities = create_dataframe_from_known_densities(
         hierarchy_info["brain_region"].to_list(), average_densities
     )
 
+    L.info("Filling homogenous regions data ...")
     fill_in_homogenous_regions(
         homogenous_regions,
         annotation,
@@ -592,20 +603,24 @@ def linear_fitting(
     # identifies them.
     densities.rename(
         columns={
-            "inhibitory": "gad67+",
-            "inhibitory_standard_deviation": "gad67+_standard_deviation",
+            "inhibitory_neuron": "gad67+",
+            "inhibitory_neuron_standard_deviation": "gad67+_standard_deviation",
         },
         inplace=True,
     )
 
+    L.info("Computing average intensities ...")
     average_intensities = compute_average_intensities(
         annotation, gene_marker_volumes, hierarchy_info
     )
 
+    L.info("Getting group names ...")
     # We want group region names to be stable under taking descendants
     groups = get_group_names(region_map, cleanup_rest=True)
 
+    L.info("Computing fitting coefficients ...")
     fitting_coefficients = compute_fitting_coefficients(groups, average_intensities, densities)
+    L.info("Fitting unknown average densities ...")
     fit_unknown_densities(groups, average_intensities, densities, fitting_coefficients)
 
     return densities, fitting_coefficients

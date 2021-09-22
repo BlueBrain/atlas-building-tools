@@ -96,7 +96,7 @@ def split_into_halves(
     Args:
         volume: 3D numeric array.
             halfway_offset: Optional offset used for the
-            splitting along the selected axis.
+            splitting along the z-axis.
     Returns:
         tuple(left_volume, right_volume), the two halves of the
         input volume. Each has the same shape as `volume`.

@@ -264,12 +264,15 @@ def glia_cell_densities(
     the glia cell density and saved in the same directory under the name:
 
     \b
-    - neuron_density.
+    - neuron_density.nrrd
     """
 
+    L.info("Loading annotation ...")
     annotation = VoxelData.load_nrrd(annotation_path)
+    L.info("Loading overall cell density ...")
     overall_cell_density = VoxelData.load_nrrd(cell_density_path)
 
+    L.info("Loading unconstrained glia cell densities ...")
     glia_densities = {
         "glia": VoxelData.load_nrrd(glia_density_path),
         "astrocyte": VoxelData.load_nrrd(astrocyte_density_path),
@@ -279,8 +282,10 @@ def glia_cell_densities(
 
     atlases = list(glia_densities.values())
     atlases += [annotation, overall_cell_density]
+    L.info("Checking input files consistency ...")
     assert_properties(atlases)
 
+    L.info("Loading hierarchy ...")
     region_map = RegionMap.load_json(hierarchy_path)
     with open(glia_proportions_path, "r") as file_:
         glia_proportions = json.load(file_)
@@ -289,6 +294,7 @@ def glia_cell_densities(
         glia_cell_type: voxel_data.raw for (glia_cell_type, voxel_data) in glia_densities.items()
     }
 
+    L.info("Compute volumetric glia densities: started")
     glia_densities = compute_glia_densities(
         region_map,
         annotation.raw,
@@ -303,10 +309,12 @@ def glia_cell_densities(
     if not Path(output_dir).exists():
         os.makedirs(output_dir)
 
+    L.info("Saving overall neuron density to file %s", str(Path(output_dir, "neuron_density.nrrd")))
     neuron_density = overall_cell_density.raw - glia_densities["glia"]
     annotation.with_data(np.asarray(neuron_density, dtype=float)).save_nrrd(
         str(Path(output_dir, "neuron_density.nrrd"))
     )
+    L.info("Saving glia densities to %s", str(Path(output_dir)))
     for glia_type, density in glia_densities.items():
         annotation.with_data(np.asarray(density, dtype=float)).save_nrrd(
             str(Path(output_dir, f"{glia_type}_density.nrrd"))
@@ -508,8 +516,9 @@ def compile_measurements(
     should be added to the stored file (Nexus).
     """
 
-    L.info("Loading excel files ...")
+    L.info("Loading hierarchy ...")
     region_map = RegionMap.load_json(Path(DATA_PATH, "1.json"))  # Unmodified AIBS 1.json
+    L.info("Loading excel files ...")
     measurements = read_measurements(
         region_map,
         Path(DATA_PATH, "measurements", "mmc3.xlsx"),
@@ -599,14 +608,21 @@ def measurements_to_average_densities(
     regions expressed in number of cells per mm^3.
     """
 
+    L.info("Loading annotation ...")
     annotation = VoxelData.load_nrrd(annotation_path)
+    L.info("Loading overall cell density ...")
     overall_cell_density = VoxelData.load_nrrd(cell_density_path)
+    L.info("Loading overall neuron density ...")
     neuron_density = VoxelData.load_nrrd(neuron_density_path)
 
+    L.info("Checking input consistency ...")
     assert_properties([annotation, overall_cell_density, neuron_density])
 
+    L.info("Loading hierarchy ...")
     region_map = RegionMap.load_json(hierarchy_path)
+    L.info("Loading measurements ...")
     measurements_df = pd.read_csv(measurements_path)
+    L.info("Measurement to average density: started")
     average_cell_densities_df = measurement_to_average_density(
         region_map,
         annotation.raw,
@@ -619,6 +635,7 @@ def measurements_to_average_densities(
 
     remove_non_density_measurements(average_cell_densities_df)
 
+    L.info("Saving average cell densities to file %s", output_path)
     average_cell_densities_df.to_csv(
         output_path,
         index=False,
@@ -738,9 +755,13 @@ def fit_average_densities(
     covered by the selected slices of the volumetric gene marker intensities.
     """
 
+    L.info("Loading annotation ...")
     annotation = VoxelData.load_nrrd(annotation_path)
+    L.info("Loading neuron density ...")
     neuron_density = VoxelData.load_nrrd(neuron_density_path)
+    L.info("Loading hierarchy ...")
     region_map = RegionMap.load_json(hierarchy_path)
+    L.info("Loading gene config ...")
     config = yaml.load(open(gene_config_path), Loader=yaml.FullLoader)
 
     gene_voxeldata = {
@@ -771,8 +792,10 @@ def fit_average_densities(
         for (gene, gene_data) in gene_voxeldata.items()
     }
 
+    L.info("Loading average densities dataframe ...")
     average_densities_df = pd.read_csv(average_densities_path)
     homogenous_regions_df = pd.read_csv(homogenous_regions_path)
+    L.info("Fitting of average densities: started")
     fitted_densities_df, fitting_maps = linear_fitting(
         region_map,
         annotation.raw,
@@ -786,8 +809,10 @@ def fit_average_densities(
     # Turn index into column so as to ease off the save and load operations on csv files
     fitted_densities_df["brain_region"] = fitted_densities_df.index
 
+    L.info("Saving fitted densities to file %s ...", fitted_densities_output_path)
     fitted_densities_df.to_csv(fitted_densities_output_path, index=False)
     if fitting_maps_output_path is not None:
+        L.info("Saving fitting maps to file %s ...", fitting_maps_output_path)
         with open(fitting_maps_output_path, mode="w+") as file_:
             json.dump(fitting_maps, file_, indent=1, separators=(",", ": "))
 
@@ -804,11 +829,11 @@ def fit_average_densities(
     ),
 )
 @click.option(
-    "--average-densities-path",
+    "--fitted-densities-path",
     required=True,
-    help="Path to the average densities data frame, i.e., the output of measurement-to-density."
-    "The format of this CSV file is described in the main help section of compile-measurements. It"
-    " contains only measurements of type ``cell density``.",
+    help="Path to the fitted average densities data frame, i.e., the output of "
+    "fit-average-densities. The format of this CSV file is described in the main "
+    "help section of fit-average-densities.",
 )
 @click.option(
     "--output-dir",
@@ -821,12 +846,12 @@ def inhibitory_neuron_densities(
     hierarchy_path,
     annotation_path,
     neuron_density_path,
-    average_densities_path,
+    fitted_densities_path,
     output_dir,
 ):
     """
     Create volumetric cell densities of brain regions in `hierarchy_path` for the cell types
-    labelling the columns of the data frame stored in `average_densities_path`.
+    labelling the columns of the data frame stored in `fitted_densities_path`.
 
     This function support the use case of "Atlas of inhibitory neurons in the mouse brain" by
     D. Rodarie et al., 2021. The densities to be computed in this case are those of GAD67+
@@ -840,9 +865,11 @@ def inhibitory_neuron_densities(
     Whenever possible, modified densities are kept in the range [initial value - std deviation,
     initial value + std deviation] for the standard deviations specified in `average_densities`.
     """
-
+    L.info("Loading annotation ...")
     annotation = VoxelData.load_nrrd(annotation_path)
+    L.info("Loading neuron density ...")
     neuron_density = VoxelData.load_nrrd(neuron_density_path)
+    L.info("Loading hierarchy ...")
     with open(hierarchy_path, "r") as file_:
         hierarchy = json.load(file_)
         if "msg" in hierarchy:
@@ -852,10 +879,14 @@ def inhibitory_neuron_densities(
             hierarchy = hierarchy["msg"][0]
 
     # Consistency check
+    L.info("Checking consistency ...")
     assert_properties([annotation, neuron_density])
 
-    average_densities_df = pd.read_csv(average_densities_path)
+    L.info("Loading average densities ...")
+    average_densities_df = pd.read_csv(fitted_densities_path)
     average_densities_df = average_densities_df.set_index("brain_region")
+
+    L.info("Create inhibitory neuron densities: started")
     volumetric_densities = create_inhibitory_neuron_densities(
         hierarchy,
         annotation.raw,
@@ -867,6 +898,7 @@ def inhibitory_neuron_densities(
     if not Path(output_dir).exists():
         os.makedirs(output_dir)
 
+    L.info("Saving density nrrd files to %s ...", output_dir)
     for cell_type, volumetric_density in volumetric_densities.items():
         annotation.with_data(volumetric_density).save_nrrd(
             str(Path(output_dir, f"{cell_type}_density.nrrd"))

@@ -10,7 +10,8 @@ import pytest
 from voxcell import RegionMap  # type: ignore
 
 import atlas_building_tools.densities.measurement_to_density as tested
-from tests.densities.test_utils import get_hierarchy, get_hierarchy_info
+from tests.densities.test_utils import get_hierarchy
+from tests.densities.test_utils import get_hierarchy_info_unique as get_hierarchy_info
 
 TESTS_PATH = Path(__file__).parent.parent
 
@@ -55,7 +56,7 @@ def test_get_parent_region(region_map):
 @pytest.fixture
 def volumes(voxel_volume=2):
     hierarchy_info = get_hierarchy_info()
-    volumes = voxel_volume * np.array([9.0, 8.0, 2.0, 2.0, 3.0])
+    volumes = voxel_volume * np.array([9.0, 8.0, 2.0, 3.0, 2.0])
     return pd.DataFrame(
         {"brain_region": hierarchy_info["brain_region"], "volume": volumes},
         index=hierarchy_info.index,
@@ -85,30 +86,30 @@ def test_cell_count_to_density(region_map, volumes):
     measurements = pd.DataFrame(
         {
             "brain_region": [
-                "Lobule II, molecular layer",
                 "Lobule II",
                 "Lobule II, granular layer",
+                "Lobule II, molecular layer",
             ],
-            "measurement": [31047, 0.722, 28118.0],
-            "standard_deviation": [5312, 0.722, 6753.9],
-            "measurement_type": ["cell count", "volume", "cell count"],
-            "measurement_unit": ["number of cells", "mm^3", "number of cells"],
-            "source_title": ["Article 1", "Article 1", "Article 2"],
+            "measurement": [0.722, 28118.0, 31047],
+            "standard_deviation": [0.722, 6753.9, 5312],
+            "measurement_type": ["volume", "cell count", "cell count"],
+            "measurement_unit": ["mm^3", "number of cells", "number of cells"],
+            "source_title": ["Article 1", "Article 2", "Article 1"],
         }
     )
     ratio = 3.0 / 8.0  # 3 voxels with label 10710 / 8 voxels in Lobule II
     expected = pd.DataFrame(
         {
             "brain_region": [
-                "Lobule II, molecular layer",
                 "Lobule II",
                 "Lobule II, granular layer",
+                "Lobule II, molecular layer",
             ],
-            "measurement": [31047 / (0.722 * ratio), 0.722, 28118.0 / 4.0],
-            "standard_deviation": [5312 / (0.722 * ratio), 0.722, 6753.9 / 4.0],
-            "measurement_type": ["cell density", "volume", "cell density"],
-            "measurement_unit": ["number of cells per mm^3", "mm^3", "number of cells per mm^3"],
-            "source_title": ["Article 1", "Article 1", "Article 2"],
+            "measurement": [0.722, 28118.0 / 4.0, 31047 / (0.722 * ratio)],
+            "standard_deviation": [0.722, 6753.9 / 4.0, 5312 / (0.722 * ratio)],
+            "measurement_type": ["volume", "cell density", "cell density"],
+            "measurement_unit": ["mm^3", "number of cells per mm^3", "number of cells per mm^3"],
+            "source_title": ["Article 1", "Article 2", "Article 1"],
         }
     )
     tested.cell_count_to_density(measurements, volumes, region_map)
@@ -119,27 +120,27 @@ def test_cell_proportion_to_density(cell_densities):
     measurements = pd.DataFrame(
         {
             "brain_region": [
-                "Lobule II, molecular layer",
                 "Lobule II",
+                "Lobule II, molecular layer",
             ],
-            "measurement": [0.5, 0.2],
-            "standard_deviation": [0.25, 0.2],
-            "measurement_type": ["cell proportion", "neuron proportion"],
+            "measurement": [0.2, 0.5],
+            "standard_deviation": [0.2, 0.25],
+            "measurement_type": ["neuron proportion", "cell proportion"],
             "measurement_unit": ["None", "None"],
-            "source_title": ["Article 1", "Article 2"],
+            "source_title": ["Article 2", "Article 1"],
         }
     )
     expected = pd.DataFrame(
         {
             "brain_region": [
-                "Lobule II, molecular layer",
                 "Lobule II",
+                "Lobule II, molecular layer",
             ],
-            "measurement": [0.5 / 3.0, 0.2],
-            "standard_deviation": [0.25 / 3.0, 0.2],
-            "measurement_type": ["cell density", "neuron proportion"],
-            "measurement_unit": ["number of cells per mm^3", "None"],
-            "source_title": ["Article 1", "Article 2"],
+            "measurement": [0.2, 0.5 / 3.0],
+            "standard_deviation": [0.2, 0.25 / 3.0],
+            "measurement_type": ["neuron proportion", "cell density"],
+            "measurement_unit": ["None", "number of cells per mm^3"],
+            "source_title": ["Article 2", "Article 1"],
         }
     )
     tested.cell_proportion_to_density(measurements, cell_densities, "cell proportion")

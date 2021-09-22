@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Dict, List
 
 import numpy as np
 from nptyping import NDArray
+from tqdm import tqdm
 from voxcell import RegionMap
 
 from atlas_building_tools.densities.utils import compute_region_volumes, get_hierarchy_info
@@ -119,9 +120,11 @@ class VolumetricDensityHelper:
         region_mask = self.annotation == region_id
         for cell_type in self.volumetric_densities.keys():
             self.volumetric_densities[cell_type][region_mask] = self.neuron_density[region_mask]
-            factor = region_counts[cell_type] / (
-                np.sum(self.neuron_density[region_mask]) * self.voxel_volume
-            )
+            overall_density = np.sum(self.neuron_density[region_mask])
+            if np.isclose(overall_density, 0.0):
+                factor = 0.0
+            else:
+                factor = region_counts[cell_type] / (overall_density * self.voxel_volume)
             self.volumetric_densities[cell_type][region_mask] *= factor
 
     def compute_consistent_region_counts(
@@ -254,6 +257,8 @@ class VolumetricDensityHelper:
         leaf_region_counts = {}
         for id_ in hierarchy_leaf_info.index:
             region_name = hierarchy_leaf_info.at[id_, "brain_region"]
+            # TODO: address duplicate region names  # pylint: disable=fixme
+            # such as "Prelimbic area, layer 2" created after the splitting of layer 2/3.
             leaf_region_counts[region_name] = self.compute_consistent_leaf_counts_(
                 region_name,
                 id_,
@@ -387,7 +392,7 @@ def average_densities_to_cell_counts(
 
     for region_name in result.index:
         for column in result.columns:
-            result.loc[region_name, column] *= region_volumes.loc[region_name, "volume"]
+            result.loc[region_name, column] *= np.sum(region_volumes.loc[region_name, "volume"])
 
     return result
 
@@ -447,11 +452,13 @@ def create_inhibitory_neuron_densities(  # pylint: disable=too-many-locals
     """
 
     region_map = RegionMap.from_dict(hierarchy)
-    hierarchy_info = get_hierarchy_info(region_map, root="root")
+    hierarchy_info = get_hierarchy_info(region_map, root="root", unique_names=False)
+    L.info("Computing region volumes ...")
     volumes = compute_region_volumes(annotation, voxel_volume, hierarchy_info)
 
     # We compute cell counts from average densities as we will
     # modify cell densities recursively starting from the leaves
+    L.info("Computing region cell counts ...")
     region_counts = average_densities_to_cell_counts(average_densities, volumes)
     cell_types = {column.replace("_standard_deviation", "") for column in region_counts.columns}
 
@@ -464,22 +471,27 @@ def create_inhibitory_neuron_densities(  # pylint: disable=too-many-locals
         list(cell_types - {"gad67+"}),
     )
 
+    L.info("Making leaf region cell counts consistent ...")
     leaf_ids = [id_ for id_ in hierarchy_info.index if region_map.is_leaf_id(id_)]
     hierarchy_leaf_info = hierarchy_info[hierarchy_info.index.isin(leaf_ids)]
     leaf_region_counts = density_helper.compute_consistent_leaf_counts(hierarchy_leaf_info)
+    L.info("Making remaining region cell counts consistent ...")
     nomansland_counts = density_helper.compute_consistent_counts(
         leaf_region_counts,
         hierarchy,
     )
 
+    L.info("Initializing volumetric densities ...")
     density_helper.initialize_volumetric_densities()
 
-    for region_id in hierarchy_leaf_info.index:
+    L.info("Filling leaf region volumetric densities ...")
+    for region_id in tqdm(hierarchy_leaf_info.index):
         region_name = hierarchy_leaf_info.brain_region[region_id]
         if region_name in leaf_region_counts:  # Some leaf regions may be missing
             density_helper.fill_volumetric_densities(region_id, leaf_region_counts[region_name])
 
-    for region_name in nomansland_counts:
+    L.info("Filling remaining volumetric densities ...")
+    for region_name in tqdm(nomansland_counts):
         region_id = region_map.find(region_name, attr="name").pop()
         density_helper.fill_volumetric_densities(region_id, nomansland_counts[region_name])
 
