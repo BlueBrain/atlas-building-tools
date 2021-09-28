@@ -34,6 +34,13 @@ def get_isocortex_hierarchy_excerpt():
                         "parent_structure_id": 500,
                     },
                     {
+                        "id": 218,
+                        "acronym": "MO2",
+                        "name": "Somatomotor areas, Layer 2",
+                        "children": [],
+                        "parent_structure_id": 500,
+                    },
+                    {
                         "id": 219,
                         "acronym": "MO2/3",
                         "name": "Somatomotor areas, Layer 2/3",
@@ -127,16 +134,20 @@ def test_create_id_generator():
 def test_edit_hierarchy():
     isocortex_hierarchy = get_isocortex_hierarchy_excerpt()
     expected_hierarchy = get_isocortex_hierarchy_excerpt()
+    # Removes "Somatomotor areas, Layer 2"
+    # The corresponding identifier should be reused
+    del expected_hierarchy["children"][0]["children"][1]
+
     expected_hierarchy["children"][0]["children"][1]["children"] = [
         {
-            "id": 948,
+            "id": 218,
             "acronym": "MO2",
             "name": "Somatomotor areas, Layer 2",
             "children": [],
             "parent_structure_id": 219,
         },
         {
-            "id": 949,
+            "id": 948,
             "acronym": "MO3",
             "name": "Somatomotor areas, Layer 3",
             "children": [],
@@ -144,12 +155,18 @@ def test_edit_hierarchy():
         },
     ]
     new_layer_ids = defaultdict(dict)
+    ids_to_reuse = defaultdict(dict)
     region_map = RegionMap.from_dict(
         {"acronym": "root", "name": "root", "id": 0, "children": [isocortex_hierarchy]}
     )
     tested.edit_hierarchy(
-        isocortex_hierarchy, new_layer_ids, tested.create_id_generator(region_map)
+        isocortex_hierarchy,
+        new_layer_ids,
+        ids_to_reuse,
+        region_map,
+        tested.create_id_generator(region_map),
     )
+
     assert isocortex_hierarchy == expected_hierarchy
 
 
@@ -160,23 +177,33 @@ def test_edit_hierarchy_full_json_file():
         region_map.find("@.*3[ab]?$", attr="acronym") - region_map.find("@.*2/3$", attr="acronym")
     )
     # As of 2020.04.22, AIBS's Isocortex has 4 region ids in layer 2 but none in layer 3.
-    initial_isocortex_layer_2_ids = isocortex_ids & region_map.find("@.*2$", attr="acronym")
+    # initial_isocortex_layer_2_ids = isocortex_ids & region_map.find("@.*2$", attr="acronym")  # 4 ids, see below
     isocortex_layer_23_ids = isocortex_ids & region_map.find("@.*2/3$", attr="acronym")
     isocortex_hierarchy = None
     new_layer_ids = defaultdict(dict)
+    ids_to_reuse = defaultdict(dict)
     with open(str(Path(TEST_PATH, "1.json"))) as h_file:
         allen_hierarchy = json.load(h_file)
         isocortex_hierarchy = tested.get_isocortex_hierarchy(allen_hierarchy)
     tested.edit_hierarchy(
-        isocortex_hierarchy, new_layer_ids, tested.create_id_generator(region_map)
+        isocortex_hierarchy,
+        new_layer_ids,
+        ids_to_reuse,
+        region_map,
+        tested.create_id_generator(region_map),
     )
+    assert ids_to_reuse == {
+        304: {"layer_2": 195},
+        556: {"layer_2": 747},
+        582: {"layer_2": 524},
+        430: {"layer_2": 606},
+    }
+
     modified_region_map = RegionMap.from_dict(isocortex_hierarchy)
     assert modified_region_map.find("@.*2/3$", attr="acronym") == isocortex_layer_23_ids
     isocortex_layer_2_ids = modified_region_map.find("@.*2$", attr="acronym")
     isocortex_layer_3_ids = modified_region_map.find("@.*[^/]3$", attr="acronym")
-    assert len(isocortex_layer_2_ids) == len(isocortex_layer_23_ids) + len(
-        initial_isocortex_layer_2_ids
-    )
+    assert len(isocortex_layer_2_ids) == len(isocortex_layer_23_ids)
     assert len(isocortex_layer_3_ids) == len(isocortex_layer_23_ids)
 
 

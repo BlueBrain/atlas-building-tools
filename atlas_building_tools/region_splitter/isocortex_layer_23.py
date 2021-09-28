@@ -2,6 +2,16 @@
 Algorithm splitting the layer 2/3 of the mouse isocortex into
 layer 2 and layer 3.
 
+* Splitting layer 2/3 within the input AIBS 1.json hierarchy file
+
+For every node in the brain regions hierarchy tree whose name ends with
+"[Ll]ayer 2/3" (and whose acronym ends consistently with "2/3"), we create two
+child nodes, one for layer 2 and one for layer 3. If the name of a newly inserted
+child node is the name of a node n in the original 1.json, we reuse the identifier
+of n as the identifier of the new node and n is removed from the hierarchy tree.
+
+* Splitting the annotated volumes base on the modified hierarchy
+
 This algorithm relies on the computation of voxel-to-(layer boundary) approximate
 distances along the direction vectors field.
 For each voxel of the original layer 2/3, we compute its approximate distances to the top and
@@ -75,9 +85,44 @@ def create_id_generator(region_map: "RegionMap") -> Iterator[int]:
     return count(start=last + 1)
 
 
+def _assert_is_leaf_node(node) -> None:
+    """
+    Raises an AssertionError if `node` is not a leaf node.
+
+    Args:
+        node: node of the hierarchy tree. Dict of the form
+        {
+            "id": 195,
+                   "atlas_id": 1014,
+                   "ontology_id": 1,
+                   "acronym": "PL2",
+                   "name": "Prelimbic area, layer 2",
+                   "color_hex_triplet": "2FA850",
+                   "graph_order": 240,
+                   "st_level": 11,
+                   "hemisphere_id": 3,
+                   "parent_structure_id": 972,
+                   "children": []
+                  },
+
+        }
+    Raise:
+        AtlasBuildingToolsError if `node` is a not a leaf `node`.
+    """
+    if "children" not in node:
+        raise AtlasBuildingToolsError(f'Missing "children" key for region {node["name"]}.')
+    if node["children"] != []:
+        raise AtlasBuildingToolsError(
+            f'Region {node["name"]} has an unexpected "children" value: '
+            f'{node["children"]}. Expected: [].'
+        )
+
+
 def edit_hierarchy(
     hierarchy: HierarchyDict,
     new_layer_ids: Dict[int, Dict[str, int]],
+    ids_to_reuse: Dict[int, Dict[str, int]],
+    region_map: RegionMap,
     id_generator: Iterator[int],
 ) -> None:
     """
@@ -85,10 +130,12 @@ def edit_hierarchy(
 
     The children list of every (leaf) node of the HierarchyDict tree whose acronym and name end with
     2/3 is populated with two children. The acronyms and names of the children are those of
-    the parent node but with endings replaced by 2 and 3 respectively. Each child is assigned a
-    distinct and new identifer.
+    the parent node but with endings replaced by 2 and 3 respectively. A child is assigned a
+    distinct and new identifer if there was no node n with the same name and acronym in the original
+    hierarchy. Otherwise, the identifier of n is reused and the node n is removed from the
+    hierarchy.
 
-    The function is recursive and modifies in-place both `hierarchy` and `new_layer_ids`
+    The function is recursive and modifies in-place `hierarchy`, `new_layer_ids` and `ids_to_reuse`.
 
     Note: Isocortex identifiers correponding to layer 2/3 are assumed to be leaf
     region identifiers. These observations are based on
@@ -98,16 +145,24 @@ def edit_hierarchy(
         hierarchy: brain regions hierarchy dict. Modified in place.
         new_layer_ids: defaultdict(dict) whose keys are the identifiers of regions whose acronym
             ends with 2/3 and whose values are dicts of the form
-            {'layer_2': <id2>, 'layer_3': <id3>} where <id2> and <id3> are generated identifiers.
+            {"layer_2": <id2>, "layer_3": <id3>} where <id2> and <id3> are generated identifiers.
             The argument `new_layer_ids` is modified in place.
             Example:
             {
-                107: {'layer_2': 190705, 'layer_3': 190706},
-                219: {'layer_2': 190713, 'layer_3': 190714},
-                299: {'layer_2': 190707, 'layer_3': 190708},
+                107: {"layer_2": 190705, "layer_3": 190706},
+                219: {"layer_2": 190713, "layer_3": 190714},
+                299: {"layer_2": 190707, "layer_3": 190708},
                 ...
             }
-        id_generator: iterator generating new region identifiers
+        ids_to_reuse: ids of regions whose names and acronyms end with "2" or "3" but not with
+            "2/3". Dict of the same form as `new_layer_ids`. The identifier key indicates which
+            node with name ending with "2/3" should reuse an original identifier for its children.
+            If the "layer_2" (resp. "layer_3") key exists, the corresponding value should be
+            reused for the child in "layer_2" (resp. "layer_3")
+            Note: with unmodified AIBS 1.json the only ids to be reused are {195, 747, 524, 606}.
+                They correspond to region name endings with "layer 2" only.
+        region_map: map to navigate the brain regions hierarchy.
+        id_generator: iterator generating new region identifiers.
 
     Note:
         The following attributes of the created nodes are copies of the
@@ -124,19 +179,32 @@ def edit_hierarchy(
         FIXME(Luc): The meaning of st_level and atlas_id is still unclear at the moment, see
         https://community.brain-map.org/t/what-is-the-meaning-of-atlas-id-and-st-level-in-1-json
     """
+    to_delete = []
+    for index, child in enumerate(hierarchy["children"]):
+        if child["acronym"].endswith(("2", "3")) and not child["acronym"].endswith("2/3"):
+            _assert_is_leaf_node(child)  # Satisfied by AIBS 1.json
+            num = child["acronym"][-1]
+            assert child["name"].endswith(num)  # idem
+            ids = region_map.find(child["acronym"][:-1] + "2/3", attr="acronym")
+            assert len(ids) == 1  # idem
+            ids_to_reuse[ids.pop()][f"layer_{num}"] = child["id"]
+            to_delete.append(index)
+
+    for index in sorted(to_delete, reverse=True):
+        del hierarchy["children"][index]
+
     for child in hierarchy["children"]:
         if child["acronym"].endswith("2/3"):
-            assert "children" in child, f'Missing "children" key for region {child["name"]}.'
-            assert child["children"] == [], (
-                f'Region {child["name"]} is has an unexpected "children" value: '
-                f'{child["children"]}. Expected: [].'
-            )
-            assert child["name"].endswith("2/3")
+            _assert_is_leaf_node(child)  # Satisfied by AIBS 1.json
+            assert child["name"].endswith("2/3")  # idem
 
             # Create children
             new_children = []
             for layer in ["layer_2", "layer_3"]:
-                new_layer_ids[child["id"]][layer] = next(id_generator)
+                if child["id"] in ids_to_reuse and layer in ids_to_reuse[child["id"]]:
+                    new_layer_ids[child["id"]][layer] = ids_to_reuse[child["id"]][layer]
+                else:
+                    new_layer_ids[child["id"]][layer] = next(id_generator)
                 new_child = copy.deepcopy(child)
                 new_child["acronym"] = child["acronym"][:-3]
                 new_child["name"] = child["name"][:-3]
@@ -148,8 +216,8 @@ def edit_hierarchy(
 
             # Populate the current 2/3 leaf node's children
             child["children"] = new_children
-
-        edit_hierarchy(child, new_layer_ids, id_generator)
+        else:
+            edit_hierarchy(child, new_layer_ids, ids_to_reuse, region_map, id_generator)
 
 
 def _edit_layer_23_hierarchy(
@@ -173,8 +241,15 @@ def _edit_layer_23_hierarchy(
     """
 
     new_layer_ids: Dict[int, Dict[str, int]] = defaultdict(dict)
+    ids_to_reuse: Dict[int, Dict[str, int]] = defaultdict(dict)
     isocortex_hierarchy = get_isocortex_hierarchy(hierarchy)
-    edit_hierarchy(isocortex_hierarchy, new_layer_ids, create_id_generator(region_map))
+    edit_hierarchy(
+        isocortex_hierarchy,
+        new_layer_ids,
+        ids_to_reuse,
+        region_map,
+        create_id_generator(region_map),
+    )
 
     return new_layer_ids
 
@@ -217,9 +292,10 @@ def _edit_layer_23_volume(
         if np.any(change_to_layer):
             volume[change_to_layer] = new_id
 
+    layer_3_mask = np.invert(layer_2_mask)
     for id_ in layer_23_ids:
         change_volume(id_, new_layer_ids[id_]["layer_2"], layer_2_mask)
-        change_volume(id_, new_layer_ids[id_]["layer_3"], ~layer_2_mask)
+        change_volume(id_, new_layer_ids[id_]["layer_3"], layer_3_mask)
 
 
 def split(

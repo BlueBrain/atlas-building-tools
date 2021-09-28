@@ -126,7 +126,7 @@ class Test_mtype_densities_from_probability_map:
             yaml.dump(config, file_)
         self.data["raw_probability_map"].insert(0, "mtype", self.data["raw_probability_map"].index)
         self.data["raw_probability_map"].to_csv("probability_map.csv", index=False)
-        print(self.data["raw_probability_map"])
+
         for type_, filepath in config["molecularTypeDensityPaths"].items():
             VoxelData(
                 self.data["molecular_type_densities"][type_],
