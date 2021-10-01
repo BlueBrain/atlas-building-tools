@@ -110,7 +110,7 @@ class AbstractLayeredAtlas(ABC):
                 `self.metadata["layers"]["names"]` augmented by 1.
         """
 
-        number_of_layers = len(self.metadata["region"]["name"])
+        number_of_layers = len(self.metadata["layers"]["names"])
         L.info(
             "Creating a volume for each of the %d layers of %s ...",
             number_of_layers,
@@ -262,7 +262,7 @@ class LayeredAtlas(AbstractLayeredAtlas):
         assert len(layers_values) == len(
             self.metadata["layers"]["names"]
         ), "{} layer indices, {} layer strings".format(
-            len(layers_values), len(self.metadata["region"]["name"])
+            len(layers_values), len(self.metadata["layers"]["names"])
         )
         L.info(
             "Creating a watertight mesh for each of the %d layers of %s ...",

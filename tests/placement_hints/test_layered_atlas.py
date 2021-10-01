@@ -9,6 +9,7 @@ from typing import Optional
 
 import numpy as np  # type: ignore
 import numpy.testing as npt  # type: ignore
+import pytest
 from voxcell import VoxelData  # type: ignore
 
 import atlas_building_tools.placement_hints.layered_atlas as tested
@@ -21,6 +22,24 @@ from tests.placement_hints.mocking_tools import IsocortexMock, ThalamusMock
 
 TEST_PATH = Path(Path(__file__).parent.parent)
 METADATA_PATH = TEST_PATH.parent / "atlas_building_tools" / "app" / "data" / "metadata"
+
+
+def test_assert_wrong_number_of_layers():
+    isocortex_mock = IsocortexMock(padding=1, layer_thickness=1, x_thickness=2, z_thickness=1)
+    # Merge the first and the last layer
+    raw = isocortex_mock.annotation.raw
+    for id_ in isocortex_mock.layer_ids[-1]:
+        raw[raw == id_] = isocortex_mock.layer_ids[0][0]
+
+    with open(METADATA_PATH / "isocortex_metadata.json", "r") as file_:
+        metadata = json.load(file_)
+
+    layered_atlas = tested.LayeredAtlas(
+        isocortex_mock.annotation, isocortex_mock.region_map, metadata
+    )
+    # There are 5 annotated layers whereas `metadata` refers to 6 layers
+    with pytest.raises(AssertionError, match=".*layer indices.* layer strings.*"):
+        layered_atlas.create_layer_meshes(layered_atlas.volume)
 
 
 class Test_Layered_Atlas(unittest.TestCase):

@@ -4,6 +4,8 @@ Changelog
 
 Version 0.1.5
 -------------
+
+- Fixes wrong assert condition and wrong log in the layered_atlas module  [`NSETM-1616`_]
 - Re-uses the identifiers of the nodes whose names end with "layer 2" or "layer 3" (but not "layer 2/3") when splitting layer 2/3 in AIBS 1.json [`BBPP82-640`_]
 - Fixes wrong sanity check for measurement types and addition of spurious NaN or empty columns in density dataframes [`BBPP82-630`_]
 - Addresses the troubles caused by duplicate region names in brain regions hierarchy [`BBPP82-630`_]
@@ -65,6 +67,7 @@ Version 0.1.0 (2021-04-27)
 - CLI to compute a flat map based on the streamlines of a laminar brain region
 - CLI to turn the excel measurement compilation gaba_papers.xlsx of D. Rodarie into a CSV file.
 
+.. _`NSETM-1616`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1616
 .. _`BBPP82-640`: https://bbpteam.epfl.ch/project/issues/browse/BBPP82-640
 .. _`NSETM-1574`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1574
 .. _`BBPP82-630`: https://bbpteam.epfl.ch/project/issues/browse/BBPP82-630
