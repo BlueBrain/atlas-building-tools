@@ -4,6 +4,7 @@ Changelog
 
 Version 0.1.5
 -------------
+- Fixes application crash caused by empty bottom or empty top shell passed to Regiodesics [`NSETM-1616`_]
 - Integrates Dimitri Rodarie's linear program minimizing distances to density estimates [`BBPP82-628`_]
 - Fixes wrong assert condition and wrong log in the layered_atlas module  [`NSETM-1616`_]
 - Re-uses the identifiers of the nodes whose names end with "layer 2" or "layer 3" (but not "layer 2/3") when splitting layer 2/3 in AIBS 1.json [`BBPP82-640`_]

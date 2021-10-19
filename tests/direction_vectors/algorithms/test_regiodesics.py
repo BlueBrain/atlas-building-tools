@@ -47,6 +47,21 @@ def test_mark_with_regiodesics_labels():
     npt.assert_array_equal(marked, expected)
 
 
+def test_mark_with_regiodesics_labels_exception():
+    full_volume = np.zeros((9, 9, 9), dtype=int)
+    full_volume[:, :, 3:6] = 2  # in between
+    full_volume[:, :, 6:] = 3  # top
+    with pytest.raises(AtlasBuildingToolsError) as error:
+        tested.mark_with_regiodesics_labels(full_volume == 1, full_volume == 2, full_volume == 3)
+    assert "Empty bottom" in str(error.value)
+
+    full_volume[:, :, :3] = 1  # bottom
+    full_volume[:, :, 6:] = 0  # empty top
+    with pytest.raises(AtlasBuildingToolsError) as error:
+        tested.mark_with_regiodesics_labels(full_volume == 1, full_volume == 2, full_volume == 3)
+    assert "Empty top" in str(error.value)
+
+
 def test_compute_direction_vectors():
     raw = np.zeros((8, 8, 8), dtype=int)
     raw[:, :, :2] = 1  # bottom

@@ -106,8 +106,8 @@ def mark_with_regiodesics_labels(
     """Given 3 volumes, find the boundaries between them.
 
     The volume of interest `in_between` is supposed to be surrounded by the `bottom` and the `top`
-     volumes, e.g, `bottom` is a lower layer and `bottom` is an upper layer. It may have a
-     non-empty intersection with `bottom` and `top`.
+    volumes, e.g, `bottom` is a lower layer and `bottom` is an upper layer. It may have a
+    non-empty intersection with `bottom` and `top`.
 
     Args:
         bottom: boolean 3D mask of the bottom part.
@@ -117,6 +117,9 @@ def mark_with_regiodesics_labels(
     Returns:
         marked(numpy.ndarray), a 3D array of RegiodesicsLabels marking the interior of
             `in_between` and its boundaries shared with `bottom` and `top`.
+
+    Raises:
+        AtlasBuildingToolsError if the volume marked by `Bottom` or `Top` is empty.
     """
     shell = np.logical_or(
         compute_boundary(in_between, np.logical_not(in_between)),
@@ -139,6 +142,13 @@ def mark_with_regiodesics_labels(
     marked[shell] = RegiodesicsLabels.SHELL
     marked[inner_boundary_with(bottom)] = RegiodesicsLabels.BOTTOM
     marked[inner_boundary_with(top)] = RegiodesicsLabels.TOP
+
+    if np.count_nonzero(marked == RegiodesicsLabels.BOTTOM) == 0:
+        raise AtlasBuildingToolsError("Empty bottom volume is not supported by Regiodesics.")
+
+    if np.count_nonzero(marked == RegiodesicsLabels.TOP) == 0:
+        raise AtlasBuildingToolsError("Empty top volume is not supported by Regiodesics.")
+
     return marked
 
 
@@ -159,8 +169,8 @@ def compute_direction_vectors(
                 is a dictionary whose keys are the strings 'layer_segmenter' and 'geodesics'
                 and whose values are the corresponding file paths (str).
                 Example: {
-                    'layer_segmenter': Regiodesics/build/bin/layer_segmenter,
-                    'geodesics': Regiodesics/build/bin/geodesics
+                    'layer_segmenter': "Regiodesics/build/bin/layer_segmenter",
+                    'geodesics': "Regiodesics/build/bin/geodesics"
                 }
 
     Returns:

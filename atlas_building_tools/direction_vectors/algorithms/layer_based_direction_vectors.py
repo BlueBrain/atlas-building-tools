@@ -191,6 +191,7 @@ def compute_direction_vectors(
     else:
         if not isinstance(brain_regions, VoxelData):
             raise ValueError("`brain_regions` must be specified as a path or a VoxelData object.")
+
     landscape = {
         "source": np.isin(
             brain_regions.raw,  # type: ignore
