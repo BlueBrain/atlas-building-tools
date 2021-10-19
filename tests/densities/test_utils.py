@@ -400,11 +400,86 @@ def volumes(voxel_volume=2):
     )
 
 
-def test_compute_region_volumes(volumes):
-    annotation = np.array([[[920, 10710, 10710], [10709, 10708, 976], [10708, 10710, 10709]]])
+@pytest.fixture
+def annotation():
+    return np.array([[[920, 10710, 10710], [10709, 10708, 976], [10708, 10710, 10709]]])
+
+
+def test_compute_region_volumes(volumes, annotation):
     pdt.assert_frame_equal(
         volumes,  # expected
         tested.compute_region_volumes(
             annotation, voxel_volume=2.0, hierarchy_info=get_hierarchy_info_unique()
+        ),
+    )
+
+
+@pytest.fixture
+def volumes_with_dups(voxel_volume=2):
+    hierarchy_info = get_hierarchy_info_duplicate()
+    volumes = voxel_volume * np.array([9.0, 8.0, 2.0, 2.0, 3.0, 0.0])
+    id_volumes = voxel_volume * np.array([1.0, 1.0, 2.0, 2.0, 3.0, 0.0])
+    return pd.DataFrame(
+        {
+            "brain_region": hierarchy_info["brain_region"],
+            "volume": volumes,
+            "id_volume": id_volumes,
+        },
+        index=hierarchy_info.index,
+    )
+
+
+def test_compute_region_volumes_with_ids(volumes_with_dups, annotation):
+    pdt.assert_frame_equal(
+        volumes_with_dups,  # expected
+        tested.compute_region_volumes(
+            annotation, voxel_volume=2.0, hierarchy_info=get_hierarchy_info_duplicate()
+        ),
+    )
+
+
+@pytest.fixture
+def cell_counts(voxel_volume=2):
+    counts = voxel_volume * np.array([5.0, 4.0, 1.0, 1.0, 1.0])
+    hierarchy_info = get_hierarchy_info_unique()
+    return pd.DataFrame(
+        {"brain_region": hierarchy_info["brain_region"], "cell_count": counts},
+        index=hierarchy_info.index,
+    )
+
+
+@pytest.fixture
+def cell_density():
+    return np.array([[[1.0, 1.0 / 3.0, 1.0 / 3.0], [0.5, 0.5, 1.0], [0.5, 1.0 / 3.0, 0.5]]])
+
+
+def test_compute_cell_counts(annotation, cell_density, cell_counts):
+    pdt.assert_frame_equal(
+        cell_counts,  # expected
+        tested.compute_region_cell_counts(
+            annotation, cell_density, voxel_volume=2.0, hierarchy_info=get_hierarchy_info_unique()
+        ),
+    )
+
+
+@pytest.fixture
+def cell_counts_2(voxel_volume=2):
+    counts = voxel_volume * np.array([1.0, 1.0, 1.0, 1.0, 1.0, 0.0])
+    hierarchy_info = get_hierarchy_info_duplicate()
+    return pd.DataFrame(
+        {"brain_region": hierarchy_info["brain_region"], "cell_count": counts},
+        index=hierarchy_info.index,
+    )
+
+
+def test_compute_cell_counts_without_descendants(annotation, cell_density, cell_counts_2):
+    pdt.assert_frame_equal(
+        cell_counts_2,  # expected
+        tested.compute_region_cell_counts(
+            annotation,
+            cell_density,
+            voxel_volume=2.0,
+            hierarchy_info=get_hierarchy_info_duplicate(),
+            with_descendants=False,
         ),
     )

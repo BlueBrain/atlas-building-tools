@@ -22,6 +22,9 @@ from nptyping import NDArray
 from tqdm import tqdm
 from voxcell import RegionMap
 
+from atlas_building_tools.densities.inhibitory_neuron_densities_helper import (
+    average_densities_to_cell_counts,
+)
 from atlas_building_tools.densities.utils import compute_region_volumes, get_hierarchy_info
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -33,7 +36,7 @@ L = logging.getLogger(__name__)
 class VolumetricDensityHelper:
     """
     Helper class to compute volumetric cell densities out of
-    average cell densities.
+    cell counts.
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -359,42 +362,6 @@ class VolumetricDensityHelper:
         )
 
         return nomansland_counts
-
-
-def average_densities_to_cell_counts(
-    average_densities: "pd.DataFrame",
-    region_volumes: "pd.DataFrame",
-) -> "pd.DataFrame":
-    """
-    Create a data frame with `average_densities.index` as index (region names) and with two columns
-    for each cell type, one column for the cell count, one column for the associated standard
-    deviation. In other words, the content of the columns T and T_standard_deviation of each cell
-    type T represented in `average_densities` (e.g. T = "pv+") are replaced by cell counts and
-    their standard deviations.
-
-    Args:
-        average_densities: a data frame whose columns are described in
-            :func:`atlas_building_tools.densities.fitting.linear_fitting` containing the average
-            cell densities of brain regions and their associated standard deviations. Columns are
-            labelled by T and T_standard_deviation for various cell types T.
-        region_volumes: the data frame returned by
-            :func:`atlas_building_tools.densities.utils.compute_region_volumes`.
-
-    Returns:
-        data frame whose index is `average_densities.index` (brain region names) and with a pair of
-        columns labeled by T and T_standard_deviation for each cell type T represented in
-        `average_densities` (e.g., T = "pv+", "inhibitory" or "sst+"). Column labels are lower
-        cased.
-    """
-
-    result = average_densities.copy()
-    region_volumes = region_volumes.set_index("brain_region")
-
-    for region_name in result.index:
-        for column in result.columns:
-            result.loc[region_name, column] *= np.sum(region_volumes.loc[region_name, "volume"])
-
-    return result
 
 
 def create_inhibitory_neuron_densities(  # pylint: disable=too-many-locals

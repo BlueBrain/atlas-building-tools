@@ -12,8 +12,8 @@ setup(
     author_email="bbp-ou-nse@groupes.epfl.ch",
     version=VERSION,
     description="Library containing tools for building atlases",
-    url="https://bbpteam.epfl.ch/project/issues/projects/NSETM/issues",
-    download_url="ssh://bbpcode.epfl.ch/nse/atlas-building-tools",
+    url="https://bbpgitlab.epfl.ch/nse/atlas-building-tools",
+    download_url="git@bbpgitlab.epfl.ch:nse/atlas-building-tools.git",
     license="BBP-internal-confidential",
     python_requires=">=3.6.0",
     install_requires=[

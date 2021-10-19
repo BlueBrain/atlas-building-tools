@@ -503,11 +503,11 @@ def test_linear_fitting():
     assert not np.isinf(densities.at["Hippocampal formation", "pv+_standard_deviation"])
 
 
-def test_linear_fitting_exception_homogenous_regions():
+def test_linear_fitting_exception_average_densities():
     data = get_fitting_input_data()
     data["average_densities"].at["Thalamus", "measurement_type"] = "volume"
 
-    with pytest.raises(AtlasBuildingToolsError):
+    with pytest.raises(AtlasBuildingToolsError, match="unexpected measurement type.*volume.*"):
         tested.linear_fitting(
             RegionMap.from_dict(data["hierarchy"]),
             data["annotation"],
@@ -520,22 +520,22 @@ def test_linear_fitting_exception_homogenous_regions():
     data["average_densities"].at["Thalamus", "measurement_type"] = "cell density"
     data["average_densities"].at["Thalamus", "measurement"] = -1.0
 
-    with pytest.raises(AtlasBuildingToolsError):
+    with pytest.raises(AtlasBuildingToolsError, match="negative measurement"):
         tested.linear_fitting(
             RegionMap.from_dict(data["hierarchy"]),
             data["annotation"],
             data["neuron_density"],
             data["gene_marker_volumes"],
             data["average_densities"],
+            data["homogenous_regions"],
         )
 
 
 def test_linear_fitting_exception_homogenous_regions():
     data = get_fitting_input_data()
-    # Unexpected cell type in `homogenous_regions` data frame
     data["homogenous_regions"].at["Thalamus", "cell_type"] = "Inhibitory"
 
-    with pytest.raises(AtlasBuildingToolsError):
+    with pytest.raises(AtlasBuildingToolsError, match="unexpected cell type"):
         tested.linear_fitting(
             RegionMap.from_dict(data["hierarchy"]),
             data["annotation"],

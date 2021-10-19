@@ -22,16 +22,6 @@ def region_map():
 
 
 @pytest.fixture
-def annotation():
-    return np.array([[[920, 10710, 10710], [10709, 10708, 976], [10708, 10710, 10709]]])
-
-
-@pytest.fixture
-def cell_density():
-    return np.array([[[1.0, 1.0 / 3.0, 1.0 / 3.0], [0.5, 0.5, 1.0], [0.5, 1.0 / 3.0, 0.5]]])
-
-
-@pytest.fixture
 def cell_densities():
     densities = np.array([5.0 / 9.0, 4.0 / 8.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0])
     hierarchy_info = get_hierarchy_info()
@@ -60,25 +50,6 @@ def volumes(voxel_volume=2):
     return pd.DataFrame(
         {"brain_region": hierarchy_info["brain_region"], "volume": volumes},
         index=hierarchy_info.index,
-    )
-
-
-@pytest.fixture
-def cell_counts(voxel_volume=2):
-    counts = voxel_volume * np.array([5.0, 4.0, 1.0, 1.0, 1.0])
-    hierarchy_info = get_hierarchy_info()
-    return pd.DataFrame(
-        {"brain_region": hierarchy_info["brain_region"], "cell count": counts},
-        index=hierarchy_info.index,
-    )
-
-
-def test_compute_cell_counts(annotation, cell_density, cell_counts):
-    pdt.assert_frame_equal(
-        cell_counts,  # expected
-        tested.compute_region_cell_counts(
-            annotation, cell_density, voxel_volume=2.0, hierarchy_info=get_hierarchy_info()
-        ),
     )
 
 

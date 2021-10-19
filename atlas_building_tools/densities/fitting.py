@@ -574,8 +574,8 @@ def linear_fitting(
         tuple (densities, fitting_coefficients)
             densities:
                 data frame holding an average density estimate for every region in `region_map` and
-                every cell type marked by the gene markers of `gene_mark_volumes`.
-                The output data frame has a column `standard_deviation`.
+                every cell type marked by the gene markers of `gene_marker_volumes`.
+                The output data frame has a column `standard_deviation` for every gene marker.
             fitting_coefficients: dict returned by
                 :fun:`atlas_building_tools.densities.fitting.compute_fitting_coefficients`.
     """

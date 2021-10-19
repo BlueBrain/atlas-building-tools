@@ -4,6 +4,8 @@ A density value is a non-negative float number corresponding to the number of ce
 A density field is a 3D volumetric array assigning to each voxel a density value, that is
 the mean cell density within this voxel.
 
+In BBP terminology, a density field is often referred to as a volumetric density array.
+
 This script computes and saves the following cell densities under the form of density fields.
 
 * overall cell density
@@ -13,8 +15,13 @@ This script computes and saves the following cell densities under the form of de
     - oligodendrocyte density
     - microglia density
 * among neuron cells:
-    - inhibitory neuron density
+    - inhibitory neuron (a.k.a GAD67+) density:
+        - PV+ density
+        - SST+ density
+        - VIP+ density
     - excitatory neuron density
+
+Note: if M is a gene marker (e.g., GAD67), then M+ denotes the cells reacting to M (e.g., GAD67+).
 
 Density estimates are based on datasets produced by in-situ hybridization experiments of the
 Allen Institute for Brain Science (AIBS). We used in particular AIBS genetic marker datasets and
@@ -24,12 +31,18 @@ of the soma density in a population of interest.
 
 It is assumed throughout that such intensities depend "almost" linearly on the cell density when
 restricted to a brain region, but we shall not give a precise meaning to the word "almost".
+
+The implementation of this module is based on the methods of
+- 'A Cell Atlas for the Mouse Brain' by C. Eroe et al., 2018,
+- 'Atlas of inhibitory neurons in the mouse brain" by D. Rodarie et al., 2021,
+and the code provided by the authors.
 """
 # pylint: disable=too-many-lines
 import json
 import logging
 import os
 from pathlib import Path
+from typing import Callable, Dict
 
 import click
 import numpy as np
@@ -58,6 +71,9 @@ from atlas_building_tools.densities.excel_reader import (
 )
 from atlas_building_tools.densities.fitting import linear_fitting
 from atlas_building_tools.densities.glia_densities import compute_glia_densities
+from atlas_building_tools.densities.inhibitory_neuron_densities_optimization import (
+    create_inhibitory_neuron_densities as linprog,
+)
 from atlas_building_tools.densities.inhibitory_neuron_density import (
     compute_inhibitory_neuron_density,
 )
@@ -66,13 +82,19 @@ from atlas_building_tools.densities.measurement_to_density import (
     remove_non_density_measurements,
 )
 from atlas_building_tools.densities.refined_inhibitory_neuron_densities import (
-    create_inhibitory_neuron_densities,
+    create_inhibitory_neuron_densities as keep_proportions,
 )
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 HOMOGENOUS_REGIONS_PATH = DATA_PATH / "measurements" / "homogenous_regions"
 HOMOGENOUS_REGIONS_REL_PATH = HOMOGENOUS_REGIONS_PATH.relative_to(ABT_PATH)
 MARKERS_README_REL_PATH = (DATA_PATH / "markers" / "README.rst").relative_to(ABT_PATH)
+LINPROG_PATH = "doc/source/bbpp82_628_linprog.pdf"
+
+ALGORITHMS: Dict[str, Callable] = {
+    "keep-proportions": keep_proportions,
+    "linprog": linprog,
+}
 
 L = logging.getLogger(__name__)
 
@@ -795,6 +817,7 @@ def fit_average_densities(
     L.info("Loading average densities dataframe ...")
     average_densities_df = pd.read_csv(average_densities_path)
     homogenous_regions_df = pd.read_csv(homogenous_regions_path)
+
     L.info("Fitting of average densities: started")
     fitted_densities_df, fitting_maps = linear_fitting(
         region_map,
@@ -829,15 +852,22 @@ def fit_average_densities(
     ),
 )
 @click.option(
-    "--fitted-densities-path",
+    "--average-densities-path",
     required=True,
-    help="Path to the fitted average densities data frame, i.e., the output of "
-    "fit-average-densities. The format of this CSV file is described in the main "
-    "help section of fit-average-densities.",
+    help="Path to the average densities data frame, e.g., the output of fit-average-densities."
+    " The format of this CSV file is described in the main help section of fit-average-densities.",
+)
+@click.option(
+    "--algorithm",
+    type=click.Choice(list(ALGORITHMS.keys())),
+    required=False,
+    default="linprog",
+    help=f"Algorithm to be used. Defaults to 'linprog'. "
+    f"See `{str(LINPROG_PATH)}` for a description of the linear program.",
 )
 @click.option(
     "--output-dir",
-    required=False,
+    required=True,
     help="Path to the directory where the volumetric inhibitory neuron density files (nrrd) will"
     " be saved. If it doesn't exist already, the directory will be created.",
 )
@@ -846,24 +876,37 @@ def inhibitory_neuron_densities(
     hierarchy_path,
     annotation_path,
     neuron_density_path,
-    fitted_densities_path,
+    average_densities_path,
+    algorithm,
     output_dir,
 ):
     """
     Create volumetric cell densities of brain regions in `hierarchy_path` for the cell types
-    labelling the columns of the data frame stored in `fitted_densities_path`.
+    labelling the columns of the data frame stored in `average_densities_path`.
 
     This function support the use case of "Atlas of inhibitory neurons in the mouse brain" by
     D. Rodarie et al., 2021. The densities to be computed in this case are those of GAD67+
-    (inhibitory neurons) and those of the neuron subtypes PV+, SST+ and VIP+.
+    (inhibitory neurons) and those of the inhibitory neuron subtypes PV+, SST+ and VIP+.
 
-    The function modifies the estimates in `average_densities` to make them consistent
-    accross cell types: the average density of GAD67+ cells in a leaf region L should be
-    at most the sum of the average densities of its subtypes under scrutiny (e.g. PV+, SST+ and
-    VIP+) and should not exceed the neuron density of L.
+    The function modifies the estimates in `average_densities` (the "first estimates" of the paper)
+    to make them consistent accross cell types: the average density of GAD67+ cells in a leaf
+    region L should be at most the sum of the average densities of its subtypes under scrutiny
+    (e.g. PV+, SST+ and VIP+) and should not exceed the neuron density of L.
 
-    Whenever possible, modified densities are kept in the range [initial value - std deviation,
-    initial value + std deviation] for the standard deviations specified in `average_densities`.
+    Two algorithms can be used:
+
+    - keep-proportions:
+
+        Whenever possible, modified densities are kept in the range [initial value - std deviation,
+        initial value + std deviation] for the standard deviations specified in `average_densities`
+        The proportions of the initial subtype densities are also preserved whenever possible.
+
+    - linprog:
+
+        A linear program minimizes the distances between the output densities and the initial
+        estimates from `average_densities`  while enforcing the consistency of average densities
+        across cell types. See :download:`pdf file <bbpp82_628_linear_program.pdf>` in the
+        `doc/source` folder.
     """
     L.info("Loading annotation ...")
     annotation = VoxelData.load_nrrd(annotation_path)
@@ -881,13 +924,17 @@ def inhibitory_neuron_densities(
     # Consistency check
     L.info("Checking consistency ...")
     assert_properties([annotation, neuron_density])
+    if np.any(neuron_density.raw < 0.0):
+        raise AtlasBuildingToolsError(f"Negative density value found in {neuron_density_path}.")
 
     L.info("Loading average densities ...")
-    average_densities_df = pd.read_csv(fitted_densities_path)
-    average_densities_df = average_densities_df.set_index("brain_region")
+    average_densities_df = pd.read_csv(average_densities_path)
+    average_densities_df.set_index("brain_region", inplace=True)
+    if np.any(average_densities_df < 0.0):
+        raise AtlasBuildingToolsError(f"Negative entry found in {average_densities_path}.")
 
     L.info("Create inhibitory neuron densities: started")
-    volumetric_densities = create_inhibitory_neuron_densities(
+    volumetric_densities = ALGORITHMS[algorithm](
         hierarchy,
         annotation.raw,
         _get_voxel_volume_in_mm3(annotation),
@@ -895,6 +942,7 @@ def inhibitory_neuron_densities(
         average_densities_df,
     )
 
+    L.info("Create inhibitory neuron densities: finished")
     if not Path(output_dir).exists():
         os.makedirs(output_dir)
 
