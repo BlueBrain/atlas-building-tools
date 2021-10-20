@@ -97,18 +97,7 @@ def isocortex(annotation_path, hierarchy_path, output_path):
 
 
 @app.command()
-@click.option(
-    "--annotation-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to the annotation nrrd file."),
-)
-@click.option(
-    "--hierarchy-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to hierarchy.json or AIBS 1.json."),
-)
+@common_atlas_options
 @click.option("--output-path", required=True, help="Path of file to write.")
 @log_args(L)
 def thalamus(annotation_path, hierarchy_path, output_path):
@@ -182,18 +171,7 @@ RESTRICT_TO_LAYER_HELP_STR = (
     ),
     default=None,
 )
-@click.option(
-    "--annotation-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=ANNOTATION_HELP_STR,
-)
-@click.option(
-    "--hierarchy-path",
-    type=EXISTING_FILE_PATH,
-    required=False,
-    help=("Path to hierarchy.json or AIBS 1.json defining the hierarchy of brain regions."),
-)
+@common_atlas_options
 @click.option(
     "--metadata-path",
     type=EXISTING_FILE_PATH,

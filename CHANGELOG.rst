@@ -4,6 +4,7 @@ Changelog
 
 Version 0.1.5
 -------------
+- Fixes application crash caused by wrong regular expression in the default metadata json file of the mouse isocortex [`NSETM-1616`_]
 - Fixes application crash caused by empty bottom or empty top shell passed to Regiodesics [`NSETM-1616`_]
 - Integrates Dimitri Rodarie's linear program minimizing distances to density estimates [`BBPP82-628`_]
 - Fixes wrong assert condition and wrong log in the layered_atlas module  [`NSETM-1616`_]

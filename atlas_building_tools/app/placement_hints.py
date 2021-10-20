@@ -14,10 +14,12 @@ import voxcell  # type: ignore
 
 from atlas_building_tools.app.utils import (  # type: ignore
     EXISTING_FILE_PATH,
+    assert_meta_properties,
     common_atlas_options,
     log_args,
     set_verbose,
 )
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
 from atlas_building_tools.placement_hints.compute_placement_hints import compute_placement_hints
 from atlas_building_tools.placement_hints.layered_atlas import (
     LayeredAtlas,
@@ -89,6 +91,11 @@ def _placement_hints(  # pylint: disable=too-many-locals
             Defaults to True.
     """
     direction_vectors = voxcell.VoxelData.load_nrrd(direction_vectors_path)
+    assert_meta_properties([direction_vectors, atlas.region])
+    if direction_vectors.raw.shape[3] != 3:
+        raise AtlasBuildingToolsError(
+            f"Direction vectors have dimension {direction_vectors.raw.shape[3]}. Expected: 3."
+        )
     distances_info, problems = compute_placement_hints(
         atlas,
         direction_vectors.raw,

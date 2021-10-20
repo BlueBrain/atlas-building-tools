@@ -280,3 +280,31 @@ def test_isocortex():
             assert (
                 np.count_nonzero(problematic_volume == 3) / isocortex_mock.volume == 0.0
             )  # no new problems
+
+
+def test_exception_on_incorrect_input():
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        isocortex_mock = IsocortexMock(padding=1, layer_thickness=1, x_thickness=5, z_thickness=5)
+        # Direction vectors mistaken with orientation (field of 4D vectors)
+        direction_vectors = np.zeros(isocortex_mock.annotation.raw.shape + (4,), dtype=float)
+        isocortex_mock.annotation.save_nrrd("annotation.nrrd")
+        isocortex_mock.annotation.with_data(direction_vectors).save_nrrd("direction_vectors.nrrd")
+        with open("hierarchy.json", "w") as file_:
+            json.dump(isocortex_mock.region_map_dict, file_)
+
+        result = runner.invoke(
+            tested.isocortex,
+            [
+                "--annotation-path",
+                "annotation.nrrd",
+                "--hierarchy-path",
+                "hierarchy.json",
+                "--direction-vectors-path",
+                "direction_vectors.nrrd",
+                "--output-dir",
+                "placement_hints",
+            ],
+        )
+        assert result.exit_code == 1
+        assert "Direction vectors have dimension 4. Expected: 3." in str(result.exception)
