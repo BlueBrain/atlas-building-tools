@@ -2,8 +2,12 @@ Changelog
 =========
 
 
-Version 0.1.5
+Version 0.1.6
 -------------
+- Documents the limitations of the algorithm splitting the mouse isocortex's layer 2/3 with warnings and error messages [`NSETM-1658`_]
+
+Version 0.1.5 (2021-10-20)
+--------------------------
 - Fixes application crash caused by wrong regular expression in the default metadata json file of the mouse isocortex [`NSETM-1616`_]
 - Fixes application crash caused by empty bottom or empty top shell passed to Regiodesics [`NSETM-1616`_]
 - Integrates Dimitri Rodarie's linear program minimizing distances to density estimates [`BBPP82-628`_]
@@ -69,6 +73,8 @@ Version 0.1.0 (2021-04-27)
 - CLI to compute a flat map based on the streamlines of a laminar brain region
 - CLI to turn the excel measurement compilation gaba_papers.xlsx of D. Rodarie into a CSV file.
 
+
+.. _`NSETM-1658`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1658
 .. _`BBPP82-628`: https://bbpteam.epfl.ch/project/issues/browse/BBPP82-628
 .. _`NSETM-1616`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1616
 .. _`BBPP82-640`: https://bbpteam.epfl.ch/project/issues/browse/BBPP82-640

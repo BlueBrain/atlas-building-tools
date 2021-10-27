@@ -155,8 +155,8 @@ RESTRICT_TO_LAYER_HELP_STR = (
     is_flag=True,
     required=False,
     help=(
-        "Interpolate [NaN, NaN, NaN] direction vector of a voxel in the region of interest is "
-        "interpolated by non-NaN directio vectors of nearby voxels. Must be set if --mask-path is "
+        "Interpolate each [NaN, NaN, NaN] direction vector of the voxels in the region of interest"
+        "by non-NaN direction vectors of nearby voxels. Must be set if --mask-path is "
         "not specified."
     ),
     default=False,

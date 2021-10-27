@@ -30,7 +30,10 @@ def app(verbose):
     "--direction-vectors-path",
     type=EXISTING_FILE_PATH,
     required=True,
-    help=("Path to the mouse isocortex direction vectors nrrd file."),
+    help=(
+        "Path to the mouse isocortex direction vectors nrrd file."
+        "The direction vectors should not be (NaN, NaN, NaN) on any voxel of the layer 2/3 volume."
+    ),
 )
 @click.option("--output-hierarchy-path", required=True, help="Path of the json file to write")
 @click.option("--output-annotation-path", required=True, help="Path of the nrrd file to write")
@@ -51,6 +54,7 @@ def split_isocortex_layer_23(
     of n to set the identifer of the inserted node and n is deleted.
 
     Note: The modification of the hierarchy file is independent of the input annotated volume.
+    The direction vectors should not be (NaN, NaN, NaN) on any voxel of the layer 2/3 volume.
     """
     L.info("Loading files ...")
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)

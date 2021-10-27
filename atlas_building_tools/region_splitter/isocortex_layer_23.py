@@ -334,12 +334,20 @@ def split(
         "@.*2(/3)?$", attr="acronym", with_descendants=True
     )
 
+    # No direction vectors should be [NaN, NaN, NaN] inside the region to split
+    volume = np.isin(annotation.raw, list(layers_2_and_3_ids))
+    if np.any(np.isnan(direction_vectors[volume])):
+        raise AtlasBuildingToolsError(
+            "The 3D region to split, that is layer 2/3, contains [NaN, NaN, NaN] "
+            "direction vectors. Consider interpolating these vectors by valid ones. "
+            "See, e.g., ``atlas-building-tools direction-vectors interpolation --help``."
+        )
     L.info("Splitting the layer 2/3 volume using a thickness ratio of %f ...", thickness_ratio)
     # The voxels labeled with 1 (resp. 2) are the voxels whose cortical depth is at most
     # (resp. greater than) `thickness_ratio` times the full thickness of layer 2/3.
     # Note: direction vectors flow from the deepest layer to the shallowest layer.
     splitting = slice_volume(
-        volume=np.isin(annotation.raw, list(layers_2_and_3_ids)),
+        volume=volume,
         # Default offset can be of type float if voxcell<=3.0.1
         offset=np.array(annotation.offset, dtype=np.float32),
         voxel_dimensions=annotation.voxel_dimensions,

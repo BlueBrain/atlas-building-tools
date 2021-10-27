@@ -2,7 +2,6 @@
 Function computing the direction vectors of the mouse thalamus
 """
 import logging
-import warnings
 from typing import TYPE_CHECKING, Union
 
 import numpy as np
@@ -13,6 +12,7 @@ from scipy.ndimage.morphology import generate_binary_structure  # type: ignore
 from atlas_building_tools.direction_vectors.algorithms.layer_based_direction_vectors import (
     direction_vectors_for_hemispheres,
 )
+from atlas_building_tools.direction_vectors.utils import warn_on_nan_vectors
 from atlas_building_tools.utils import get_region_mask, load_region_map
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -104,10 +104,6 @@ def compute_direction_vectors(
         reticular_nucleus_complement_mask
     ]
     direction_vectors[reticular_nucleus_mask] = rt_direction_vectors[reticular_nucleus_mask]
-
-    # Warns about generated NaN vectors within thalamus
-    nans = np.mean(np.isnan(direction_vectors[thalamus_mask]))
-    if nans > 0.0:
-        warnings.warn("NaN direction vectors in {:.5%} of thalamic voxels".format(float(nans)))
+    warn_on_nan_vectors(direction_vectors, thalamus_mask, "Thalamus")
 
     return direction_vectors

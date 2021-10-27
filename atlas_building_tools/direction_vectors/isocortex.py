@@ -3,7 +3,6 @@ Function computing the direction vectors of the mouse isocortex
 """
 import logging
 import re
-import warnings
 from typing import TYPE_CHECKING, List, Union
 
 import numpy as np  # type: ignore
@@ -16,6 +15,7 @@ from atlas_building_tools.direction_vectors.algorithms.layer_based_direction_vec
 from atlas_building_tools.direction_vectors.algorithms.regiodesics import (
     find_regiodesics_exec_or_raise,
 )
+from atlas_building_tools.direction_vectors.utils import warn_on_nan_vectors
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 from atlas_building_tools.utils import get_region_mask, load_region_map
 
@@ -127,11 +127,8 @@ def compute_direction_vectors(
         direction_vectors[aabb_slice][region_mask] = region_direction_vectors[region_mask]
         del region_direction_vectors
 
-    # Warns about generated NaN vectors within Isocortex
-    nans = np.mean(
-        np.isnan(direction_vectors[get_region_mask("Isocortex", brain_regions.raw, region_map)])
+    warn_on_nan_vectors(
+        direction_vectors, get_region_mask("Isocortex", brain_regions.raw, region_map), "Isocortex"
     )
-    if nans > 0:
-        warnings.warn("NaN direction vectors in {:.5%} of isocortical voxels".format(float(nans)))
 
     return direction_vectors

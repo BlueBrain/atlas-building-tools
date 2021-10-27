@@ -235,3 +235,15 @@ def test_split_isocortex_layer_23():
     assert np.count_nonzero(layer_3_indices[1] <= data["layer_3_top"]) >= 0.95 * len(
         layer_3_indices[1]
     )
+
+
+def test_split_isocortex_layer_23_exception():
+    allen_hierarchy = None
+    with open(str(Path(TEST_PATH, "1.json"))) as h_file:
+        allen_hierarchy = json.load(h_file)
+
+    data = get_splitting_input_data()
+    data["direction_vectors"][1, 25, 25] = [np.nan] * 3
+
+    with pytest.raises(AtlasBuildingToolsError, match=".*\[NaN, NaN, NaN\] direction vector.*"):
+        tested.split(allen_hierarchy, data["annotation"], data["direction_vectors"], data["ratio"])
