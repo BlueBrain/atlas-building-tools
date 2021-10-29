@@ -4,6 +4,7 @@ Changelog
 
 Version 0.1.6
 -------------
+- Creates excitatory mtype densities using a taxonomy, composition and the excitatory neuron density [`CA-20`_]
 - Documents the limitations of the algorithm splitting the mouse isocortex's layer 2/3 with warnings and error messages [`NSETM-1658`_]
 
 Version 0.1.5 (2021-10-20)
@@ -73,7 +74,7 @@ Version 0.1.0 (2021-04-27)
 - CLI to compute a flat map based on the streamlines of a laminar brain region
 - CLI to turn the excel measurement compilation gaba_papers.xlsx of D. Rodarie into a CSV file.
 
-
+.. _`CA-20`: https://bbpteam.epfl.ch/project/issues/browse/CA-20
 .. _`NSETM-1658`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1658
 .. _`BBPP82-628`: https://bbpteam.epfl.ch/project/issues/browse/BBPP82-628
 .. _`NSETM-1616`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1616

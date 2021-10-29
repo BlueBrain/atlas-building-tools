@@ -26,6 +26,8 @@ Note that excitatory mtypes are handled in the first but not in the second case.
 import json
 import logging
 import re
+from pathlib import Path
+from typing import Dict, List
 
 import click
 import numpy as np
@@ -38,9 +40,13 @@ from atlas_building_tools.app.utils import (
     DATA_PATH,
     EXISTING_FILE_PATH,
     assert_meta_properties,
+    assert_properties,
     common_atlas_options,
     log_args,
     set_verbose,
+)
+from atlas_building_tools.densities.mtype_densities_from_composition import (
+    create_from_composition as _create_from_composition,
 )
 from atlas_building_tools.densities.mtype_densities_from_map import check_probability_map_sanity
 from atlas_building_tools.densities.mtype_densities_from_map import (
@@ -52,6 +58,7 @@ from atlas_building_tools.utils import assert_metadata_content
 
 MTYPES_PROFILES_REL_PATH = (DATA_PATH / "mtypes" / "density_profiles").relative_to(ABT_PATH)
 MTYPES_PROBABILITY_MAP_REL_PATH = (DATA_PATH / "mtypes" / "probability_map").relative_to(ABT_PATH)
+MTYPES_COMPOSITION_REL_PATH = (DATA_PATH / "mtypes" / "composition").relative_to(ABT_PATH)
 METADATA_PATH = DATA_PATH / "data" / "metadata"
 METADATA_REL_PATH = METADATA_PATH.relative_to(ABT_PATH)
 
@@ -351,3 +358,195 @@ def create_from_probability_map(
         probability_map,
         output_dir,
     )
+
+
+@app.command()
+@common_atlas_options
+@click.option(
+    "--metadata-path",
+    type=EXISTING_FILE_PATH,
+    required=False,
+    help=(
+        "(Optional) Path to the metadata json file. Defaults to "
+        f"`{str(METADATA_REL_PATH / 'isocortex_metadata.json')}`"
+    ),
+    default=str(METADATA_PATH / "isocortex_metadata.json"),
+)
+@click.option(
+    "--excitatory-neuron-density-path",
+    required=True,
+    help="Path to excitatory neuron density file (nrrd).",
+)
+@click.option(
+    "--taxonomy-path",
+    required=True,
+    help=(
+        "Path to mtype taxonomy file (tsv). "
+        f"See `{str(MTYPES_COMPOSITION_REL_PATH / 'composition.yaml')}` for an example."
+    ),
+)
+@click.option(
+    "--composition-path",
+    required=True,
+    help=(
+        "Path to mtype composition file (yaml). "
+        f"See `{str(MTYPES_COMPOSITION_REL_PATH / 'neurons-mtype-taxonomy.tsv')}` for an example."
+    ),
+)
+@click.option(
+    "--output-dir",
+    required=True,
+    help="Path to output directory. It will be created if it doesn't exist already.",
+)
+@log_args(L)
+def create_from_composition(
+    annotation_path,
+    hierarchy_path,
+    metadata_path,
+    excitatory_neuron_density_path,
+    taxonomy_path,
+    composition_path,
+    output_dir,
+):  # pylint: disable=too-many-locals
+    """Create neuron density nrrd files for the excitatory mtypes listed in the taxonomy and compo-
+    sition files.
+
+    Neuron densities are expressed in number of neurons per mm^3.
+
+    The algorithm extracts the excitatory mtypes found in the taxonomy file and obtains their
+    average density and layer from the composition file. Then it calculates the ratio of each mtype
+    average density over the total average excitatory density in the layer it is located in. The
+    new excitatory volumetric densities are created per mtype by multiplying the aforementioned
+    ratio with the total excitatory volumetric density.
+
+    It generates in the specified `output_dir` nrrd densities, one per mtype with the following
+    naming convention: {mtype}_densities.nrrd
+
+    Note:
+        - Does not generate volumetric density files for inhibitory neurons
+        - Only works for brain regions with well defined layers, numbered from 1 to some upper bound
+    """
+    L.info("Loading annotation nrrd file ...")
+    annotation = VoxelData.load_nrrd(annotation_path)
+
+    L.info("Loading hierarchy json file ...")
+    region_map = RegionMap.load_json(hierarchy_path)
+
+    L.info("Loading metadata json file ...")
+    with open(metadata_path, "r") as jsonfile:
+        metadata = json.load(jsonfile)
+
+    L.info("Loading excitatory neuron densities ...")
+    excitatory_neuron_density = VoxelData.load_nrrd(excitatory_neuron_density_path)
+    _validate_density(excitatory_neuron_density)
+
+    L.info("Loading neuronal mtype taxonomy file ...")
+    neuronal_mtype_taxonomy = _load_neuronal_mtype_taxonomy(taxonomy_path)
+    _validate_mtype_taxonomy(neuronal_mtype_taxonomy)
+
+    L.info("Loading neuronal mtype composition file ...")
+    neuronal_mtype_composition = _load_neuronal_mtype_composition(composition_path)
+    _validate_neuronal_mtype_composition(neuronal_mtype_composition)
+
+    # check conforming shape, voxel dimensions, offset
+    assert_properties([annotation, excitatory_neuron_density])
+    _check_taxonomy_composition_congruency(neuronal_mtype_taxonomy, neuronal_mtype_composition)
+
+    L.info("Creating volumetric densities of mtypes specified in composition ...")
+    per_mtype_volumetric_density_generator = _create_from_composition(
+        annotation,
+        region_map,
+        metadata,
+        excitatory_neuron_density.raw,
+        neuronal_mtype_taxonomy,
+        neuronal_mtype_composition,
+    )
+
+    L.info("Writing mtype density files ...")
+    for mtype, density in per_mtype_volumetric_density_generator:
+        path = Path(output_dir, f"{mtype}_densities.nrrd")
+        annotation.with_data(density).save_nrrd(str(path))
+
+
+def _load_neuronal_mtype_taxonomy(filename: str) -> pd.DataFrame:
+    """Loads the taxonomy tsv file into a dataframe"""
+    return pd.read_csv(filename, header=0, delim_whitespace=True)
+
+
+def _validate_mtype_taxonomy(taxonomy: pd.DataFrame) -> None:
+    """Checks if the taxonomy file consists of three columns [mtype, mClass, sClass] and if the
+    sClass column consists only of EXC and INH entries.
+
+    Raises:
+        AtlasBuildingError in case of failure.
+    """
+    expected_columns = {"mtype", "mClass", "sClass"}
+    if expected_columns != set(taxonomy.columns):
+        raise AtlasBuildingToolsError(
+            f"Column name missmatch. Expected {expected_columns}, Found: {taxonomy.columns}"
+        )
+
+    sclasses = set(taxonomy["sClass"])
+    expected_sclasses = {"EXC", "INH"}
+    if expected_sclasses != sclasses:
+        raise AtlasBuildingToolsError(
+            f"sClass column values are different than expected.\n"
+            f"Expected {expected_sclasses}. Found {sclasses}"
+        )
+
+
+def _load_neuronal_mtype_composition(filename: str) -> pd.DataFrame:
+    """
+    Returns:
+        dict whose keys are the cell groups (e.g., neurons, glia, etc.) and whose values are
+        dataframes with the following columns:
+            [density, region, layer, mtype]
+
+    Notes:
+        The densities are expressed in number of cells per mm^3
+    """
+    with open(filename, "r") as stream:
+        composition = yaml.safe_load(stream)["neurons"]
+
+    composition_dict: Dict[str, List] = {"density": [], "layer": [], "mtype": []}
+
+    for entry in composition:
+
+        traits = entry["traits"]
+        composition_dict["density"].append(entry["density"])
+        composition_dict["layer"].append(f"layer_{traits['layer']}")
+        composition_dict["mtype"].append(traits["mtype"])
+
+    return pd.DataFrame(composition_dict, columns=["density", "layer", "mtype"])
+
+
+def _validate_density(density: VoxelData) -> None:
+    """Checks that density does not have zero everywhere or negative values"""
+    if np.allclose(density.raw, 0.0):
+        raise AtlasBuildingToolsError("Density with zeros everywhere encountered.")
+
+    if np.any(density.raw < 0.0):
+        raise AtlasBuildingToolsError("Density with negative values encountered.")
+
+
+def _validate_neuronal_mtype_composition(composition: pd.DataFrame) -> None:
+    """Checks that composition does not have negative values"""
+    if np.any(composition["density"] < 0.0):
+        raise AtlasBuildingToolsError("Negative density values encountered in composition.")
+
+
+def _check_taxonomy_composition_congruency(
+    taxonomy: pd.DataFrame, composition: pd.DataFrame
+) -> None:
+    """Checks if the taxonomy and composition have the same set of mtypes"""
+    taxonomy_mtypes = set(taxonomy["mtype"])
+    composition_mtypes = set(composition["mtype"])
+
+    if not taxonomy_mtypes == composition_mtypes:
+        raise AtlasBuildingToolsError(
+            "Taxonomy and composition mtypes are inconsistent:\n"
+            f"In taxonomy but not in composition:{' '.join(taxonomy_mtypes - composition_mtypes)}\n"
+            f"In composition but not in taxonomy:{' '.join(composition_mtypes - taxonomy_mtypes)}\n"
+            f"Taxonomy   :{' '.join(sorted(taxonomy_mtypes))}\n"
+            f"Composition:{' '.join(sorted(composition_mtypes))}"
+        )
