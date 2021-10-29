@@ -1,3 +1,3 @@
 """atlas-building-tools version"""
-VERSION = "0.1.6.dev1"
+VERSION = "0.1.6"
 __version__ = VERSION
