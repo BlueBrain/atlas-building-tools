@@ -132,23 +132,31 @@ def test_glia_cell_densities():
         with open("glia_proportions.json", "w") as out:
             json.dump(input_["glia_proportions"], out)
         result = _get_glia_cell_densities_result(runner)
-
         assert result.exit_code == 0
 
         neuron_density = VoxelData.load_nrrd("densities/neuron_density.nrrd")
         assert neuron_density.raw.dtype == np.float64
         npt.assert_array_equal(neuron_density.shape, input_["annotation"].shape)
+        assert np.all(neuron_density.raw >= 0.0)
 
         oligodendrocyte_density = VoxelData.load_nrrd("densities/oligodendrocyte_density.nrrd")
         assert oligodendrocyte_density.raw.dtype == np.float64
         npt.assert_array_equal(neuron_density.shape, input_["annotation"].shape)
 
-        # Check that an exception is thrown is voxel dimensions are not consistent
+        # Check that an exception is thrown if voxel dimensions aren't consistent
         VoxelData(input_["cell_density"], voxel_dimensions=(10, 10, 10)).save_nrrd(
             "cell_density.nrrd"
         )
         result = _get_glia_cell_densities_result(runner)
         assert "voxel_dimensions" in str(result.exception)
+
+        # Check that an exception is thrown if the input cell density has negative values
+        input_["cell_density"][0, 0, 0] = -1.0
+        VoxelData(input_["cell_density"], voxel_dimensions=(10, 10, 10)).save_nrrd(
+            "cell_density.nrrd"
+        )
+        result = _get_glia_cell_densities_result(runner)
+        assert "Negative density value" in str(result.exception)
 
 
 def _get_inh_and_exc_neuron_densities_result(runner):
@@ -187,17 +195,27 @@ def test_inhibitory_and_excitatory_neuron_densities():
         inh_neuron_density = VoxelData.load_nrrd("densities/inhibitory_neuron_density.nrrd")
         assert inh_neuron_density.raw.dtype == np.float64
         npt.assert_array_equal(inh_neuron_density.shape, input_["annotation"].shape)
+        assert np.all(inh_neuron_density.raw >= 0.0)
 
         exc_neuron_density = VoxelData.load_nrrd("densities/excitatory_neuron_density.nrrd")
         assert exc_neuron_density.raw.dtype == np.float64
         npt.assert_array_equal(exc_neuron_density.shape, input_["annotation"].shape)
+        assert np.all(exc_neuron_density.raw >= 0.0)
 
-        # Check that an exception is thrown is voxel dimensions are not consistent
+        # Check that an exception is thrown if voxel dimensions aren't consistent
         VoxelData(input_["neuron_density"], voxel_dimensions=(10, 10, 10)).save_nrrd(
             "neuron_density.nrrd"
         )
         result = _get_inh_and_exc_neuron_densities_result(runner)
         assert "voxel_dimensions" in str(result.exception)
+
+        # Check that an exception is thrown if the input neuron density has negative values
+        input_["neuron_density"][0, 0, 0] = -1.0
+        VoxelData(input_["neuron_density"], voxel_dimensions=(25, 25, 25)).save_nrrd(
+            "neuron_density.nrrd"
+        )
+        result = _get_inh_and_exc_neuron_densities_result(runner)
+        assert "Negative density value" in str(result.exception)
 
 
 def _get_compile_measurements_result(runner):
@@ -290,7 +308,6 @@ def test_measurements_to_average_densities():
             hierarchy_path=DATA_PATH / "1.json",
             measurements_path=MEASUREMENTS_PATH / "measurements.csv",
         )
-
         assert result.exit_code == 0
         actual = pd.read_csv("average_densities.csv")
         assert np.all(actual["measurement_type"] == "cell density")
@@ -375,3 +392,11 @@ def test_fit_average_densities():
             fitting_maps = json.load(file_)
             assert set(fitting_maps.keys()) == {"Cerebellum group", "Isocortex group", "Rest"}
             assert np.allclose(fitting_maps["Rest"]["pv+"]["coefficient"], 2.0 / 3.0)
+
+        # Check that an exception is thrown if the input neuron density has negative values
+        input_["neuron_density"][0, 0, 0] = -1.0
+        VoxelData(input_["neuron_density"], voxel_dimensions=(10, 10, 10)).save_nrrd(
+            "neuron_density.nrrd"
+        )
+        result = _get_fitting_result(runner)
+        assert "Negative density value" in str(result.exception)

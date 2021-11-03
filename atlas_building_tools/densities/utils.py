@@ -613,3 +613,39 @@ def compute_region_cell_counts(
         {"brain_region": hierarchy_info["brain_region"], "cell_count": counts},
         index=hierarchy_info.index,
     )
+
+
+def zero_negative_values(array: NDArray[float]) -> None:
+    """
+    Zero negative values resulting from round-off errors.
+
+    Modifies `array` in place.
+
+    Args:
+        array: float numpy array. We expect most of the `array` values to be non-negative.
+            Negative values should be negligible when compared to positive values.
+
+    Raises:
+        AtlasBuildingToolsError if the absolute value of the sum of all negative values exceeds
+            1 percent of the sum of all positive values, or if the smallest negative value is
+            not negligible wrt to the mean of the non-negative values.
+    """
+    negative_mask = array < 0.0
+    if np.count_nonzero(negative_mask) == 0:
+        return
+
+    non_negative_mask = np.invert(negative_mask)
+
+    if np.abs(np.sum(array[negative_mask])) / np.sum(array[non_negative_mask]) > 0.01:
+        raise AtlasBuildingToolsError(
+            "The absolute value of the sum of all negative values exceeds"
+            " 1 percent of the sum of all positive values"
+        )
+    ratio = np.abs(np.min(array[negative_mask])) / np.mean(array[non_negative_mask])
+    if not np.isclose(ratio, 0.0, atol=1e-08):
+        raise AtlasBuildingToolsError(
+            "The smallest negative value is not negligible wrt to "
+            "the mean of all non-negative values."
+        )
+
+    array[negative_mask] = 0.0

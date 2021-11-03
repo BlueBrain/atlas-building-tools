@@ -84,6 +84,7 @@ from atlas_building_tools.densities.measurement_to_density import (
 from atlas_building_tools.densities.refined_inhibitory_neuron_densities import (
     create_inhibitory_neuron_densities as keep_proportions,
 )
+from atlas_building_tools.densities.utils import zero_negative_values
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 HOMOGENOUS_REGIONS_PATH = DATA_PATH / "measurements" / "homogenous_regions"
@@ -294,6 +295,9 @@ def glia_cell_densities(
     L.info("Loading overall cell density ...")
     overall_cell_density = VoxelData.load_nrrd(cell_density_path)
 
+    if np.any(overall_cell_density.raw < 0.0):
+        raise AtlasBuildingToolsError(f"Negative density value found in {cell_density_path}.")
+
     L.info("Loading unconstrained glia cell densities ...")
     glia_densities = {
         "glia": VoxelData.load_nrrd(glia_density_path),
@@ -333,6 +337,7 @@ def glia_cell_densities(
 
     L.info("Saving overall neuron density to file %s", str(Path(output_dir, "neuron_density.nrrd")))
     neuron_density = overall_cell_density.raw - glia_densities["glia"]
+    zero_negative_values(neuron_density)
     annotation.with_data(np.asarray(neuron_density, dtype=float)).save_nrrd(
         str(Path(output_dir, "neuron_density.nrrd"))
     )
@@ -435,6 +440,8 @@ def inhibitory_and_excitatory_neuron_densities(
     neuron_density = VoxelData.load_nrrd(neuron_density_path)
 
     assert_properties([annotation, neuron_density])
+    if np.any(neuron_density.raw < 0.0):
+        raise AtlasBuildingToolsError(f"Negative density value found in {neuron_density_path}.")
 
     region_map = RegionMap.load_json(hierarchy_path)
     inhibitory_df = extract_inhibitory_neurons_dataframe(inhibitory_neuron_counts_path)
@@ -455,6 +462,7 @@ def inhibitory_and_excitatory_neuron_densities(
         str(Path(output_dir, "inhibitory_neuron_density.nrrd"))
     )
     excitatory_neuron_density = neuron_density.raw - inhibitory_neuron_density
+    zero_negative_values(excitatory_neuron_density)
     annotation.with_data(np.asarray(excitatory_neuron_density, dtype=float)).save_nrrd(
         str(Path(output_dir, "excitatory_neuron_density.nrrd"))
     )
@@ -634,8 +642,12 @@ def measurements_to_average_densities(
     annotation = VoxelData.load_nrrd(annotation_path)
     L.info("Loading overall cell density ...")
     overall_cell_density = VoxelData.load_nrrd(cell_density_path)
+    if np.any(overall_cell_density.raw < 0.0):
+        raise AtlasBuildingToolsError(f"Negative density value found in {cell_density_path}.")
     L.info("Loading overall neuron density ...")
     neuron_density = VoxelData.load_nrrd(neuron_density_path)
+    if np.any(neuron_density.raw < 0.0):
+        raise AtlasBuildingToolsError(f"Negative density value found in {neuron_density_path}.")
 
     L.info("Checking input consistency ...")
     assert_properties([annotation, overall_cell_density, neuron_density])
@@ -781,6 +793,9 @@ def fit_average_densities(
     annotation = VoxelData.load_nrrd(annotation_path)
     L.info("Loading neuron density ...")
     neuron_density = VoxelData.load_nrrd(neuron_density_path)
+    if np.any(neuron_density.raw < 0.0):
+        raise AtlasBuildingToolsError(f"Negative density value found in {neuron_density_path}.")
+
     L.info("Loading hierarchy ...")
     region_map = RegionMap.load_json(hierarchy_path)
     L.info("Loading gene config ...")
@@ -912,6 +927,8 @@ def inhibitory_neuron_densities(
     annotation = VoxelData.load_nrrd(annotation_path)
     L.info("Loading neuron density ...")
     neuron_density = VoxelData.load_nrrd(neuron_density_path)
+    if np.any(neuron_density.raw < 0.0):
+        raise AtlasBuildingToolsError(f"Negative density value found in {neuron_density_path}.")
     L.info("Loading hierarchy ...")
     with open(hierarchy_path, "r") as file_:
         hierarchy = json.load(file_)
@@ -924,8 +941,6 @@ def inhibitory_neuron_densities(
     # Consistency check
     L.info("Checking consistency ...")
     assert_properties([annotation, neuron_density])
-    if np.any(neuron_density.raw < 0.0):
-        raise AtlasBuildingToolsError(f"Negative density value found in {neuron_density_path}.")
 
     L.info("Loading average densities ...")
     average_densities_df = pd.read_csv(average_densities_path)

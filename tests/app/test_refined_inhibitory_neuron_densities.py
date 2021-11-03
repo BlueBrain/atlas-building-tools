@@ -82,6 +82,14 @@ def _test(input_, algorithm=None):
         result = _get_inhibitory_neuron_densities_result(runner, algorithm)
         assert "Unexpected JSON layout" in str(result.exception)
 
+        # Check that an exception is thrown if the input neuron density has negative values
+        input_["neuron_density"][0, 0, 0] = -1.0
+        VoxelData(input_["neuron_density"], voxel_dimensions=(10, 10, 10)).save_nrrd(
+            "neuron_density.nrrd"
+        )
+        result = _get_inhibitory_neuron_densities_result(runner, algorithm)
+        assert "Negative density value" in str(result.exception)
+
 
 def test_inhibitory_neuron_densities():
     input_ = get_inhibitory_neuron_densities_data()

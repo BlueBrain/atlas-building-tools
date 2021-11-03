@@ -483,3 +483,27 @@ def test_compute_cell_counts_without_descendants(annotation, cell_density, cell_
             with_descendants=False,
         ),
     )
+
+
+def test_zero_negative_values():
+    array = np.array([0, 1, -0.02], dtype=float)
+    with pytest.raises(
+        AtlasBuildingToolsError,
+        match="absolute value of the sum of all negative values exceeds 1 percent of the sum of all positive values",
+    ):
+        tested.zero_negative_values(array)
+
+    array = np.array([0, 1, -0.01], dtype=float)
+    with pytest.raises(
+        AtlasBuildingToolsError,
+        match="smallest negative value is not negligible wrt to the mean of all non-negative values",
+    ):
+        tested.zero_negative_values(array)
+
+    array = np.array([0, 1, -1e-8 / 2.0], dtype=float)
+    tested.zero_negative_values(array)
+    npt.assert_array_almost_equal(array, np.array([0, 1, 0], dtype=float))
+
+    array = np.array([0, 1, 1], dtype=float)
+    tested.zero_negative_values(array)
+    npt.assert_array_almost_equal(array, np.array([0, 1, 1], dtype=float))
