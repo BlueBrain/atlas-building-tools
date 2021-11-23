@@ -7,7 +7,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 import click
 import voxcell  # type: ignore
@@ -22,23 +22,27 @@ from atlas_building_tools.app.utils import (  # type: ignore
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 from atlas_building_tools.placement_hints.compute_placement_hints import compute_placement_hints
 from atlas_building_tools.placement_hints.layered_atlas import (
-    LayeredAtlas,
+    MeshBasedLayeredAtlas,
     ThalamusAtlas,
+    VoxelBasedLayeredAtlas,
     save_problematic_voxel_mask,
 )
 from atlas_building_tools.placement_hints.utils import save_placement_hints
 from atlas_building_tools.utils import assert_metadata_content
 
+if TYPE_CHECKING:  # pragma: no cover
+    from atlas_building_tools.placement_hints.layered_atlas import AbstractLayeredAtlas
+
+
 L = logging.getLogger(__name__)
 METADATA_PATH = Path(Path(__file__).parent, "data", "metadata")
 METADATA_REL_PATH = METADATA_PATH.relative_to(Path(__file__).parent.parent.parent)
+ALGORITHMS = ["mesh-based", "voxel-based"]
 
 
 def _create_layered_atlas(
-    annotation_path: str,
-    hierarchy_path: str,
-    metadata_path: str,
-):
+    annotation_path: str, hierarchy_path: str, metadata_path: str, algorithm: str = "mesh-based"
+) -> "AbstractLayeredAtlas":
     """
     Create the LayeredAtlas of the region `region_acronym`.
 
@@ -48,7 +52,7 @@ def _create_layered_atlas(
         metadata_path: path to the metadata json file of the brain region of interest.
 
     Returns:
-        A LayeredAtlas instance
+        A layered atlas instance
     """
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
     region_map = voxcell.RegionMap.load_json(hierarchy_path)
@@ -60,11 +64,14 @@ def _create_layered_atlas(
     if metadata["region"]["name"] == "Thalamus":
         return ThalamusAtlas(annotation, region_map, metadata)
 
-    return LayeredAtlas(annotation, region_map, metadata)
+    if algorithm == "voxel-based":
+        return VoxelBasedLayeredAtlas(annotation, region_map, metadata)
+
+    return MeshBasedLayeredAtlas(annotation, region_map, metadata)
 
 
 def _placement_hints(  # pylint: disable=too-many-locals
-    atlas: "LayeredAtlas",
+    atlas: "AbstractLayeredAtlas",
     direction_vectors_path: str,
     output_dir: str,
     max_thicknesses: Optional[List[float]] = None,
@@ -114,7 +121,7 @@ def _placement_hints(  # pylint: disable=too-many-locals
         json.dump(distance_report, file_, indent=1, separators=(",", ": "))
 
     save_placement_hints(
-        distances_info["distances_to_layer_meshes"],
+        distances_info["distances_to_layer_boundaries"],
         output_dir,
         atlas.region,
         atlas.metadata["layers"]["names"],
@@ -230,8 +237,11 @@ def ca1(annotation_path, hierarchy_path, metadata_path, direction_vectors_path, 
     required=True,
     help="path of the directory to write. It will be created if it doesn't exist",
 )
+@click.option("--algorithm", type=click.Choice(ALGORITHMS))
 @log_args(L)
-def isocortex(annotation_path, hierarchy_path, metadata_path, direction_vectors_path, output_dir):
+def isocortex(
+    annotation_path, hierarchy_path, metadata_path, direction_vectors_path, output_dir, algorithm
+):
     """Generate and save the placement hints of the mouse isocortex.
 
     This command assumes that the layer 2/3 of the isocortex has been split into
@@ -253,7 +263,7 @@ def isocortex(annotation_path, hierarchy_path, metadata_path, direction_vectors_
     placement hints cannot be trusted). <Isocortex> is the region name specified in
     `isocortex_metadata.json`. Defaults to "Isocortex".
     """
-    atlas = _create_layered_atlas(annotation_path, hierarchy_path, metadata_path)
+    atlas = _create_layered_atlas(annotation_path, hierarchy_path, metadata_path, algorithm)
     _placement_hints(
         atlas,
         direction_vectors_path,

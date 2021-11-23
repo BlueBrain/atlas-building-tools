@@ -57,3 +57,15 @@ def test_memory_efficient_interesection():
     assert triangle_ids[ray_index] == 7
     ray_index = list(ray_ids).index(5)
     assert triangle_ids[ray_index] == 2
+
+    # Increase `chunk_length` but lower `memory_`bound so as
+    # to get an actual chunk of length 5
+    memory_bound = 5 * tested.RAY_TRIANGLE_COST * len(cube.faces) * 1e-9
+    locations, ray_ids, triangle_ids = tested.memory_efficient_intersection(
+        intersector,
+        origins,
+        direction_vectors,
+        chunk_length=10,
+        memory_bound=memory_bound,
+    )
+    npt.assert_array_equal(locations, expected_locations[ray_ids])

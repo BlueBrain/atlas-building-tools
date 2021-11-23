@@ -66,18 +66,18 @@ def compute_placement_hints(
                 least one distance-related problem.
                 See distances.distance_to_meshes.report_distance_problems doc.
     """
-    distances_info = atlas.compute_distances_to_layer_meshes(
+    distances_info = atlas.compute_distances_to_layer_boundaries(
         direction_vectors,
         flip_direction_vectors=flip_direction_vectors,
         has_hemispheres=has_hemispheres,
     )
 
-    distances_to_meshes = distances_info["distances_to_layer_meshes"]
+    distances_to_meshes = distances_info["distances_to_layer_boundaries"]
     tolerance = 2.0 * atlas.region.voxel_dimensions[0]
     distances_report, problematic_mask = report_distance_problems(
         distances_to_meshes,
         atlas.volume,
-        distances_info["obtuse_angles"],
+        distances_info.get("obtuse_angles", None),
         max_thicknesses=max_thicknesses,
         tolerance=tolerance,
     )
@@ -91,6 +91,7 @@ def compute_placement_hints(
         distances_to_meshes,
         atlas.volume,
         max_thicknesses=max_thicknesses,
+        tolerance=tolerance,
     )
     problems = {
         "before interpolation": {

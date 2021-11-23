@@ -357,9 +357,17 @@ class Test_report_distance_problems:
             distances, layered_volume, obtuse, max_thicknesses=[0.5], tolerance=2.0
         )
         assert (
-            report["Proportion of voxels whose rays do not intersect with the bottom mesh"] == 0.1
+            report[
+                "Proportion of voxels whose rays do not intersect with the bottom surface of the deepest layer"
+            ]
+            == 0.1
         )
-        assert report["Proportion of voxels whose rays do not intersect with the top mesh"] == 0.2
+        assert (
+            report[
+                "Proportion of voxels whose rays do not intersect with the top surface of the shallowest layer"
+            ]
+            == 0.2
+        )
         assert (
             report[
                 "Proportion of voxels whose rays make an obtuse angle with the mesh normal at the intersection point"
@@ -474,9 +482,17 @@ class Test_report_distance_problems:
             distances, layered_volume, max_thicknesses=[0.5], tolerance=2.0
         )
         assert (
-            report["Proportion of voxels whose rays do not intersect with the bottom mesh"] == 0.1
+            report[
+                "Proportion of voxels whose rays do not intersect with the bottom surface of the deepest layer"
+            ]
+            == 0.1
         )
-        assert report["Proportion of voxels whose rays do not intersect with the top mesh"] == 0.2
+        assert (
+            report[
+                "Proportion of voxels whose rays do not intersect with the top surface of the shallowest layer"
+            ]
+            == 0.2
+        )
         assert (
             not "Proportion of voxels whose rays make an obtuse angle with the mesh normal at the intersection point"
             in report

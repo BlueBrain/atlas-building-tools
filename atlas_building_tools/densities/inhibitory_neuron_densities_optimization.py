@@ -172,8 +172,6 @@ def set_known_values(
                 x_result.at[id_, cell_type] = id_counts.at[id_, cell_type]
                 deltas.at[region_name, cell_type] = 0.0
 
-    print(x_result)
-
     return x_result, deltas
 
 

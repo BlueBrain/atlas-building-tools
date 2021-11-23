@@ -194,92 +194,105 @@ def test_ca1():
             )  # no new problems
 
 
+def _write_isocortex_input_to_file(isocortex_mock):
+    direction_vectors = np.zeros(isocortex_mock.annotation.raw.shape + (3,), dtype=float)
+    direction_vectors[isocortex_mock.annotation.raw > 0] = (0.0, 1.0, 0.0)
+    isocortex_mock.annotation.save_nrrd("annotation.nrrd")
+    isocortex_mock.annotation.with_data(direction_vectors).save_nrrd("direction_vectors.nrrd")
+
+    with open("hierarchy.json", "w") as file_:
+        json.dump(isocortex_mock.region_map_dict, file_)
+
+
+def _get_isocortex_result(runner, algorithm="mesh-based"):
+    options = [
+        "--annotation-path",
+        "annotation.nrrd",
+        "--hierarchy-path",
+        "hierarchy.json",
+        "--direction-vectors-path",
+        "direction_vectors.nrrd",
+        "--output-dir",
+        "placement_hints",
+        "--algorithm",
+        algorithm,
+    ]
+
+    return runner.invoke(tested.isocortex, options)
+
+
 def test_isocortex():
     runner = CliRunner()
     with runner.isolated_filesystem():
         isocortex_mock = IsocortexMock(
             padding=10, layer_thickness=15, x_thickness=35, z_thickness=25
         )
-        direction_vectors = np.zeros(isocortex_mock.annotation.raw.shape + (3,), dtype=float)
-        direction_vectors[isocortex_mock.annotation.raw > 0] = (0.0, 1.0, 0.0)
-        isocortex_mock.annotation.save_nrrd("annotation.nrrd")
-        isocortex_mock.annotation.with_data(direction_vectors).save_nrrd("direction_vectors.nrrd")
-        with open("hierarchy.json", "w") as file_:
-            json.dump(isocortex_mock.region_map_dict, file_)
+        _write_isocortex_input_to_file(isocortex_mock)
+        for algorithm in ["mesh-based"]:
+            result = _get_isocortex_result(runner, algorithm)
+            assert result.exit_code == 0
 
-        result = runner.invoke(
-            tested.isocortex,
-            [
-                "--annotation-path",
-                "annotation.nrrd",
-                "--hierarchy-path",
-                "hierarchy.json",
-                "--direction-vectors-path",
-                "direction_vectors.nrrd",
-                "--output-dir",
-                "placement_hints",
-            ],
-        )
-        assert result.exit_code == 0
+            with open("placement_hints/distance_report.json") as file_:
+                report = json.load(file_)
+                report_before = report["before interpolation"]
+                # Because of the simplified isocortex model used for the tests,
+                # bad voxels due to obtuse intersection angle are numerous.
+                obtuse_angles = "Proportion of voxels whose rays make an obtuse angle with the mesh normal at the intersection point"
+                if obtuse_angles in report_before:
+                    assert report_before[obtuse_angles] <= 0.15
 
-        with open("placement_hints/distance_report.json") as file_:
-            report = json.load(file_)
-            report_before = report["before interpolation"]
-            # Because of the simplified isocortex model used for the tests,
-            # bad voxels due to obtuse intersection angle are numerous.
-            obtuse_angles = "Proportion of voxels whose rays make an obtuse angle with the mesh normal at the intersection point"
-            assert report_before[obtuse_angles] <= 0.15
+                at_least_one_problem = (
+                    "Proportion of voxels with at least one distance-related problem"
+                )
+                assert report_before[at_least_one_problem] <= 0.2
 
-            at_least_one_problem = "Proportion of voxels with at least one distance-related problem"
-            assert report_before[at_least_one_problem] <= 0.2
+                for (description, proportion) in report_before.items():
+                    if description not in [obtuse_angles, at_least_one_problem]:
+                        assert proportion <= 0.075
 
-            for (description, proportion) in report_before.items():
-                if description not in [obtuse_angles, at_least_one_problem]:
-                    assert proportion <= 0.075
+                # Inconsitencies report
+                assert (
+                    report_before[
+                        "Proportion of voxels whose distances to layer boundaries are not ordered consistently"
+                    ]
+                    <= 0.08
+                )
 
-            # Inconsitencies report
-            assert (
-                report_before[
-                    "Proportion of voxels whose distances to layer boundaries are not ordered consistently"
-                ]
-                <= 0.08
-            )
+                assert (
+                    report_before[
+                        "Proportion of voxels for which the top layer has a non-positive thickness along their"
+                        " direction vectors"
+                    ]
+                    <= 0.05
+                )
 
-            assert (
-                report_before[
-                    "Proportion of voxels for which the top layer has a non-positive thickness along their"
-                    " direction vectors"
-                ]
-                <= 0.05
-            )
+                assert (
+                    report_before[
+                        "Proportion of voxels whose distances to layer boundaries are inconsistent with their"
+                        " actual layer location"
+                    ]
+                    <= 0.004
+                )
 
-            assert (
-                report_before[
-                    "Proportion of voxels whose distances to layer boundaries are inconsistent with their"
-                    " actual layer location"
-                ]
-                <= 0.004
-            )
+                report_after = report["after interpolation"]
+                assert obtuse_angles not in report_after
+                for description in report_after:
+                    assert report_after[description] == 0.0
 
-            report_after = report["after interpolation"]
-            assert obtuse_angles not in report_after
-            for description in report_after:
-                assert report_after[description] == 0.0
-
-            problematic_volume = VoxelData.load_nrrd(
-                "placement_hints/Isocortex_problematic_voxel_mask.nrrd"
-            )
-            assert (
-                np.count_nonzero(np.isin(problematic_volume, [1, 2])) / isocortex_mock.volume
-                <= 0.18
-            )  # before
-            assert (
-                np.count_nonzero(np.isin(problematic_volume, [2, 3])) / isocortex_mock.volume
-                <= 0.14
-            )  # after (persistent and new)
-            assert (
-                np.count_nonzero(problematic_volume == 3) / isocortex_mock.volume == 0.0
-            )  # no new problems
+                problematic_volume = VoxelData.load_nrrd(
+                    "placement_hints/Isocortex_problematic_voxel_mask.nrrd"
+                )
+                assert (
+                    np.count_nonzero(np.isin(problematic_volume, [1, 2])) / isocortex_mock.volume
+                    <= 0.18
+                )  # before
+                assert (
+                    np.count_nonzero(np.isin(problematic_volume, [2, 3])) / isocortex_mock.volume
+                    <= 0.14
+                )  # after (persistent and new)
+                assert (
+                    np.count_nonzero(problematic_volume == 3) / isocortex_mock.volume == 0.0
+                )  # no new problems
 
 
 def test_exception_on_incorrect_input():

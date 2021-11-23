@@ -47,13 +47,11 @@ def test_save_placement_hints():
     )
 
     expected_dict = {
-        str(Path("output_directory", "[PH]y.nrrd")): -np.array([[[-2, -1, 0, 1]]]) * voxel_size,
+        str(Path("output_directory", "[PH]y.nrrd")): -np.array([[[-2, -1, 0, 1]]]),
         str(Path("output_directory", "[PH]astring.nrrd")): np.array(
             [[[[3, 4], [2, 4], [1, 4], [0, 4]]]]
-        )
-        * voxel_size,
-        str(Path("output_directory", "[PH]1.nrrd")): np.array([[[[0, 3], [0, 2], [0, 1], [0, 0]]]])
-        * voxel_size,
+        ),
+        str(Path("output_directory", "[PH]1.nrrd")): np.array([[[[0, 3], [0, 2], [0, 1], [0, 0]]]]),
     }
 
     for filename, value in expected_dict.items():

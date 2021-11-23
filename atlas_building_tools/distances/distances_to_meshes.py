@@ -19,7 +19,6 @@ from atlas_building_tools.utils import is_obtuse_angle, split_into_halves
 
 if TYPE_CHECKING:  # pragma: no cover
     from scipy.interpolate import LinearNDInterpolator  # pylint: disable=ungrouped-imports
-    from voxcell import VoxelData  # type: ignore
 
 
 logging.basicConfig(level=logging.INFO)
@@ -115,6 +114,7 @@ def _split_indices_along_layer(
     below_indices = np.nonzero(np.logical_and(layers_volume >= layer, valid_direction_vectors_mask))
     above_mask = np.logical_and(layers_volume < layer, layers_volume > 0)
     above_indices = np.nonzero(np.logical_and(above_mask, valid_direction_vectors_mask))
+
     return below_indices, above_indices  # type: ignore
 
 
@@ -157,7 +157,6 @@ def _compute_distances_to_mesh(
             voxelized layers it represents. This offset for the ray origins allows to obtain
             more valid intersections for voxels close to the mesh. The default value 4 was found
             by trials and errors.
-
     """
     if len(voxel_indices[0]) == 0:
         return
@@ -178,6 +177,7 @@ def _compute_distances_to_mesh(
     # Set distances
     dists[voxel_indices] = dist
     any_obtuse_intersection[voxel_indices] += wrong
+
     return
 
 
@@ -195,7 +195,7 @@ def distances_from_voxels_to_meshes_wrt_dir(
             Each voxel is labelled by an integer representing a layer.
             The higher is the label, the deeper is the layer.
             The value 0 represents a voxel that lies outside this volume.
-        layer_meshes: list of meshes representing the upper distances of the layers.
+        layer_meshes: list of meshes representing the upper boundaries of the layers.
         directions: array of shape (N, 3).
             The direction vectors of the voxels. Should be finite (not nan)
             wherever `layers_volume` > 0.
@@ -203,7 +203,7 @@ def distances_from_voxels_to_meshes_wrt_dir(
     Returns:
         Tuple (dists, any_obtuse_intersection).
         dists: 4D numpy array interpreted as a 1D array of 3D distances arrays, one for each layer.
-            A distances array is float 3D numpy array which holds the distance
+            A distances array is a float 3D numpy array which holds the distance
             of every voxel in `layers_volume` (wrt to its direction vector) to a fixed layer mesh.
         any_obtuse_intersection: mask of voxels where the intersection with
             a mesh resulted in an obtuse angle between the face and the direction vector.
@@ -322,12 +322,14 @@ def _handle_nan_distances(
     """
     do_not_intersect_bottom = np.isnan(distances[-1])
     do_not_intersect_top = np.isnan(distances[0])
-    report["Proportion of voxels whose rays do not intersect with the bottom mesh"] = float(
-        np.mean(do_not_intersect_bottom[region_mask])
-    )
-    report["Proportion of voxels whose rays do not intersect with the top mesh"] = float(
-        np.mean(do_not_intersect_top[region_mask])
-    )
+    report[
+        "Proportion of voxels whose rays do not intersect with the bottom surface"
+        " of the deepest layer"
+    ] = float(np.mean(do_not_intersect_bottom[region_mask]))
+    report[
+        "Proportion of voxels whose rays do not intersect with the top surface"
+        " of the shallowest layer"
+    ] = float(np.mean(do_not_intersect_top[region_mask]))
     nan_distances_mask = np.full(region_mask.shape, False)
     for distance in distances[1:-1]:
         nan_distances_mask = np.logical_or(np.isnan(distance), nan_distances_mask)
@@ -348,7 +350,7 @@ def _handle_distance_inconsistencies(
     """
     Reports the proportions of voxels which have been assigned inconsistent distances.
 
-    Updates `report` in place and returns the mask of voxels with some inconsitent distance.
+    Updates `report` in place and returns the mask of voxels with some inconsistent distance.
 
     Args:
         distances(numpy.ndarray): the distances of each voxel to each boundary,

@@ -38,7 +38,7 @@ def centroid_outfacing_mesh(mesh: trimesh.Trimesh) -> trimesh.Trimesh:
 def save_placement_hints(
     distances: NDArray[float],
     output_dir: str,
-    voxel_data: voxcell.VoxelData,
+    voxel_data: "voxcell.VoxelData",
     layer_names: List[str],
 ):
     """
@@ -54,15 +54,16 @@ def save_placement_hints(
             holding the signed distances from voxel centers to layer tops wrt to voxel direction
             vectors.
         output_dir: directory in which to save the placement hints nrrd files.
+        voxel_data: VoxelData object of the region for which placement hints are computed,
+            or any VoxelData object with the same offset and same voxel dimensions.
         layer_names: list of layer names used to compose the placement hints file names.
     """
-    voxel_size = voxel_data.voxel_dimensions[1]  # voxel dimensions are assumed to be equal.
     # [PH]y holds, for each voxel, the distance from the bottom of the atlas region to the voxel
     # along its direction vector (non-negative value).
     y = -distances[-1]  # pylint: disable=invalid-name
     L.info("Saving placement hints [PH]y to file ...")
     placement_hints_y_path = str(Path(output_dir, "[PH]y.nrrd"))
-    voxel_data.with_data(voxel_size * y).save_nrrd(placement_hints_y_path)
+    voxel_data.with_data(y).save_nrrd(placement_hints_y_path)
     L.info("Saving placement hints for each layer to file ...")
     for index, name in enumerate(layer_names):
         bottom = distances[index + 1]
@@ -85,7 +86,7 @@ def save_placement_hints(
         # non-negative values for voxels lying inside layer_i).
         placement_hints = np.stack((bottom, top), axis=-1) + y[..., np.newaxis]
         layer_placement_hints_path = str(Path(output_dir, "[PH]{}.nrrd".format(name)))
-        voxel_data.with_data(voxel_size * placement_hints).save_nrrd(layer_placement_hints_path)
+        voxel_data.with_data(placement_hints).save_nrrd(layer_placement_hints_path)
 
 
 def detailed_mesh_mask(mesh: "trimesh.Trimesh", shape: Tuple[int, int, int]) -> NDArray[bool]:
