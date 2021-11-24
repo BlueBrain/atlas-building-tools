@@ -39,19 +39,14 @@ def app(verbose):
 
 
 @app.command()
-@click.option(
-    "--annotation-path",
-    type=EXISTING_FILE_PATH,
-    required=True,
-    help=("Path to the whole AIBS mouse brain annotation nrrd file."),
-)
+@common_atlas_options
 @click.option(
     "--output-path",
     required=True,
     help="Path of file to write the direction vectors to.",
 )
 @log_args(L)
-def cerebellum(annotation_path, output_path):
+def cerebellum(annotation_path, hierarchy_path, output_path):
     """Generate and save the direction vectors of the AIBS mouse cerebellum.
 
     This command relies on the computation of the gradient of a Gaussian blur
@@ -71,7 +66,8 @@ def cerebellum(annotation_path, output_path):
 
     """
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
-    dir_vectors = cerebellum_.compute_direction_vectors(annotation.raw)
+    region_map = voxcell.RegionMap.load_json(hierarchy_path)
+    dir_vectors = cerebellum_.compute_direction_vectors(region_map, annotation)
     annotation.with_data(dir_vectors).save_nrrd(output_path)
 
 

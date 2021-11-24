@@ -40,6 +40,39 @@ def test_thalamus():
         assert direction_vectors.raw.dtype == np.float32
 
 
+def test_cerebellum():
+
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+
+        cerebellum_raw = np.zeros((8, 8, 8))
+        for x_index, region_id in enumerate([10707, 10692, 10706, 10691, 10705, 10690, 744, 728]):
+            cerebellum_raw[x_index, :, :] = region_id
+        cerebellum_raw = np.pad(
+            cerebellum_raw, 2, "constant", constant_values=0
+        )  # Add 2-voxel void margin around the positive annotations
+
+        annotation = VoxelData(cerebellum_raw, (25.0, 25.0, 25.0), offset=(1.0, 2.0, 3.0))
+        annotation.save_nrrd("cerebellum_annotation.nrrd")
+
+        result = runner.invoke(
+            tested.cerebellum,
+            [
+                "--annotation-path",
+                "cerebellum_annotation.nrrd",
+                "--hierarchy-path",
+                HIERARCHY_PATH,
+                "--output-path",
+                "cerebellum_direction_vectors.nrrd",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        direction_vectors = VoxelData.load_nrrd("cerebellum_direction_vectors.nrrd")
+        npt.assert_array_equal(direction_vectors.raw.shape, (12, 12, 12, 3))
+        assert direction_vectors.raw.dtype == np.float32
+
+
 def get_nan_interpolation_result(runner, nans_opt=None):
     args = [
         "--direction-vectors-path",

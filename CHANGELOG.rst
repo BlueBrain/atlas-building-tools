@@ -1,6 +1,10 @@
 Changelog
 =========
 
+Version 0.1.8
+-------------
+- Adds missing cerebellum regions in the direction vectors calculation and refactors the implementation [`NSETM_1682_`]
+
 Version 0.1.7
 -------------
 - Zero negative density values when they are known to be round-off errors [`NSETM_1665_`]
@@ -78,6 +82,7 @@ Version 0.1.0 (2021-04-27)
 - CLI to turn the excel measurement compilation gaba_papers.xlsx of D. Rodarie into a CSV file.
 
 
+.. _`NSETM-1682`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1682
 .. _`NSETM-1665`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1665
 .. _`CA-20`: https://bbpteam.epfl.ch/project/issues/browse/CA-20
 .. _`NSETM-1658`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1658
