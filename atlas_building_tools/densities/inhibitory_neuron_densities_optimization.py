@@ -62,6 +62,9 @@ from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 L = logging.getLogger(__name__)
 
+SKIP = np.inf  # Used to signify that a delta variable of the linear program should be removed
+KEEP = np.nan  # Used to signify that a delta variable should be added to the linear program
+
 
 def set_known_values(
     region_counts: "pd.DataFrame",
@@ -102,6 +105,10 @@ def set_known_values(
             count variables and their initial estimates. The linear program attempts to minimize a
             weighted sum of the `deltas`. The `deltas` data frame has one column for each cell
             type in `cell_types`. Its index is a list of region names (str).
+            The data frame is initialized with zeros for regions where the cell count estimate is
+            given for certain (standard deviation close to 0.0), with `SKIP` if no estimate
+            is available and with `KEEP` otherwise. The latter case corresponds to a variable
+            delta_{r, m} that is actually added to the linear program.
     """
     tolerance = 1e-2
     cell_types = get_cell_types(region_counts)
@@ -122,27 +129,24 @@ def set_known_values(
 
     L.info("Preparing variables layout ...")
     x_result = pd.DataFrame(
-        {cell_type: np.full(len(id_counts), np.nan) for cell_type in cell_types},
+        {cell_type: np.full(len(id_counts), KEEP) for cell_type in cell_types},
         index=id_counts.index,
     )
     deltas = pd.DataFrame(
-        {cell_type: np.full(len(region_counts), np.nan) for cell_type in cell_types},
+        {cell_type: np.full(len(region_counts), KEEP) for cell_type in cell_types},
         index=region_counts.index,
     )
 
     L.info("Setting known values ...")
-    # Set the zero cell count estimates which are given with certainty.
+    # Set delta_{r, m} with `SKIP` if the corresponding cell count estimate is missing.
+    # This means that the region r won't impose any constraint wrt to the marker m in the linear
+    # program, i. e., the delta_{r, m} variable is omitted for such r and m.
     for (id_, region_name) in zip(hierarchy_info.index, region_counts.index):
         for cell_type in cell_types:
-            # A region without cell count estimate for `cell_type` is handled as a region with no
-            # `cell_type` cells.
-            if np.isnan(region_counts.at[region_name, cell_type]):
-                if cell_type == "gad67+":
-                    # If there are no inhibitory neurons, zero every inhibitory subtype counts
-                    for type_ in cell_types:
-                        _zero_descendants(id_, type_, x_result, deltas, hierarchy_info)
-                else:
-                    _zero_descendants(id_, cell_type, x_result, deltas, hierarchy_info)
+            # A region without cell count estimate for `cell_type` adds no constraint
+            # to the linear program.
+            if np.isnan(region_counts.at[region_name, cell_type + "_standard_deviation"]):
+                deltas.loc[region_name, cell_type] = SKIP
 
         # If the initial cell count estimate of gad67+ (all inhibitory neurons) in `region_name`
         # and its standard deviation are both close to 0.0, we set the cell final counts of every
@@ -188,9 +192,9 @@ def create_bounds(
     The upper bounds are given by the corresponding overall `neuron_counts`.
 
     Args:
-        x_result: see return value of :fun:`set_known_values`. An `np.nan` entry means that a cell
+        x_result: see return value of :fun:`set_known_values`. A `KEEP` entry means that a cell
             count variable is added to the program.
-        deltas: see return value of :fun:`set_known_values`. An `np.nan` entry means that a
+        deltas: see return value of :fun:`set_known_values`. A `KEEP` entry means that a
             delta variable is added to the program.
         neuron_counts: data frame with one column "cell_count" holding the neuron count each 3D
             region labeled by an integer identifier in `neuron_count.index`.
@@ -244,7 +248,7 @@ def create_aub_and_bub(
         neuron counts, is at least the sum of every inhibitory subtype cell counts.
 
     Args:
-        x_result: see return value of :fun:`set_known_values`. An `np.nan` entry means that a
+        x_result: see return value of :fun:`set_known_values`. A `KEEP` entry means that a
             cell count variable is added to the program.
         region_counts: data frame with one column for per cell type and with index
             a list of region names. This data frame holds the initial cell count estimates.
@@ -316,7 +320,7 @@ def create_volumetric_densities(
     counts.
 
     Args:
-        x_result: see return value of :fun:`set_known_values`. An `np.nan` entry means that a cell
+        x_result: see return value of :fun:`set_known_values`. A `KEEP` entry means that a cell
             count variable is added to the program.
         annotation: int array of shape (W, H, D) holding the annotation of the whole
             brain model. (The integers W, H and D are the dimensions of the array).
@@ -550,7 +554,7 @@ def create_inhibitory_neuron_densities(  # pylint: disable=too-many-locals
             c_row[row_index] = 1.0 / region_counts.at[region_name, std_name]
             assert not np.isnan(c_row[deltas_map[(region_name, cell_type)]])
         L.info(
-            "Solving linear program with %d variables and % inequality constraints",
+            "Solving linear program with %d variables and %d inequality constraints",
             variable_count,
             len(b_ub),
         )

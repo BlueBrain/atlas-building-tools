@@ -101,7 +101,7 @@ def compute_cell_density(
         float array of shape (W, H, D) with non-negative entries. The returned array is a
         transformation of `nissl` which is modified in-line. It represents the overall mouse brain
         cell density, expressed in number of cells per mm^3. It is compliant with several
-        region-specific cell  counts provided by the scientific literature as well as the Purkinje
+        region-specific cell counts provided by the scientific literature as well as the Purkinje
         layer constraint of a constant number of cells per voxel.
     """
 

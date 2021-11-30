@@ -34,7 +34,7 @@ restricted to a brain region, but we shall not give a precise meaning to the wor
 
 The implementation of this module is based on the methods of
 - 'A Cell Atlas for the Mouse Brain' by C. Eroe et al., 2018,
-- 'Atlas of inhibitory neurons in the mouse brain" by D. Rodarie et al., 2021,
+- 'Atlas of inhibitory neurons in the mouse brain' by D. Rodarie et al., 2021,
 and the code provided by the authors.
 """
 # pylint: disable=too-many-lines

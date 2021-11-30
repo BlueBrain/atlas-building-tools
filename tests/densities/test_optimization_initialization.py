@@ -123,11 +123,10 @@ def test_set_known_values_2(counts_data_1):
 
 
 def test_set_known_values_3(counts_data_1):
-    # Some of the region cell counts are NaNs, which means that the estimates are missing.
-    # The corresponding entries in `x_result` must be set 0.0.
+    # Some std deviations of the region cell counts are np.nan, which means that the estimates are missing.
     # The corresponding entries in `deltas` must be set with 0.0.
-    counts_data_1["region_counts"].loc["A", "gad67+"] = np.nan
-    counts_data_1["region_counts"].loc["B", "pv+"] = np.nan
+    counts_data_1["region_counts"].loc["A", "gad67+_standard_deviation"] = np.nan
+    counts_data_1["region_counts"].loc["B", "pv+_standard_deviation"] = np.nan
     x_result, deltas = tested.set_known_values(
         counts_data_1["region_counts"], counts_data_1["id_counts"], counts_data_1["hierarchy_info"]
     )
@@ -136,10 +135,10 @@ def test_set_known_values_3(counts_data_1):
         x_result,
         pd.DataFrame(
             {
-                "gad67+": [0.0, np.nan],
-                "pv+": [0.0, 0.0],
-                "sst+": [0.0, np.nan],
-                "vip+": [0.0, np.nan],
+                "gad67+": [np.nan] * 2,
+                "pv+": [np.nan] * 2,
+                "sst+": [np.nan] * 2,
+                "vip+": [np.nan] * 2,
             },
             index=[1, 2],
         ),
@@ -149,10 +148,10 @@ def test_set_known_values_3(counts_data_1):
         deltas,
         pd.DataFrame(
             {
-                "gad67+": [0.0, np.nan],
-                "pv+": [0.0, 0.0],
-                "sst+": [0.0, np.nan],
-                "vip+": [0.0, np.nan],
+                "gad67+": [np.inf, np.nan],
+                "pv+": [np.nan, np.inf],
+                "sst+": [np.nan] * 2,
+                "vip+": [np.nan] * 2,
             },
             index=["A", "B"],
         ),
@@ -168,8 +167,8 @@ def counts_data_2():
     )
     region_counts = pd.DataFrame(
         {
-            "gad67+": [0.0, 1.0],  # zero cell count
-            "gad67+_standard_deviation": [0.0, 1.2],  # zero standard deviation
+            "gad67+": [0.0, 1.0],  # zero cell count for A
+            "gad67+_standard_deviation": [0.0, 1.2],  # zero standard deviation for A
             "pv+": [2.0, 1.0],
             "pv+_standard_deviation": [0.2, 0.1],
             "sst+": [4.0, 3.0],
@@ -250,12 +249,49 @@ def test_set_known_values_4(counts_data_2):
 
 
 def test_set_known_values_5(counts_data_2):
-    # Some of the region cell counts are NaNs, which means that the estimates are missing.
-    # The corresponding entries in `x_result` must be set 0.0.
-    # The corresponding entries in `deltas` must be set with 0.0.
-    # The same holds for descendant regions.
+    # Some std deviations of region cell counts are NaNs, meaning that the corresponding estimates are missing.
+    # The corresponding entries in `deltas` must be set with np.inf.
+    counts_data_2["region_counts"].loc["A", "gad67+_standard_deviation"] = np.nan
+    x_result, deltas = tested.set_known_values(
+        counts_data_2["region_counts"], counts_data_2["id_counts"], counts_data_2["hierarchy_info"]
+    )
+
+    pdt.assert_frame_equal(
+        x_result,
+        pd.DataFrame(
+            {
+                "gad67+": [np.nan] * 2,
+                "pv+": [np.nan] * 2,
+                "sst+": [np.nan] * 2,
+                "vip+": [np.nan] * 2,
+            },
+            index=[1, 2],
+        ),
+    )
+
+    pdt.assert_frame_equal(
+        deltas,
+        pd.DataFrame(
+            {
+                "gad67+": [np.inf, np.nan],  # standard deviation is NaN for A
+                "pv+": [np.nan] * 2,
+                "sst+": [np.nan] * 2,
+                "vip+": [np.nan] * 2,
+            },
+            index=["A", "B"],
+        ),
+    )
+
+
+def test_set_known_values_6(counts_data_2):
+    # Some std deviations of region cell counts are NaNs, implying that the corresponding estimates are missing.
+    # The corresponding entries in `deltas` must be set with np.inf.
+    # Besides, one of the standard deviations associated to the overall gad67+ count is zero and a gad67+
+    # leaf id count is zero too. The corresponding entry in `x_result` must be set with 0.0.
+
     counts_data_2["region_counts"].loc["A", "gad67+"] = 1.0
-    counts_data_2["region_counts"].loc["A", "pv+"] = np.nan
+    # The std deviation below is NaN: the corresponding entries in `deltas` must be set with np.inf.
+    counts_data_2["region_counts"].loc["A", "pv+_standard_deviation"] = np.nan
     x_result, deltas = tested.set_known_values(
         counts_data_2["region_counts"], counts_data_2["id_counts"], counts_data_2["hierarchy_info"]
     )
@@ -267,8 +303,8 @@ def test_set_known_values_5(counts_data_2):
                 "gad67+": [
                     0.0,
                     np.nan,
-                ],  # standard deviation is 0.0 for A, the id count is zero for id = 1
-                "pv+": [0.0, 0.0],
+                ],  # standard deviation is 0.0 for A and the id cell count is zero for id = 1
+                "pv+": [np.nan] * 2,
                 "sst+": [np.nan] * 2,
                 "vip+": [np.nan] * 2,
             },
@@ -281,46 +317,9 @@ def test_set_known_values_5(counts_data_2):
         pd.DataFrame(
             {
                 "gad67+": [0.0, np.nan],  # standard deviation is 0.0 for A
-                "pv+": [0.0, 0.0],
+                "pv+": [np.inf, np.nan],
                 "sst+": [np.nan] * 2,
                 "vip+": [np.nan] * 2,
-            },
-            index=["A", "B"],
-        ),
-    )
-
-
-def test_set_known_values_6(counts_data_2):
-    # Some of the region cell counts are NaNs, which means that the estimates are missing.
-    # The corresponding entries in `x_result` must be set 0.0.
-    # The corresponding entries in `deltas` must be set with 0.0.
-    # The same holds for descendant regions.
-    counts_data_2["region_counts"].loc["A", "gad67+"] = np.nan  # this will zero every count
-    x_result, deltas = tested.set_known_values(
-        counts_data_2["region_counts"], counts_data_2["id_counts"], counts_data_2["hierarchy_info"]
-    )
-
-    pdt.assert_frame_equal(
-        x_result,
-        pd.DataFrame(
-            {
-                "gad67+": [0.0, 0.0],
-                "pv+": [0.0, 0.0],
-                "sst+": [0.0, 0.0],
-                "vip+": [0.0, 0.0],
-            },
-            index=[1, 2],
-        ),
-    )
-
-    pdt.assert_frame_equal(
-        deltas,
-        pd.DataFrame(
-            {
-                "gad67+": [0.0, 0.0],
-                "pv+": [0.0, 0.0],
-                "sst+": [0.0, 0.0],
-                "vip+": [0.0, 0.0],
             },
             index=["A", "B"],
         ),
@@ -466,6 +465,41 @@ def test_create_bounds(bounds_data):
 
     expected_bounds = np.array(
         [[0.0] * 10, [5.0, 5.0, 1.0, 1.0, 1.0, np.inf, np.inf, np.inf, np.inf, np.inf]]
+    ).T
+
+    npt.assert_array_almost_equal(expected_bounds, bounds)
+
+
+def test_create_bounds_with_one_less_delta(bounds_data):
+    bounds_data["deltas"]["sst+"] = [
+        np.inf,
+        np.nan,
+    ]  # np.inf means that no delta is required for region A and cell type sst+.
+    bounds, x_map, deltas_map = tested.create_bounds(
+        bounds_data["x_result"], bounds_data["deltas"], bounds_data["neuron_counts"]
+    )
+
+    expected_x_map = {
+        (1, "sst+"): 0,
+        (1, "vip+"): 1,
+        (2, "gad67+"): 2,
+        (2, "sst+"): 3,
+        (2, "vip+"): 4,
+    }
+
+    assert x_map == expected_x_map
+
+    expected_deltas_map = {
+        ("A", "vip+"): 5,
+        ("B", "gad67+"): 6,
+        ("B", "sst+"): 7,
+        ("B", "vip+"): 8,
+    }
+
+    assert expected_deltas_map == deltas_map
+
+    expected_bounds = np.array(
+        [[0.0] * 9, [5.0, 5.0, 1.0, 1.0, 1.0, np.inf, np.inf, np.inf, np.inf]]
     ).T
 
     npt.assert_array_almost_equal(expected_bounds, bounds)

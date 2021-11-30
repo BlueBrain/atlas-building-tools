@@ -79,7 +79,7 @@ def combine_annotations(
     These assumptions are based on the use case
     annotation 2011 (Mouse CCF v2) / annotation 2017 (Mouse CCF v3).
 
-    Each annotation file has a resolution, eithe 10 um or 25 um.
+    Each annotation file has a resolution, either 10 um or 25 um.
     The input files and the output file should all have the same resolution.
 
     Args:
