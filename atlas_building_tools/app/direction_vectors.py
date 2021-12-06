@@ -1,4 +1,5 @@
 """Generate and save the direction vectors for different regions of the mouse brain"""
+# pylint: disable=import-outside-toplevel
 import json
 import logging
 
@@ -13,9 +14,9 @@ from atlas_building_tools.app.utils import (
     set_verbose,
 )
 from atlas_building_tools.direction_vectors import cerebellum as cerebellum_
-from atlas_building_tools.direction_vectors import isocortex as isocortex_
 from atlas_building_tools.direction_vectors import thalamus as thalamus_
 from atlas_building_tools.direction_vectors.interpolation import interpolate_vectors
+from atlas_building_tools.direction_vectors.isocortex import ISOCORTEX_ALGORITHMS
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 L = logging.getLogger(__name__)
@@ -74,8 +75,15 @@ def cerebellum(annotation_path, hierarchy_path, output_path):
 @app.command()
 @common_atlas_options
 @click.option("--output-path", required=True, help="Path of file to write.")
+@click.option(
+    "--algorithm",
+    default="regiodesics",
+    type=click.Choice(list(ISOCORTEX_ALGORITHMS.keys())),
+    required=False,
+    help="Algorithm to use for the computation of the direction vector field. Default regiodesics.",
+)
 @log_args(L)
-def isocortex(annotation_path, hierarchy_path, output_path):
+def isocortex(annotation_path, hierarchy_path, output_path, algorithm):
     """Generate and save the direction vectors of the mouse isocortex.
 
     This command relies on Regiodesics.
@@ -86,9 +94,11 @@ def isocortex(annotation_path, hierarchy_path, output_path):
     The vector [nan, nan, nan] is assigned to any voxel out of the isocortex.
     The annotation file can enclose the isocortex or a superset.
     """
+    from atlas_building_tools.direction_vectors.isocortex import compute_direction_vectors
+
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
     region_map = voxcell.RegionMap.load_json(hierarchy_path)
-    dir_vectors = isocortex_.compute_direction_vectors(region_map, annotation)
+    dir_vectors = compute_direction_vectors(region_map, annotation, algorithm)
     annotation.with_data(dir_vectors).save_nrrd(output_path)
 
 

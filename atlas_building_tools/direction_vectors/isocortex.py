@@ -3,7 +3,8 @@ Function computing the direction vectors of the mouse isocortex
 """
 import logging
 import re
-from typing import TYPE_CHECKING, List, Union
+from functools import partial
+from typing import TYPE_CHECKING, Callable, Dict, List, Union
 
 import numpy as np  # type: ignore
 from nptyping import NDArray  # type: ignore
@@ -12,8 +13,8 @@ from voxcell.math_utils import minimum_aabb  # pylint: disable=ungrouped-imports
 from atlas_building_tools.direction_vectors.algorithms.layer_based_direction_vectors import (
     compute_direction_vectors as layer_based_direction_vectors,
 )
-from atlas_building_tools.direction_vectors.algorithms.regiodesics import (
-    find_regiodesics_exec_or_raise,
+from atlas_building_tools.direction_vectors.algorithms.layer_based_direction_vectors import (
+    compute_layered_region_direction_vectors,
 )
 from atlas_building_tools.direction_vectors.utils import warn_on_nan_vectors
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
@@ -38,13 +39,13 @@ LAYER_ENDINGS = "^([a-zA-Z]*-?[a-zA-Z]+)(?:[1-5]|2/3|6[ab])$"
 
 
 def get_isocortical_regions(
-    brain_regions: NDArray[int], region_map: Union[str, "RegionMap"]
+    annotation: NDArray[int], region_map: Union[str, "RegionMap"]
 ) -> List[str]:
     """
-    Get the acronyms of all isocortical regions present in `brain_regions`.
+    Get the acronyms of all isocortical regions present in `annotation`.
 
     Args:
-        brain_regions: 3D array of region identifiers containing the isocortex ids.
+        annotation: 3D array of region identifiers containing the isocortex ids.
         region_map: path to the hierarchy.json file or a RegionMap to navigate the
             brain regions hierarchy.
 
@@ -56,8 +57,8 @@ def get_isocortical_regions(
     are returned. For the Mouse ccfv3 annotation of the same resolution,
     43 acronyms are returned.
     """
-    isocortex_mask = get_region_mask("Isocortex", brain_regions, region_map)
-    ids = np.unique(brain_regions[isocortex_mask])
+    isocortex_mask = get_region_mask("Isocortex", annotation, region_map)
+    ids = np.unique(annotation[isocortex_mask])
     region_map = load_region_map(region_map)
     acronyms = set()
     for id_ in ids:
@@ -70,8 +71,10 @@ def get_isocortical_regions(
     return sorted(list(acronyms))
 
 
-def compute_direction_vectors(
-    region_map: Union[str, dict, "RegionMap"], brain_regions: "VoxelData"
+def _direction_vectors_per_region(
+    region_map: Union[str, dict, "RegionMap"],
+    annotation: "VoxelData",
+    algorithm: str = "regiodesics",
 ) -> NDArray[np.float32]:
     """
     Compute the mouse isocortex direction vectors.
@@ -79,26 +82,28 @@ def compute_direction_vectors(
     Arguments:
         region_map: path to the json file containing atlas region hierarchy,
             or a dict, or a RegionMap object.
-        brain_regions: VoxelData object containing the isocortex or a superset.
+        annotation: VoxelData object containing the isocortex or a superset.
+        algorithm: Algorithm to use for the computation of the direction vectors.
+            By default `regiodesics` is used
 
     Returns:
         Vector field of 3D unit vectors over the isocortex volume with the same shape
         as the input one. Voxels outside the Isocortex have np.nan coordinates.
     """
-    direction_vectors = np.full(brain_regions.shape + (3,), np.nan, dtype=np.float32)
+    direction_vectors = np.full(annotation.shape + (3,), np.nan, dtype=np.float32)
     region_map = load_region_map(region_map)
     # Get the highest-level regions of the isocortex: ACAd, ACAv, AId, AIp, AIv, ...
     # In the AIBS mouse ccfv3 annotation, there are 43 isocortical regions.
-    regions = get_isocortical_regions(brain_regions.raw, region_map)
+    regions = get_isocortical_regions(annotation.raw, region_map)
 
     for region in regions:
         L.info("Computing direction vectors for region %s", region)
-        region_mask = get_region_mask(region, brain_regions.raw, region_map)
+        region_mask = get_region_mask(region, annotation.raw, region_map)
         # pylint: disable=not-an-iterable
         aabb_slice = tuple(
             slice(bottom, top + 1) for (bottom, top) in np.array(minimum_aabb(region_mask)).T
         )
-        voxel_data = brain_regions.with_data(brain_regions.raw[aabb_slice])
+        voxel_data = annotation.with_data(annotation.raw[aabb_slice])
         try:
             region_direction_vectors = layer_based_direction_vectors(
                 region_map,
@@ -110,9 +115,8 @@ def compute_direction_vectors(
                     "inside": [("acronym", region)],
                     "target": [("acronym", "@.*1$")],
                 },
-                algorithm="regiodesics",
+                algorithm=algorithm,
                 hemisphere_options={"set_opposite_hemisphere_as": "target"},
-                regiodesics_path=find_regiodesics_exec_or_raise("direction_vectors"),
             )
         except AtlasBuildingToolsError as error:
             L.warning(error)
@@ -127,8 +131,108 @@ def compute_direction_vectors(
         direction_vectors[aabb_slice][region_mask] = region_direction_vectors[region_mask]
         del region_direction_vectors
 
+    return direction_vectors
+
+
+def _shading_gradient(region_map: "RegionMap", annotation: "VoxelData") -> NDArray[np.float32]:
+    """
+    Computes isocortex's direction vectors as the normalized gradient of a custom scalar field.
+
+    The output direction vector field is computed as the normalized gradient
+    of a custom scalar field. This scalar field resembles a distance field in
+    the neighborhood of the layer 1.
+
+    Afterwards, a Gaussian filter is applied and the normalized gradient of the
+    blurred scalar field is returned.
+
+    Arguments:
+        annotation_raw: integer array of shape (W, H, D) holding the annotation of the whole mouse
+         brain.
+        region_map: RegionMap object with the hierarchy data
+
+    Returns:
+        numpy.ndarray of shape (annotation.shape, 3) holding a 3D unit vector field.
+    """
+    metadata = {
+        "region": {
+            "name": "Extended Isocortex",
+            "query": "@^\\bIsocortex|lfbs\\b$",
+            "attribute": "acronym",
+            "with_descendants": True,
+        },
+        "layers": {
+            "names": [
+                "layer_1",
+                "layer_23",
+                "layer_4",
+                "layer_5",
+                "layer_6",
+                "lateral forebrain bundle system",
+            ],
+            "queries": [
+                "@.*1[ab]?$",
+                "@.*[2-3][ab]?$",
+                "@.*4[ab]?$",
+                "@.*5[ab]?$",
+                "@.*6[ab]?$",
+                "lfbs",
+            ],
+            "attribute": "acronym",
+            "with_descendants": True,
+        },
+    }
+    region_to_weight = {
+        "@.*1[ab]?$": 6,
+        "@.*[2-3][ab]?$": 5,
+        "@.*4[ab]?$": 3,
+        "@.*5[ab]?$": 2,
+        "@.*6[ab]?$": 1,
+        "lfbs": -2,
+        "outside_of_brain": 0,
+    }
+    return compute_layered_region_direction_vectors(
+        region_map=region_map,
+        annotation=annotation,
+        metadata=metadata,
+        region_to_weight=region_to_weight,
+        shading_width=4,
+        expansion_width=8,
+        has_hemispheres=True,
+    )
+
+
+ISOCORTEX_ALGORITHMS: Dict[str, Callable[["RegionMap", "VoxelData"], NDArray[np.float32]]] = {
+    "regiodesics": partial(_direction_vectors_per_region, algorithm="regiodesics"),
+    "simple-blur-gradient": partial(
+        _direction_vectors_per_region, algorithm="simple-blur-gradient"
+    ),
+    "shading-blur-gradient": _shading_gradient,
+}
+
+
+def compute_direction_vectors(
+    region_map: "RegionMap", annotation: "VoxelData", algorithm: str = "regiodesics"
+) -> NDArray[np.float32]:
+    """Returns the direction vectors computed with the selected `algorithm`
+
+    Arguments:
+        region_map: RegionMap object with the hierarchy data
+        annotation: VoxelData object containing the isocortex or a superset.
+        algorithm: The algorithm to use for computing the direction vectors. Default is
+            regiodesics.
+
+    Returns:
+        numpy.ndarray of shape (annotation.shape, 3) holding a 3D unit vector field.
+    """
+    if algorithm not in ISOCORTEX_ALGORITHMS:
+        raise AtlasBuildingToolsError(
+            f"{algorithm} is not available. Choose from {list(ISOCORTEX_ALGORITHMS.keys())}"
+        )
+
+    direction_vectors = ISOCORTEX_ALGORITHMS[algorithm](region_map, annotation)
+
     warn_on_nan_vectors(
-        direction_vectors, get_region_mask("Isocortex", brain_regions.raw, region_map), "Isocortex"
+        direction_vectors, get_region_mask("Isocortex", annotation.raw, region_map), "Isocortex"
     )
 
     return direction_vectors

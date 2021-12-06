@@ -153,7 +153,7 @@ def mark_with_regiodesics_labels(
 
 
 def compute_direction_vectors(
-    bottom: NDArray[bool], in_between: NDArray[bool], top: NDArray[bool], **kwargs: str
+    bottom: NDArray[bool], in_between: NDArray[bool], top: NDArray[bool]
 ) -> NDArray[np.float32]:
     """
     Generate direction vectors for the `in_between` volume.
@@ -165,13 +165,6 @@ def compute_direction_vectors(
         bottom(numpy.ndarray): boolean 3D mask of the bottom part.
         in_between(numpy.ndarray): boolean 3D mask the volume of interest.
         top(numpy.ndarray): boolean 3D of the top part.
-        kwargs: (optional) regiodesic_paths=`regiodesic_paths` where `regiodesics_paths`
-                is a dictionary whose keys are the strings 'layer_segmenter' and 'geodesics'
-                and whose values are the corresponding file paths (str).
-                Example: {
-                    'layer_segmenter': "Regiodesics/build/bin/layer_segmenter",
-                    'geodesics': "Regiodesics/build/bin/geodesics"
-                }
 
     Returns:
         np.float32 numpy.ndarray of shape (W, L, D, 3) holding a field of unit
@@ -185,9 +178,8 @@ def compute_direction_vectors(
         )
 
     marked = mark_with_regiodesics_labels(bottom, in_between, top)
-    regiodesics_path = kwargs.get(
-        "regiodesics_path", find_regiodesics_exec_or_raise("direction_vectors")
-    )
+    regiodesics_path = find_regiodesics_exec_or_raise("direction_vectors")
+
     with TemporaryDirectory() as temp_dir:
         dummy_voxel_sizes = (1.0, 1.0, 1.0)
         VoxelData(marked.astype(np.int8), dummy_voxel_sizes).save_nrrd(

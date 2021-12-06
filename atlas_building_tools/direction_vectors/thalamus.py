@@ -77,7 +77,7 @@ def compute_direction_vectors(
     )  # tuning based on tests with the 25 um resolution
     rt_complement_direction_vectors = direction_vectors_for_hemispheres(
         landscape,
-        algorithm="simple_blur_gradient",
+        algorithm="simple-blur-gradient",
         hemisphere_options={"set_opposite_hemisphere_as": "source"},
         # The constants below have been derived empirically by Hugo Dictus
         sigma=ratio * 18.0,
@@ -91,7 +91,7 @@ def compute_direction_vectors(
     }
     rt_direction_vectors = direction_vectors_for_hemispheres(
         landscape,
-        algorithm="simple_blur_gradient",
+        algorithm="simple-blur-gradient",
         hemisphere_options={"set_opposite_hemisphere_as": "source"},
         # The constants below have been derived empirically by Hugo Dictus
         sigma=ratio * 5.0,

@@ -9,6 +9,7 @@ from voxcell import RegionMap, VoxelData
 from atlas_building_tools.direction_vectors.algorithms import (
     layer_based_direction_vectors as tested,
 )
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 
 class Test_attributes_to_ids:
@@ -158,13 +159,13 @@ class Test_direction_vectors_for_hemispheres:
         with pytest.raises(ValueError):
             tested.direction_vectors_for_hemispheres(
                 self.landscape_1(),
-                "simple_blur_gradient",
+                "simple-blur-gradient",
                 {"set_opposite_hemisphere_as": "invalid"},
             )
 
     def test_simple_blur_without_hemispheres(self):
         l1 = self.landscape_1()
-        direction_vectors = tested.direction_vectors_for_hemispheres(l1, "simple_blur_gradient")
+        direction_vectors = tested.direction_vectors_for_hemispheres(l1, "simple-blur-gradient")
         inside = l1["inside"]
         assert np.all(~np.isnan(direction_vectors[inside, :]))
         assert np.all(direction_vectors[inside, 2] > 0.0)  # vectors flow along the positive z-axis
@@ -189,7 +190,7 @@ class Test_direction_vectors_for_hemispheres:
     def test_simple_blur_with_hemispheres_no_opposite(self):
         direction_vectors = tested.direction_vectors_for_hemispheres(
             self.landscape_2(),
-            "simple_blur_gradient",
+            "simple-blur-gradient",
             {"set_opposite_hemisphere_as": None},
         )
         check_direction_vectors(direction_vectors, self.landscape_2()["inside"])
@@ -205,7 +206,7 @@ class Test_direction_vectors_for_hemispheres:
     def test_simple_blur_with_opposite_hemisphere_as_target(self):
         direction_vectors = tested.direction_vectors_for_hemispheres(
             self.landscape_2(),
-            "simple_blur_gradient",
+            "simple-blur-gradient",
             {"set_opposite_hemisphere_as": "target"},
         )
         check_direction_vectors(
@@ -225,7 +226,7 @@ class Test_direction_vectors_for_hemispheres:
     def test_simple_blur_with_opposite_hemisphere_as_source(self):
         direction_vectors = tested.direction_vectors_for_hemispheres(
             self.landscape_3(),
-            "simple_blur_gradient",
+            "simple-blur-gradient",
             {"set_opposite_hemisphere_as": "source"},
         )
         check_direction_vectors(
@@ -371,7 +372,7 @@ class Test_compute_direction_vectors:
             self.fake_hierarchy_json(),
             self.voxel_data_2(),
             self.landscape_2(),
-            "simple_blur_gradient",
+            "simple-blur-gradient",
             {"set_opposite_hemisphere_as": None},
         )
         ids = tested.attributes_to_ids(
@@ -386,7 +387,7 @@ class Test_compute_direction_vectors:
             self.fake_hierarchy_json(),
             self.voxel_data_2(),
             self.landscape_2(),
-            "simple_blur_gradient",
+            "simple-blur-gradient",
             {"set_opposite_hemisphere_as": "target"},
         )
         ids = tested.attributes_to_ids(
@@ -401,7 +402,7 @@ class Test_compute_direction_vectors:
             self.fake_hierarchy_json(),
             self.voxel_data_2(),
             self.landscape_3(),
-            "simple_blur_gradient",
+            "simple-blur-gradient",
             {"set_opposite_hemisphere_as": "source"},
         )
         ids = tested.attributes_to_ids(
@@ -425,3 +426,115 @@ class Test_compute_direction_vectors:
         )
         inside = np.isin(self.voxel_data_2().raw, ids)
         check_direction_vectors(direction_vectors, inside, {"opposite": "source"})
+
+
+def test_build_layered_region_weights():
+
+    regions = ["r1", "r2", "r3"]
+    region_to_weight = {"r1": -1, "r2": 0, "r3": 1, "outside_of_brain": -2}
+
+    res = tested._build_layered_region_weights(regions, region_to_weight)
+
+    assert res == {0: -2, 1: -1, 2: 0, 3: 1}
+
+
+def test_compute_layered_direction_vectors():
+
+    metadata = {"layers": {"queries": ["q1", "q2"]}}
+    region_to_weight = {"q1": 1, "q3": 2}
+
+    shading_width = 6
+    expansion_width = 5
+
+    # Layer queries are not included in the weight dict
+    with pytest.raises(AtlasBuildingToolsError):
+        tested.compute_layered_region_direction_vectors(
+            None, None, metadata, region_to_weight, shading_width, expansion_width
+        )
+
+    region_map = RegionMap.from_dict(
+        {
+            "id": 0,
+            "acronym": "root",
+            "name": "root",
+            "children": [
+                {"id": 16, "acronym": "Isocortex", "name": "Isocortex"},
+                {"id": 22, "acronym": "CB", "name": "Cerebellum"},
+                {
+                    "id": 1,
+                    "acronym": "TMv",
+                    "name": "Tuberomammillary nucleus, ventral part",
+                },
+                {
+                    "id": 23,
+                    "acronym": "TH",
+                    "name": "Thalamus",
+                    "children": [
+                        {
+                            "id": 13,
+                            "acronym": "VAL",
+                            "name": "Ventral anterior-lateral complex of the thalamus",
+                        }
+                    ],
+                },
+            ],
+        }
+    )
+
+    metadata = {
+        "region": {
+            "name": "root",
+            "query": "root",
+            "attribute": "acronym",
+            "with_descendants": True,
+        },
+        "layers": {
+            "names": ["1", "2"],
+            "queries": ["TMv", "Car"],
+            "attribute": "acronym",
+            "with_descendants": True,
+        },
+    }
+
+    region_to_weight = {"TMv": -10, "TH": 10, "Isocortex": 20, "outside_of_brain": 3}
+
+    raw = np.zeros((10, 20, 10), dtype=np.int32)
+
+    raw[(3, 4), ...] = 1
+    raw[(5, 6), ...] = 23
+    raw[(7, 8), ...] = 16
+
+    brain_regions = VoxelData(raw, (25.0, 25.0, 25.0))
+
+    # Layer region is not converted to id
+    with pytest.raises(AtlasBuildingToolsError):
+        tested.compute_layered_region_direction_vectors(
+            region_map, brain_regions, metadata, region_to_weight, shading_width, expansion_width
+        )
+
+    metadata["layers"]["names"] = ["1", "2", "3"]
+    metadata["layers"]["queries"] = ["TMv", "TH", "Isocortex"]
+
+    res = tested.compute_layered_region_direction_vectors(
+        region_map,
+        brain_regions,
+        metadata,
+        region_to_weight,
+        shading_width,
+        expansion_width,
+        has_hemispheres=False,
+    )
+
+    np.allclose(res[(3, 4, 5, 6, 7, 8), ...], [1.0, 0.0, 0.0])
+
+    res = tested.compute_layered_region_direction_vectors(
+        region_map,
+        brain_regions,
+        metadata,
+        region_to_weight,
+        shading_width,
+        expansion_width,
+        has_hemispheres=True,
+    )
+
+    np.allclose(res[(3, 4, 5, 6, 7, 8), ...], [1.0, 0.0, 0.0])

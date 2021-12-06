@@ -21,10 +21,14 @@ the normalized gradient is returned.
 """
 
 from dataclasses import dataclass
+from typing import List
 
 import numpy as np  # type: ignore
+from nptyping import NDArray
+from scipy.ndimage import binary_dilation, generate_binary_structure
 
 from atlas_building_tools.direction_vectors.algorithms.utils import compute_blur_gradient
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 
 @dataclass
@@ -65,50 +69,9 @@ class RegionShading:
     invert: bool = False
 
 
-def create_thick_boundary_mask(input_mask, id_reg1, id_reg2, thickness):
-    """
-    Computes a boolean mask of a `thickness`-thick boundary between two regions.
-
-    Arguments:
-        input_mask(numpy.ndarray): 3D integer array whose values comprise
-          id_reg1 and id_reg2, defining thus an 'integer mask' for these
-          two regions.
-        id_reg1(int): identifier of the first region in input_mask.
-        id_reg2(int): identifier of the second region in input_mask.
-        thickness(int): thickness of the resulting boundary.
-
-    Returns:
-        3D numpy.ndarray of booleans where boundary voxel values are set to True.
-    Raises:
-        ValueError if thickness is less than or equal to 0.
-    """
-    assert isinstance(thickness, int) and thickness > 0
-    output_mask = np.full(input_mask.shape, False)
-    # If, for at least one of the three dimensions, say d in [x, y, z],
-    # the voxel value at position pos_d is equal to id_reg1 or id_reg2
-    # and the value at pos_d + thickness or pos_d - thickness is respectively
-    # id_reg2 or id_reg1, then the voxel belongs to the thick boundary.
-    slices = [slice(0, d) for d in input_mask.shape]
-    for coordinate in range(3):
-        # Minus
-        slices_minus = slices[:]
-        slices_minus[coordinate] = np.s_[thickness:]
-        mask_minus = input_mask[tuple(slices_minus)]
-        # Plus
-        slices_plus = slices[:]
-        slices_plus[coordinate] = np.s_[:-thickness]
-        mask_plus = input_mask[tuple(slices_plus)]
-
-        final_mask = np.logical_or(
-            np.logical_and(mask_minus == id_reg1, mask_plus == id_reg2),
-            np.logical_and(mask_minus == id_reg2, mask_plus == id_reg1),
-        )
-        output_mask[tuple(slices_plus)][final_mask] = True
-        output_mask[tuple(slices_minus)][final_mask] = True
-    return output_mask
-
-
-def shading_from_boundary(annotation, region_shading):
+def shading_from_boundary(
+    annotation_raw: NDArray[int], region_shading: RegionShading
+) -> NDArray[int]:
     """
     Computes a scalar field which increases with the distance to a region.
 
@@ -128,26 +91,115 @@ def shading_from_boundary(annotation, region_shading):
      and corresponds to the voxels which are the closest to the boundary region.
 
     Arguments:
-        annotation(numpy.ndarray): 3D integer array holding regions identifiers.
-        region_shading(RegionShading): RegionShading object holding the shading parameters.
+        annotation_raw: 3D integer array holding regions identifiers.
+        region_shading: RegionShading object holding the shading parameters.
             See RegionShading documentation.
 
     Returns:
         3D numpy.ndarray of integers, i.e., integer field over the input 3D volume.
     """
+    if region_shading.limit_distance <= 0:
+        raise AtlasBuildingToolsError(
+            f"Limit distance should be greater than zero : {region_shading.limit_distance}"
+        )
+
     boundary_region = 1
     region_to_shade = 2
-    region_mask = np.zeros(annotation.shape, dtype=int)
-    region_mask[annotation == region_shading.boundary_region] = boundary_region
-    region_to_shade_mask = np.isin(annotation, region_shading.ids, invert=region_shading.invert)
+
+    region_mask = np.zeros(annotation_raw.shape, dtype=int)
+    region_mask[annotation_raw == region_shading.boundary_region] = boundary_region
+
+    region_to_shade_mask = np.isin(annotation_raw, region_shading.ids, invert=region_shading.invert)
     region_mask[region_to_shade_mask] = region_to_shade
-    output_field = np.zeros(annotation.shape, dtype=int)
-    for thickness in range(region_shading.limit_distance, 0, -1):
-        output_field[
-            create_thick_boundary_mask(region_mask, region_to_shade, boundary_region, thickness)
-        ] = (thickness + region_shading.boundary_offset)
-    output_field[~region_to_shade_mask] = 0
-    return output_field
+
+    shades = (
+        np.arange(1, region_shading.limit_distance + 1, dtype=int) + region_shading.boundary_offset
+    )
+
+    shading_mask = _sequential_region_shading(
+        annotation_raw=region_mask,
+        region_label=boundary_region,
+        shading_target_label=region_to_shade,
+        shades=shades,
+    )
+
+    return shading_mask
+
+
+def _sequential_region_shading(
+    annotation_raw: NDArray[int], region_label: int, shading_target_label: int, shades: List[int]
+) -> NDArray[int]:
+    """Grows a region outwards using morphological binary dilation.
+
+    The region that will be expanded corresponds to the voxels in `annotation_raw` that have a
+    value equal to `region_label`. The process is iterative and the region grows after each
+    dilation (1 voxel radius). After each dilation i, the `shades[i]` value is assigned to the
+    newly explored voxels.
+
+    Notes:
+        The dilation is only allowed to grow into voxels the values of which are equal to
+        `shading_target_label`.
+
+    Arguments:
+        annotation_raw: 3D integer array holding regions identifiers.
+        region_label: The region of interest id.
+        shading_target_label: The id of the allowed region to grow into.
+        shades: The values to asign in each iteration to the dilated region.
+
+    Returns:
+        3D numpy.ndarray of integers, i.e., integer field over the input 3D volume.
+    """
+    region_mask = annotation_raw.copy()
+    shading_mask = np.zeros_like(annotation_raw)
+
+    for shading_value in shades:
+
+        boundary_mask = region_dilation(
+            annotation_raw=region_mask,
+            region_label=region_label,
+            shading_target_label=shading_target_label,
+        )
+
+        shading_mask[boundary_mask] = shading_value
+        region_mask[boundary_mask] = region_label
+
+    return shading_mask
+
+
+def region_dilation(
+    annotation_raw: NDArray[int], region_label: int, shading_target_label: int = 0
+) -> NDArray[int]:
+    """Dilates selectively a region using a box of shape (3, 3, 3).
+
+    The dilation morphological operation is applied exclusively on `annotation_raw` region, the
+    voxel values of which are equal to `region_label`. The dilation is restricted in updating only
+    the voxels the values of which are equal to `shading_target_label`.
+
+    Arguments:
+        annotation_raw: 3D integer array holding regions identifiers.
+        region_label: The region identifier that is going to be dilated.
+        shading_target_label: This label determines the allowed space to grow into.
+
+    Returns:
+        Binary mask of the same shape as `annotation_raw` the entries of which are True for the
+        dilated region constrained by the allowed region.
+
+    Notes:
+        The returned mask does not include the initial region mask, only the voxels around it that
+        correspond to the dilation process.
+    """
+    # region that we are allowed to grow into
+    allowed_region = annotation_raw == shading_target_label
+
+    # The binary dilation will be applied on the isolated layer mask
+    isolated_mask = annotation_raw == region_label
+
+    # a 3x3x3 everywhere True kernel
+    struct = generate_binary_structure(3, 3)
+
+    # the dilation we assign values only to the allowed region
+    # i.e. we allow the current pass to grow as far as it does not overwrite existing voxel ids
+    return binary_dilation(isolated_mask, struct) & allowed_region
 
 
 def compute_initial_field(annotation_raw, region_weights, shadings=()):
@@ -168,7 +220,7 @@ def compute_initial_field(annotation_raw, region_weights, shadings=()):
     where they overlap.
 
     Args:
-        annotation_raw(numpy.ndarray): 3D integer array holding the whole brain
+        annotation_raw (numpy.ndarray): 3D integer array holding the whole brain
             annotation.
         region_weights(dict): Dictionary with {key: value} pairs of the form
             {id: weight} where `id` is a region identifer and `weight` an integer.
@@ -179,7 +231,6 @@ def compute_initial_field(annotation_raw, region_weights, shadings=()):
         initial_scalar_field is an integer numpy.ndarray whose shape is
         annotation_raw.shape
     """
-
     initial_field = np.zeros(annotation_raw.shape, dtype=int)
 
     # Constant weights are set first.

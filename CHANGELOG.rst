@@ -3,6 +3,7 @@ Changelog
 
 Version 0.1.8
 -------------
+- Adds new shading gradient algorithm for the calculation of direction vectors in isocortex and cerebellum [`NSETM_1680_`]
 - Adds missing cerebellum regions in the direction vectors calculation and refactors the implementation [`NSETM_1682_`]
 - Cell counts' linear program: adds no constraints when estimates are missing [`NSETM-1689`_]
 - Uses a voxel-based computation of placement hints as an alternative to meshes [`NSETM-1660`_] [`NSETM-1670`_]
@@ -83,6 +84,7 @@ Version 0.1.0 (2021-04-27)
 - CLI to compute a flat map based on the streamlines of a laminar brain region
 - CLI to turn the excel measurement compilation gaba_papers.xlsx of D. Rodarie into a CSV file.
 
+.. _`NSETM-1680`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1680
 .. _`NSETM-1689`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1689
 .. _`NSETM-1670`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1670
 .. _`NSETM-1660`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1660

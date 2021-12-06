@@ -2,63 +2,446 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 
-from atlas_building_tools.direction_vectors.algorithms.blur_gradient import (
-    RegionShading,
-    compute_direction_vectors,
-    compute_initial_field,
-    create_thick_boundary_mask,
-    shading_from_boundary,
-)
+from atlas_building_tools.direction_vectors.algorithms import blur_gradient as tested
+from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
 
-def test_create_thick_boundary_mask():
-    input_mask = np.zeros((6, 6, 6))
-    input_mask[1:3, 1:5, 1:5] = 1
-    input_mask[3:5, 1:5, 1:5] = 2
+def _print_arrays(*arrays):
+    class Colors:
 
-    with pytest.raises(AssertionError):
-        create_thick_boundary_mask(input_mask, 1, 2, -1)
+        RED = "\u001b[31m"
+        CYAN = "\u001b[36m"
+        GREEN = "\u001b[32m"
+        WHITE = "\u001B[37m"
+        YELLOW = "\u001b[33m"
+        PURPLE = "\u001B[35m"
+        BLACK = "\u001B[30m"
+        BLUE = "\u001B[33m"
+        END = "\033[0m"
 
-    assert np.all(~create_thick_boundary_mask(input_mask, 2, 3, 1))
-    npt.assert_array_equal(create_thick_boundary_mask(input_mask, 2, 2, 1), (input_mask == 2))
+    def row2str(row):
+        return " ".join([f"{Colors.END}{colors[i]}{i:>2}{Colors.END}" for i in row])
 
-    expected_res = np.full(input_mask.shape, False)
-    expected_res[2:4, 1:5, 1:5] = True
-    npt.assert_array_equal(create_thick_boundary_mask(input_mask, 1, 2, 1), expected_res)
-    npt.assert_array_equal(create_thick_boundary_mask(input_mask, 1, 2, 2), (input_mask > 0))
-    assert np.all(~create_thick_boundary_mask(input_mask, 1, 2, 70))
+    colors = {
+        0: Colors.WHITE,
+        1: Colors.CYAN,
+        2: Colors.GREEN,
+        3: Colors.BLUE,
+        4: Colors.YELLOW,
+        5: Colors.PURPLE,
+    }
+    for i in range(6, 10000):
+        colors[i] = Colors.WHITE
+
+    string = ""
+
+    for planes in zip(*arrays):
+        for rows in zip(*planes):
+            string += "\t\t".join(map(row2str, rows)) + "\n"
+        string += "\n"
+
+    return string
+
+
+@pytest.fixture
+def annotation():
+
+    raw = np.zeros((6, 8, 8), dtype=np.int32)
+
+    raw[(1, 2), 2:6, 2:6] = 1
+    raw[(3, 4), 2:6, 2:6] = 2
+
+    return raw
+
+
+def test_region_dilation(annotation):
+
+    actual_mask = tested.region_dilation(annotation, region_label=1, shading_target_label=0)
+
+    expected_mask = np.array(
+        [
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+        ],
+        dtype=np.int32,
+    )
+
+    npt.assert_array_equal(
+        actual_mask.astype(int),
+        expected_mask.astype(int),
+        err_msg=_print_arrays(actual_mask.astype(int), expected_mask.astype(int)),
+    )
+
+    actual_mask = tested.region_dilation(annotation, region_label=2, shading_target_label=0)
+
+    expected_mask = np.array(
+        [
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+        ],
+        dtype=np.int32,
+    )
+
+    npt.assert_array_equal(
+        actual_mask.astype(int),
+        expected_mask.astype(int),
+        err_msg=_print_arrays(actual_mask.astype(int), expected_mask.astype(int)),
+    )
+
+
+def test_sequential_region_shading(annotation):
+
+    res = tested._sequential_region_shading(
+        annotation, region_label=2, shading_target_label=0, shades=[5, 4]
+    )
+
+    expected_shading = np.array(
+        [
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [4, 4, 4, 4, 4, 4, 4, 4],
+                [4, 4, 4, 4, 4, 4, 4, 4],
+                [4, 4, 0, 0, 0, 0, 4, 4],
+                [4, 4, 0, 0, 0, 0, 4, 4],
+                [4, 4, 0, 0, 0, 0, 4, 4],
+                [4, 4, 0, 0, 0, 0, 4, 4],
+                [4, 4, 4, 4, 4, 4, 4, 4],
+                [4, 4, 4, 4, 4, 4, 4, 4],
+            ],
+            [
+                [4, 4, 4, 4, 4, 4, 4, 4],
+                [4, 5, 5, 5, 5, 5, 5, 4],
+                [4, 5, 0, 0, 0, 0, 5, 4],
+                [4, 5, 0, 0, 0, 0, 5, 4],
+                [4, 5, 0, 0, 0, 0, 5, 4],
+                [4, 5, 0, 0, 0, 0, 5, 4],
+                [4, 5, 5, 5, 5, 5, 5, 4],
+                [4, 4, 4, 4, 4, 4, 4, 4],
+            ],
+            [
+                [4, 4, 4, 4, 4, 4, 4, 4],
+                [4, 5, 5, 5, 5, 5, 5, 4],
+                [4, 5, 0, 0, 0, 0, 5, 4],
+                [4, 5, 0, 0, 0, 0, 5, 4],  # 2 was here
+                [4, 5, 0, 0, 0, 0, 5, 4],
+                [4, 5, 0, 0, 0, 0, 5, 4],
+                [4, 5, 5, 5, 5, 5, 5, 4],
+                [4, 4, 4, 4, 4, 4, 4, 4],
+            ],
+            [
+                [4, 4, 4, 4, 4, 4, 4, 4],
+                [4, 5, 5, 5, 5, 5, 5, 4],
+                [4, 5, 0, 0, 0, 0, 5, 4],
+                [4, 5, 0, 0, 0, 0, 5, 4],  # 2 was here
+                [4, 5, 0, 0, 0, 0, 5, 4],
+                [4, 5, 0, 0, 0, 0, 5, 4],
+                [4, 5, 5, 5, 5, 5, 5, 4],
+                [4, 4, 4, 4, 4, 4, 4, 4],
+            ],
+            [
+                [4, 4, 4, 4, 4, 4, 4, 4],
+                [4, 5, 5, 5, 5, 5, 5, 4],
+                [4, 5, 5, 5, 5, 5, 5, 4],
+                [4, 5, 5, 5, 5, 5, 5, 4],
+                [4, 5, 5, 5, 5, 5, 5, 4],
+                [4, 5, 5, 5, 5, 5, 5, 4],
+                [4, 5, 5, 5, 5, 5, 5, 4],
+                [4, 4, 4, 4, 4, 4, 4, 4],
+            ],
+        ],
+        dtype=np.int32,
+    )
+
+    npt.assert_array_equal(res, expected_shading, err_msg=_print_arrays(res, expected_shading))
 
 
 def test_shading_from_boundary():
-    input_mask = np.zeros((6, 6, 6))
-    input_mask[1:3, 1:5, 1:5] = 1
-    input_mask[3:5, 1:5, 1:5] = 2
-    shading = RegionShading([0, 1], 1, 0, -1, invert=True)
-    assert np.all(shading_from_boundary(input_mask, shading) == 0)  # negative max distance
-    shading = RegionShading([0, 1], 1, 0, 0, invert=True)
-    assert np.all(shading_from_boundary(input_mask, shading) == 0)
-    shading = RegionShading([0, 3], 3, 0, 1, invert=True)
-    assert np.all(shading_from_boundary(input_mask, shading) == 0)  # roi not present
-    shading = RegionShading([0, 1, 2], 1, 0, 1, invert=True)
-    assert np.all(shading_from_boundary(input_mask, shading) == 0)  # all regions ignored
 
-    expected_res = np.zeros(input_mask.shape, dtype=int)
-    expected_res[3, 1:5, 1:5] = 1
-    shading = RegionShading([0, 1], 1, 0, 1, invert=True)
-    npt.assert_array_equal(shading_from_boundary(input_mask, shading), expected_res)
-    expected_res[4, 1:5, 1:5] = 2
-    shading = RegionShading([0, 1], 1, 0, 2, invert=True)
-    npt.assert_array_equal(shading_from_boundary(input_mask, shading), expected_res)
-    shading = RegionShading([0, 1], 1, 0, 10, invert=True)
-    npt.assert_array_equal(shading_from_boundary(input_mask, shading), expected_res)
-    expected_res[1:3, 0, 1:5] = 1
-    expected_res[1:3, 5, 1:5] = 1
-    expected_res[1:3, 1:5, 0] = 1
-    expected_res[1:3, 1:5, 5] = 1
-    expected_res[0, 1:5, 1:5] = 1
-    expected_res[5, 1:5, 1:5] = 3
-    shading = RegionShading([1], 1, 0, 10, invert=True)
-    npt.assert_array_equal(shading_from_boundary(input_mask, shading), expected_res)
+    input_mask = np.array(
+        [
+            [
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 0],
+                [0, 1, 1, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0],
+                [0, 2, 2, 2, 2, 0],
+                [0, 2, 2, 2, 2, 0],
+                [0, 2, 2, 2, 2, 0],
+                [0, 2, 2, 2, 2, 0],
+                [0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0],
+                [0, 2, 2, 2, 2, 0],
+                [0, 2, 2, 2, 2, 0],
+                [0, 2, 2, 2, 2, 0],
+                [0, 2, 2, 2, 2, 0],
+                [0, 0, 0, 0, 0, 0],
+            ],
+            [
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+            ],
+        ],
+        dtype=np.int32,
+    )
+
+    # negative limit distance is not valid
+    shading = tested.RegionShading(
+        ids=[0, 1], boundary_region=1, boundary_offset=0, limit_distance=-1, invert=True
+    )
+    with pytest.raises(AtlasBuildingToolsError):
+        tested.shading_from_boundary(input_mask, shading)
+
+    # zero limit distance is not valid
+    shading = tested.RegionShading(
+        ids=[0, 1], boundary_region=1, boundary_offset=0, limit_distance=0, invert=True
+    )
+    with pytest.raises(AtlasBuildingToolsError):
+        tested.shading_from_boundary(input_mask, shading)
+
+    # roi not present in the input_mask
+    shading = tested.RegionShading(
+        ids=[0, 3], boundary_region=3, boundary_offset=0, limit_distance=1, invert=True
+    )
+    assert np.all(tested.shading_from_boundary(input_mask, shading) == 0)
+
+    # all regions are ignored
+    shading = tested.RegionShading(
+        ids=[0, 1, 2], boundary_region=1, boundary_offset=0, limit_distance=1, invert=True
+    )
+    assert np.all(tested.shading_from_boundary(input_mask, shading) == 0)
+
+    expected = np.zeros(input_mask.shape, dtype=int)
+    expected[3, 1:5, 1:5] = 1
+    shading = tested.RegionShading(
+        ids=[0, 1], boundary_region=1, boundary_offset=0, limit_distance=1, invert=True
+    )
+    actual = tested.shading_from_boundary(input_mask, shading)
+    npt.assert_array_equal(actual, expected, err_msg=_print_arrays(input_mask, actual, expected))
+
+    expected[4, 1:5, 1:5] = 2
+    shading = tested.RegionShading(
+        ids=[0, 1], boundary_region=1, boundary_offset=0, limit_distance=2, invert=True
+    )
+    actual = tested.shading_from_boundary(input_mask, shading)
+    npt.assert_array_equal(actual, expected, err_msg=_print_arrays(input_mask, actual, expected))
+
+    shading = tested.RegionShading(
+        ids=[0, 1], boundary_region=1, boundary_offset=0, limit_distance=10, invert=True
+    )
+    actual = tested.shading_from_boundary(input_mask, shading)
+    npt.assert_array_equal(actual, expected, err_msg=_print_arrays(input_mask, actual, expected))
+
+    shading = tested.RegionShading(
+        ids=[1], boundary_region=1, boundary_offset=0, limit_distance=10, invert=True
+    )
+    actual = tested.shading_from_boundary(input_mask, shading)
+
+    expected = np.array(
+        [
+            [
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1],
+            ],
+            [
+                [1, 1, 1, 1, 1, 1],
+                [1, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 1],
+                [1, 1, 1, 1, 1, 1],
+            ],
+            [
+                [1, 1, 1, 1, 1, 1],
+                [1, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 1],
+                [1, 1, 1, 1, 1, 1],
+            ],
+            [
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1],
+            ],
+            [
+                [2, 2, 2, 2, 2, 2],
+                [2, 2, 2, 2, 2, 2],
+                [2, 2, 2, 2, 2, 2],
+                [2, 2, 2, 2, 2, 2],
+                [2, 2, 2, 2, 2, 2],
+                [2, 2, 2, 2, 2, 2],
+            ],
+            [
+                [3, 3, 3, 3, 3, 3],
+                [3, 3, 3, 3, 3, 3],
+                [3, 3, 3, 3, 3, 3],
+                [3, 3, 3, 3, 3, 3],
+                [3, 3, 3, 3, 3, 3],
+                [3, 3, 3, 3, 3, 3],
+            ],
+        ]
+    )
+
+    npt.assert_array_equal(actual, expected, err_msg=_print_arrays(input_mask, actual, expected))
 
 
 def test_compute_initial_field_single_weights():
@@ -67,7 +450,7 @@ def test_compute_initial_field_single_weights():
     raw[0, :, :] = 111
     raw[1, :, :] = 222
     region_weights = {111: 1, 222: 1}
-    initial_field = compute_initial_field(raw, region_weights)
+    initial_field = tested.compute_initial_field(raw, region_weights)
     npt.assert_array_equal(initial_field, np.ones((2, 2, 2)))
 
     # Four regions
@@ -77,7 +460,7 @@ def test_compute_initial_field_single_weights():
     raw[2, :, :] = 333
     raw[3, :, :] = 444
     region_weights = {111: 1, 222: -1, 333: 2, 444: 2}
-    initial_field = compute_initial_field(raw, region_weights)
+    initial_field = tested.compute_initial_field(raw, region_weights)
     expected_field = np.zeros_like(raw)
     expected_field[0, :, :] = 1
     expected_field[1, :, :] = -1
@@ -97,9 +480,9 @@ def test_compute_initial_field_with_shadings():
     region_weights = {333: -1, 444: 1}
     shadings = [
         # offset = 1, limit_distance = 3, which is greater than the actual space on the left
-        RegionShading([111, 222], 333, 1, 3),
+        tested.RegionShading([111, 222], 333, 1, 3),
         # offset = 1, limit_distance = 1, which is less than the actual space on the right
-        RegionShading([555, 666], 444, 2, 1),
+        tested.RegionShading([555, 666], 444, 2, 1),
     ]
     expected_field = np.zeros_like(raw)
     expected_field[0, :, :] = 3
@@ -108,17 +491,17 @@ def test_compute_initial_field_with_shadings():
     expected_field[3, :, :] = 1
     expected_field[4, :, :] = 3
     expected_field[5, :, :] = 0
-    initial_field = compute_initial_field(raw, region_weights, shadings)
+    initial_field = tested.compute_initial_field(raw, region_weights, shadings)
     npt.assert_array_equal(initial_field, expected_field)
     # Same field as before, but the regions to shade
     # are specified by means of their complement
     shadings = [
         # Inverted ids selection
-        RegionShading([333, 444, 555, 666], 333, 1, 3, invert=True),
+        tested.RegionShading([333, 444, 555, 666], 333, 1, 3, invert=True),
         # Inverted ids selection
-        RegionShading([111, 222, 333, 444], 444, 2, 1, invert=True),
+        tested.RegionShading([111, 222, 333, 444], 444, 2, 1, invert=True),
     ]
-    initial_field = compute_initial_field(raw, region_weights, shadings)
+    initial_field = tested.compute_initial_field(raw, region_weights, shadings)
     npt.assert_array_equal(initial_field, expected_field)
     # Same annotation as before, but we specify additional single weights
     region_weights = {
@@ -133,9 +516,9 @@ def test_compute_initial_field_with_shadings():
     }
     shadings = [
         # Inverted ids selection
-        RegionShading([333, 444, 555, 666], 333, 1, 3, invert=True),
+        tested.RegionShading([333, 444, 555, 666], 333, 1, 3, invert=True),
         # Inverted ids selection
-        RegionShading([111, 222, 333, 444], 444, 2, 1, invert=True),
+        tested.RegionShading([111, 222, 333, 444], 444, 2, 1, invert=True),
     ]
     expected_field = np.zeros_like(raw)
     expected_field[0, :, :] = 3
@@ -144,7 +527,7 @@ def test_compute_initial_field_with_shadings():
     expected_field[3, :, :] = 1
     expected_field[4, :, :] = 3
     expected_field[5, :, :] = 6
-    initial_field = compute_initial_field(raw, region_weights, shadings)
+    initial_field = tested.compute_initial_field(raw, region_weights, shadings)
     npt.assert_array_equal(initial_field, expected_field)
 
 
@@ -159,10 +542,10 @@ def test_compute_direction_vectors():
     raw[18:21, :, :] = 777  # non-roi, to shade, plus overlayed fixed weight
     region_weights = {111: -5, 222: -5, 333: -1, 444: 0, 555: 1, 777: 5}
     shadings = [
-        RegionShading([666, 777], 555, 1, 3),
+        tested.RegionShading([666, 777], 555, 1, 3),
     ]
-    initial_field = compute_initial_field(raw, region_weights, shadings)
-    direction_vectors = compute_direction_vectors(raw, initial_field, [333, 444, 555])
+    initial_field = tested.compute_initial_field(raw, region_weights, shadings)
+    direction_vectors = tested.compute_direction_vectors(raw, initial_field, [333, 444, 555])
     # Direction vectors are [np.nan] * 3 for every voxel outside the
     # the regions of interest.
     region_of_interest_mask = np.isin(raw, [333, 444, 555])
