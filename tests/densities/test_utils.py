@@ -304,13 +304,6 @@ def get_hierarchy():
                                 "parent_structure_id": 976,
                                 "children": [],
                             },
-                            {
-                                "id": 666666,
-                                "acronym": "CENT2gr",
-                                "name": "Lobule II, granular layer",
-                                "parent_structure_id": 976,
-                                "children": [],
-                            },
                         ],
                     }
                 ],
@@ -324,7 +317,7 @@ def region_map():
     return RegionMap.from_dict(get_hierarchy())
 
 
-def get_hierarchy_info_duplicate():
+def get_hierarchy_info():
     return pd.DataFrame(
         {
             "brain_region": [
@@ -333,70 +326,23 @@ def get_hierarchy_info_duplicate():
                 "Lobule II, granular layer",
                 "Lobule II, Purkinje layer",
                 "Lobule II, molecular layer",
-                "Lobule II, granular layer",
             ],
             "descendant_id_set": [
-                {920, 976, 10708, 10709, 10710, 666666},
-                {976, 10708, 10709, 10710, 666666},
+                {920, 976, 10708, 10709, 10710},
+                {976, 10708, 10709, 10710},
                 {10708},
                 {10709},
                 {10710},
-                {666666},
             ],
         },
-        index=[920, 976, 10708, 10709, 10710, 666666],
+        index=[920, 976, 10708, 10709, 10710],
     )
 
 
-def get_hierarchy_info_unique():
-    return pd.DataFrame(
-        {
-            "brain_region": [
-                "Central lobule",
-                "Lobule II",
-                "Lobule II, granular layer",
-                "Lobule II, molecular layer",
-                "Lobule II, Purkinje layer",
-            ],
-            "id_set": [
-                {920},
-                {976},
-                {10708, 666666},
-                {10710},
-                {10709},
-            ],
-            "descendant_id_set": [
-                {920, 976, 10708, 10709, 10710, 666666},
-                {976, 10708, 10709, 10710, 666666},
-                {10708, 666666},
-                {10710},
-                {10709},
-            ],
-        },
-    )
-
-
-def test_get_hierarchy_info_duplicate(region_map):
+def test_get_hierarchy(region_map):
     pdt.assert_frame_equal(
-        get_hierarchy_info_duplicate(),
-        tested.get_hierarchy_info(region_map, root="Central lobule", unique_names=False),
-    )
-
-
-def test_get_hierarchy_info_unique(region_map):
-    pdt.assert_frame_equal(
-        get_hierarchy_info_unique(),
-        tested.get_hierarchy_info(region_map, root="Central lobule", unique_names=True),
-    )
-
-
-@pytest.fixture
-def volumes(voxel_volume=2):
-    hierarchy_info = get_hierarchy_info_unique()
-    volumes = voxel_volume * np.array([9.0, 8.0, 2.0, 3.0, 2.0])
-    return pd.DataFrame(
-        {"brain_region": hierarchy_info["brain_region"], "volume": volumes},
-        index=hierarchy_info.index,
+        pd.DataFrame(tested.get_hierarchy_info(region_map, root="Central lobule")),
+        get_hierarchy_info(),
     )
 
 
@@ -405,35 +351,24 @@ def annotation():
     return np.array([[[920, 10710, 10710], [10709, 10708, 976], [10708, 10710, 10709]]])
 
 
-def test_compute_region_volumes(volumes, annotation):
-    pdt.assert_frame_equal(
-        volumes,  # expected
-        tested.compute_region_volumes(
-            annotation, voxel_volume=2.0, hierarchy_info=get_hierarchy_info_unique()
-        ),
-    )
-
-
 @pytest.fixture
-def volumes_with_dups(voxel_volume=2):
-    hierarchy_info = get_hierarchy_info_duplicate()
-    volumes = voxel_volume * np.array([9.0, 8.0, 2.0, 2.0, 3.0, 0.0])
-    id_volumes = voxel_volume * np.array([1.0, 1.0, 2.0, 2.0, 3.0, 0.0])
+def volumes(voxel_volume=2):
+    hierarchy_info = get_hierarchy_info()
     return pd.DataFrame(
         {
             "brain_region": hierarchy_info["brain_region"],
-            "volume": volumes,
-            "id_volume": id_volumes,
+            "id_volume": voxel_volume * np.array([1.0, 1.0, 2.0, 2.0, 3.0], dtype=float),
+            "volume": voxel_volume * np.array([9.0, 8.0, 2.0, 2.0, 3.0], dtype=float),
         },
         index=hierarchy_info.index,
     )
 
 
-def test_compute_region_volumes_with_ids(volumes_with_dups, annotation):
+def test_compute_region_volumes(volumes, annotation):
     pdt.assert_frame_equal(
-        volumes_with_dups,  # expected
+        volumes,  # expected
         tested.compute_region_volumes(
-            annotation, voxel_volume=2.0, hierarchy_info=get_hierarchy_info_duplicate()
+            annotation, voxel_volume=2.0, hierarchy_info=get_hierarchy_info()
         ),
     )
 
@@ -441,7 +376,7 @@ def test_compute_region_volumes_with_ids(volumes_with_dups, annotation):
 @pytest.fixture
 def cell_counts(voxel_volume=2):
     counts = voxel_volume * np.array([5.0, 4.0, 1.0, 1.0, 1.0])
-    hierarchy_info = get_hierarchy_info_unique()
+    hierarchy_info = get_hierarchy_info()
     return pd.DataFrame(
         {"brain_region": hierarchy_info["brain_region"], "cell_count": counts},
         index=hierarchy_info.index,
@@ -457,30 +392,7 @@ def test_compute_cell_counts(annotation, cell_density, cell_counts):
     pdt.assert_frame_equal(
         cell_counts,  # expected
         tested.compute_region_cell_counts(
-            annotation, cell_density, voxel_volume=2.0, hierarchy_info=get_hierarchy_info_unique()
-        ),
-    )
-
-
-@pytest.fixture
-def cell_counts_2(voxel_volume=2):
-    counts = voxel_volume * np.array([1.0, 1.0, 1.0, 1.0, 1.0, 0.0])
-    hierarchy_info = get_hierarchy_info_duplicate()
-    return pd.DataFrame(
-        {"brain_region": hierarchy_info["brain_region"], "cell_count": counts},
-        index=hierarchy_info.index,
-    )
-
-
-def test_compute_cell_counts_without_descendants(annotation, cell_density, cell_counts_2):
-    pdt.assert_frame_equal(
-        cell_counts_2,  # expected
-        tested.compute_region_cell_counts(
-            annotation,
-            cell_density,
-            voxel_volume=2.0,
-            hierarchy_info=get_hierarchy_info_duplicate(),
-            with_descendants=False,
+            annotation, cell_density, voxel_volume=2.0, hierarchy_info=get_hierarchy_info()
         ),
     )
 

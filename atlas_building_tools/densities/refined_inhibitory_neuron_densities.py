@@ -419,7 +419,7 @@ def create_inhibitory_neuron_densities(  # pylint: disable=too-many-locals
     """
 
     region_map = RegionMap.from_dict(hierarchy)
-    hierarchy_info = get_hierarchy_info(region_map, root="root", unique_names=False)
+    hierarchy_info = get_hierarchy_info(region_map, root="root")
     L.info("Computing region volumes ...")
     volumes = compute_region_volumes(annotation, voxel_volume, hierarchy_info)
 

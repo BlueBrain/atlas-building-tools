@@ -87,7 +87,7 @@ from atlas_building_tools.densities.refined_inhibitory_neuron_densities import (
 from atlas_building_tools.densities.utils import zero_negative_values
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 
-HOMOGENOUS_REGIONS_PATH = DATA_PATH / "measurements" / "homogenous_regions"
+HOMOGENOUS_REGIONS_PATH = DATA_PATH / "measurements" / "homogenous_regions.csv"
 HOMOGENOUS_REGIONS_REL_PATH = HOMOGENOUS_REGIONS_PATH.relative_to(ABT_PATH)
 MARKERS_README_REL_PATH = (DATA_PATH / "markers" / "README.rst").relative_to(ABT_PATH)
 LINPROG_PATH = "doc/source/bbpp82_628_linprog.pdf"

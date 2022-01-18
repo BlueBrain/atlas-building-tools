@@ -37,7 +37,9 @@ setup(
         "pynrrd>=0.4.0",
         "PyYAML>=5.3.1",
         "rtree>=0.8.3",
-        "scipy>=1.4.1",
+        # Since version 1.6.0, scipy.optimize.linprog has fast, new methods for large, sparse problems
+        # from the HiGHS library. We use the "highs" method in the densities module.
+        "scipy>=1.6.0",
         "scikit-image>=0.17.2",
         "tqdm>=4.44.1",
         "trimesh>=2.38.10",

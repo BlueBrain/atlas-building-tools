@@ -1,16 +1,23 @@
 Changelog
 =========
 
-Version 0.1.8
+Version 0.1.9
 -------------
-- Adds new shading gradient algorithm for the calculation of direction vectors in isocortex and cerebellum [`NSETM_1680_`]
-- Adds missing cerebellum regions in the direction vectors calculation and refactors the implementation [`NSETM_1682_`]
+- Densities optimization: fixes linear program initialization which was corrupted by wrong indexing of data frame [`NSETM-1722`_]
+- Density linear fitting: returns 0 instead of `np.nan` for the average intensity of an empty 3D region [`NSETM-1722`_]
+- Removes management of duplicate region names [`NSETM-1722`_]
+- Uses the `highs` method for solving the linear program by means of `scipy.linprog` [`NSETM-1722`_]
+
+Version 0.1.8 (2021-12-7)
+-------------------------
+- Adds new shading gradient algorithm for the calculation of direction vectors in isocortex and cerebellum [`NSETM-1680`_]
+- Adds missing cerebellum regions in the direction vectors calculation and refactors the implementation [`NSETM-1682`_]
 - Cell counts' linear program: adds no constraints when estimates are missing [`NSETM-1689`_]
 - Uses a voxel-based computation of placement hints as an alternative to meshes [`NSETM-1660`_] [`NSETM-1670`_]
 
 Version 0.1.7 (2021-11-8)
 -------------------------
-- Zero negative density values when they are known to be round-off errors [`NSETM_1665_`]
+- Zero negative density values when they are known to be round-off errors [`NSETM-1665_`]
 
 Version 0.1.6 (2021-10-29)
 --------------------------
@@ -84,6 +91,7 @@ Version 0.1.0 (2021-04-27)
 - CLI to compute a flat map based on the streamlines of a laminar brain region
 - CLI to turn the excel measurement compilation gaba_papers.xlsx of D. Rodarie into a CSV file.
 
+.. _`NSETM-1722`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1722
 .. _`NSETM-1680`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1680
 .. _`NSETM-1689`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1689
 .. _`NSETM-1670`: https://bbpteam.epfl.ch/project/issues/browse/NSETM-1670

@@ -26,7 +26,7 @@ def average_densities_to_cell_counts(
 
     Args:
         average_densities: a data frame whose columns are described in
-            :func:`atlas_building_tools.densities.fitting.linear_fitting` containing the average
+            :func:`atlas_building_tools.densities.fitting.linear_fitting`. It contains the average
             cell densities of brain regions and their associated standard deviations. Columns are
             labelled by T and T_standard_deviation for various cell types T.
         region_volumes: the data frame returned by
@@ -45,10 +45,12 @@ def average_densities_to_cell_counts(
         represented in `average_densities` (e.g., T = "pv+", "inhibitory" or "sst+"). Column
         labels are lower cased.
     """
-    region_volumes = region_volumes.set_index("brain_region")
-    sums = region_volumes.groupby("brain_region")["volume"].sum()
+    assert np.all(region_volumes["brain_region"] == average_densities.index)
 
-    return average_densities.mul(sums, axis="index")
+    region_volumes = region_volumes.set_index("brain_region")
+    result = average_densities.mul(region_volumes["volume"], axis="index")
+
+    return result
 
 
 def resize_average_densities(

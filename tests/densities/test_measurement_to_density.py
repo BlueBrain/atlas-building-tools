@@ -10,8 +10,7 @@ import pytest
 from voxcell import RegionMap  # type: ignore
 
 import atlas_building_tools.densities.measurement_to_density as tested
-from tests.densities.test_utils import get_hierarchy
-from tests.densities.test_utils import get_hierarchy_info_unique as get_hierarchy_info
+from tests.densities.test_utils import get_hierarchy, get_hierarchy_info
 
 TESTS_PATH = Path(__file__).parent.parent
 
@@ -46,9 +45,12 @@ def test_get_parent_region(region_map):
 @pytest.fixture
 def volumes(voxel_volume=2):
     hierarchy_info = get_hierarchy_info()
-    volumes = voxel_volume * np.array([9.0, 8.0, 2.0, 3.0, 2.0])
     return pd.DataFrame(
-        {"brain_region": hierarchy_info["brain_region"], "volume": volumes},
+        {
+            "brain_region": hierarchy_info["brain_region"],
+            "id_volume": voxel_volume * np.array([1.0, 1.0, 2.0, 2.0, 3.0], dtype=float),
+            "volume": voxel_volume * np.array([9.0, 8.0, 2.0, 2.0, 3.0], dtype=float),
+        },
         index=hierarchy_info.index,
     )
 

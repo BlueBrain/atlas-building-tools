@@ -39,6 +39,7 @@ def test_average_densities_to_cell_counts():
 
 
 def test_average_densities_to_cell_counts_2():
+    # Same test as before but with different numerical values.
     average_densities = pd.DataFrame(
         {
             "pv+": [1.0, 2.0],
@@ -62,6 +63,37 @@ def test_average_densities_to_cell_counts_2():
                 "sst+_standard_deviation": [3.0, 8.0],
             },
             index=["A", "B"],
+        ),
+    )
+
+
+def test_average_densities_to_cell_counts_with_reverse_index_order():
+    # Same test as before but with the index of `average_densities`
+    # in reverse order. We check that the `tested.average_densities_to_cell_counts`
+    # does not sort or change in any way the index order.
+    average_densities = pd.DataFrame(
+        {
+            "pv+": [1.0, 2.0],
+            "pv+_standard_deviation": [0.1, 0.2],
+            "sst+": [3.0, 4.0],
+            "sst+_standard_deviation": [0.3, 0.4],
+        },
+        index=["B", "A"],  # Inverse lexico-graphical order
+    )
+    region_volumes = pd.DataFrame(
+        {"volume": [10.0, 20.0], "brain_region": ["B", "A"]}, index=[1, 2]
+    )
+    actual = tested.average_densities_to_cell_counts(average_densities, region_volumes)
+    pdt.assert_frame_equal(
+        actual,
+        pd.DataFrame(
+            {
+                "pv+": [10.0, 40.0],
+                "pv+_standard_deviation": [1.0, 4.0],
+                "sst+": [30.0, 80.0],
+                "sst+_standard_deviation": [3.0, 8.0],
+            },
+            index=["B", "A"],
         ),
     )
 

@@ -441,37 +441,24 @@ def get_aibs_region_names(region_map: "RegionMap") -> Set[str]:
 def get_hierarchy_info(
     region_map: "RegionMap",
     root: str = "Basic cell groups and regions",
-    unique_names: bool = True,
 ) -> "pd.DataFrame":
     """
     Returns the name and the descendant_id_set of each region that can be found by `region_map`.
+
+    Note: We assume that the hierarchy file has unique brain region names.
 
     Args:
         region_map: RegionMap object to navigate the brain regions hierarchy.
         root: (Optional) root of the hierarchy tree used by `region_map`. Defaults to
             "Basic cell groups and regions" which corresponds to the AIBS whole mouse
             brain in AIBS 1.json.
-        unique_names: (Optional) if True, the brain_region column of the output data frame
-            won't contain any duplicate. An additional column, namely the id_set column, is created.
-            It contains, for each unique region name, the sets of identifiers associated to
-            it according to `region_map`. This addresses the situation of a several integer
-            identifiers associated to the same region name. Although this doesn't happen with the
-            vanilla AIBS 1.json file, this happens after the splitting of layer 2/3 of the AIBS
-            Mouse P56 isocortex.
 
     Returns:
-        if `unique_names` is True, a dataframe with three columns
-        (values are fake)
-                 id_set   descendant_id_set    brain_region
-                 {1}         {1, 3}            "Cerebellum"
-                 {2, 4, 10}  {2, 4, 10, 11}    "Isocortex"
-                 ...             ...
-        Otherwise, returns a dataframe with index a list of unique region ids and two columns
+        returns a dataframe with index a list of unique region ids and two columns
         (values are fake)
                  descendant_id_set    brain_region
             1    {1, 3}               "Cerebellum"
             2    {2, 4, 10}           "Isocortex"
-            3    {666666}             "Cerebellum"
                  ...             ...
         The index consists in the sorted list of the identifiers of every region recorded in
         `region_map` under root. The column `descendant_id_set` holds for each region the set of
@@ -489,24 +476,7 @@ def get_hierarchy_info(
         {"brain_region": region_names, "descendant_id_set": descendant_id_sets}, index=region_ids
     )
 
-    if not unique_names:
-        return data_frame
-
-    merge_dict: Dict[str, Dict[str, Set[int]]] = {
-        name: {"id_set": set(), "descendant_id_set": set()} for name in set(region_names)
-    }
-    for id_ in data_frame.index:
-        region_name = data_frame.at[id_, "brain_region"]
-        merge_dict[region_name]["id_set"] |= {id_}
-        merge_dict[region_name]["descendant_id_set"] |= data_frame.at[id_, "descendant_id_set"]
-
-    return pd.DataFrame(
-        {
-            "brain_region": list(merge_dict),
-            "id_set": [v["id_set"] for v in merge_dict.values()],
-            "descendant_id_set": [v["descendant_id_set"] for v in merge_dict.values()],
-        }
-    ).sort_values(by=["brain_region"], key=lambda col: col.str.lower(), ignore_index=True)
+    return data_frame
 
 
 def compute_region_volumes(
@@ -522,7 +492,7 @@ def compute_region_volumes(
         annotation: int array of shape (W, H, D) holding the annotation of the whole AIBS
             mouse brain. (The integers W, H and D are the dimensions of the array).
         voxel_volume: volume in mm^3 of a voxel in any of the volumetric input arrays.
-            This is (25 * 1e-6) ** 3 for an AIBS atlas nrrd file with 25um resolution.
+            This is (25 * 1e-3) ** 3 for an AIBS atlas nrrd file with 25um resolution.
         hierarchy_info: data frame returned by
             :func:`atlas_building_tools.densities.utils.get_hierarchy_info`.
 
@@ -538,29 +508,24 @@ def compute_region_volumes(
         The latter column is created only if `hierarchy_info` has no `id_set` column,
         in which case its index is made of unique integer identifiers.
     """
-    volumes = []
-    for id_ in tqdm(hierarchy_info.index):
-        set_ = hierarchy_info.loc[id_, "descendant_id_set"]
-        mask = np.isin(annotation, list(set_))
-        volumes.append(np.count_nonzero(mask) * voxel_volume)
-
     id_volumes = []
-    if "id_set" not in hierarchy_info.columns:
-        # There are possibly duplicate region names in hierarchy_info["brain_region"].
-        # However, the supplied the hierarchy file is assumed to be duplicate-free
-        # since the completion https://bbpteam.epfl.ch/project/issues/browse/BBPP82-640.
-        for id_ in tqdm(hierarchy_info.index):
-            id_volumes.append(np.count_nonzero(annotation == id_) * voxel_volume)
+    for id_ in tqdm(hierarchy_info.index):
+        id_volumes.append(np.count_nonzero(annotation == id_) * voxel_volume)
 
     result = pd.DataFrame(
         {
             "brain_region": hierarchy_info["brain_region"],
-            "volume": volumes,
+            "id_volume": id_volumes,
         },
         index=hierarchy_info.index,
     )
-    if id_volumes:
-        result["id_volume"] = id_volumes
+
+    volumes = []
+    for id_ in tqdm(hierarchy_info.index):
+        id_set = hierarchy_info.loc[id_, "descendant_id_set"]
+        volume = result.loc[list(id_set), "id_volume"].sum()
+        volumes.append(volume)
+    result["volume"] = volumes
 
     return result
 
@@ -599,20 +564,24 @@ def compute_region_cell_counts(
              ...                             ...
         The index is the sorted list of all region identifiers.
     """
-    counts = []
-    if with_descendants:
-        for set_ in tqdm(hierarchy_info["descendant_id_set"]):
-            mask = np.isin(annotation, list(set_))
-            counts.append(np.sum(density[mask]) * voxel_volume)
-    else:
-        for id_ in tqdm(hierarchy_info.index):
-            mask = annotation == id_
-            counts.append(np.sum(density[mask]) * voxel_volume)
+    id_counts = []
+    for id_ in tqdm(hierarchy_info.index):
+        mask = annotation == id_
+        id_counts.append(np.sum(density[mask]) * voxel_volume)
 
-    return pd.DataFrame(
-        {"brain_region": hierarchy_info["brain_region"], "cell_count": counts},
+    result = pd.DataFrame(
+        {"brain_region": hierarchy_info["brain_region"], "cell_count": id_counts},
         index=hierarchy_info.index,
     )
+
+    if with_descendants:
+        counts = []
+        for id_set in tqdm(hierarchy_info["descendant_id_set"]):
+            count = result.loc[id_set, "cell_count"].sum()
+            counts.append(count)
+        result["cell_count"] = counts
+
+    return result
 
 
 def zero_negative_values(array: NDArray[float]) -> None:

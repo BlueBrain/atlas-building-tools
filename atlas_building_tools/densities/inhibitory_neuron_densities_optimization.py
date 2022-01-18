@@ -16,9 +16,9 @@ between output cell counts and input estimates while enforcing the consistency o
 across the brain region hierarchy.
 
 The file ``doc/source/bbpp82_628_linear_program.pdf`` serves as a documentation of the linear
-program. The initalization of the linear program relies on average density estimates, obtained
-obtained for instance via the ``fitting`` module. We refer to these estimates as the initial
-estimates.
+program, see Section 2 in particular. The initalization of the linear program relies on average
+density estimates, obtained obtained for instance via the ``fitting`` module. We refer to these
+estimates as the initial estimates.
 
 The output are volumetric density nrrd files, one for each of the aforementioned inhibitory
 neuron types. Volumetric densities are derived from the cell counts obtained as the solution of
@@ -38,12 +38,14 @@ the pdf file.
 """
 
 import logging
+import warnings
 from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 from nptyping import NDArray
 from scipy.optimize import linprog
+from tqdm import tqdm
 from voxcell import RegionMap
 
 from atlas_building_tools.densities.inhibitory_neuron_densities_helper import (
@@ -58,7 +60,7 @@ from atlas_building_tools.densities.utils import (
     compute_region_volumes,
     get_hierarchy_info,
 )
-from atlas_building_tools.exceptions import AtlasBuildingToolsError
+from atlas_building_tools.exceptions import AtlasBuildingToolsError, AtlasBuildingToolsWarning
 
 L = logging.getLogger(__name__)
 
@@ -110,12 +112,12 @@ def set_known_values(
             is available and with `KEEP` otherwise. The latter case corresponds to a variable
             delta_{r, m} that is actually added to the linear program.
     """
-    tolerance = 1e-2
+    stddev_tolerance = 1e-2  # absolute tolerance used to compare standard deviation to 0.0
     cell_types = get_cell_types(region_counts)
 
     assert cell_types == get_cell_types(id_counts)
-    assert len(hierarchy_info) == len(region_counts)
-    assert len(hierarchy_info) == len(id_counts)
+    assert np.all(hierarchy_info["brain_region"] == region_counts.index)
+    assert np.all(hierarchy_info.index == id_counts.index)
 
     def _zero_descendants(id_, cell_type, x_result, deltas, hierarchy_info):
         """
@@ -130,11 +132,11 @@ def set_known_values(
     L.info("Preparing variables layout ...")
     x_result = pd.DataFrame(
         {cell_type: np.full(len(id_counts), KEEP) for cell_type in cell_types},
-        index=id_counts.index,
+        index=id_counts.index,  # indexed by integer identifiers
     )
     deltas = pd.DataFrame(
         {cell_type: np.full(len(region_counts), KEEP) for cell_type in cell_types},
-        index=region_counts.index,
+        index=region_counts.index,  # indexed by region names (str)
     )
 
     L.info("Setting known values ...")
@@ -152,8 +154,8 @@ def set_known_values(
         # and its standard deviation are both close to 0.0, we set the cell final counts of every
         # inhibitory neuron subtypes in every descendant regions to 0.0.
         if np.isclose(
-            region_counts.at[region_name, "gad67+_standard_deviation"], 0.0, atol=tolerance
-        ) and np.isclose(region_counts.at[region_name, "gad67+"], 0.0, atol=tolerance):
+            region_counts.at[region_name, "gad67+_standard_deviation"], 0.0, atol=stddev_tolerance
+        ) and np.isclose(region_counts.at[region_name, "gad67+"], 0.0, atol=stddev_tolerance):
             for cell_type in cell_types:
                 _zero_descendants(id_, cell_type, x_result, deltas, hierarchy_info)
 
@@ -163,13 +165,14 @@ def set_known_values(
             if np.isclose(
                 region_counts.at[region_name, cell_type + "_standard_deviation"],
                 0.0,
-                atol=tolerance,
+                atol=stddev_tolerance,
             ):
                 if x_result.at[id_, cell_type] == 0.0 and id_counts.at[id_, cell_type] != 0.0:
                     raise AtlasBuildingToolsError(
-                        f"The count of {cell_type} cells in region {region_name} has the non-zero "
-                        f"estimate {id_counts.at[id_, cell_type]} which is given for certain "
-                        f"whereas an ancestor region has a zero cell count."
+                        f"The count of {cell_type} cells in the atomic 3D region with id {id_} "
+                        f"(corresponding name: '{region_name}') has the non-zero estimate "
+                        f"{id_counts.at[id_, cell_type]} which is given for certain whereas an "
+                        f"ancestor region has a zero cell count."
                     )
                 # Cell count estimates whose associated standard deviations are close to 0.0
                 # are used as definitive estimates.
@@ -217,6 +220,7 @@ def create_bounds(
     for id_ in x_result.index:
         for cell_type in cell_types:
             if np.isnan(x_result.at[id_, cell_type]):
+                assert neuron_counts.at[id_, "cell_count"] >= 0.0
                 bounds.append((0.0, neuron_counts.at[id_, "cell_count"]))
                 x_map[(id_, cell_type)] = len(bounds) - 1
 
@@ -265,6 +269,52 @@ def create_aub_and_bub(
         The implemented constraints are: a_ub X <= b_ub where X stands for the cell count
         variables.
     """
+
+    def check_constraint_3c(b_value: float, region_name: str, id_: int) -> None:
+        """
+        Check if `b_value` is negative in the right-handside of an inequality of type (3c).
+
+        Warns: issues an  AtlasBuildingToolsWarning if `b_value` is negative, as
+            a potential issue is hence detected.
+        """
+        if b_value < 0.0:
+            warnings.warn(
+                f"The inequality constraint of type (3c) for r = '{region_name}', "
+                f"id = {id_} has the negative right-handside value {b_value}, which will "
+                f"cause the corresponding delta variable to be at least {np.abs(b_value)} "
+                f"whereas the target delta value is 0.0.",
+                AtlasBuildingToolsWarning,
+            )
+
+    def check_constraint_3e(
+        constraint: NDArray[float], b_value: float, region_name: str, id_: int
+    ) -> bool:
+        """
+        Check if `contraint` is a valid inequality constraint of type (3e).
+
+        Returns:
+            True if the constraint is not void.
+
+        Raises:
+           AtlasBuildingToolsWarning if an inconsistency is detected.
+        """
+        if b_value != 0.0 or np.any(constraint != 0.0):  # Do not add void constraints
+            if b_value < 0.0 and np.all(constraint >= 0.0):
+                raise AtlasBuildingToolsError(
+                    f"Inconsistent inequality for constraint of type (3e): "
+                    f"r = '{region_name}', id = {id_}.\n The left-hand side is zero whereas "
+                    f"the right-hand side is negative."
+                )
+            if b_value < 0.0:
+                warnings.warn(
+                    f"The inequality constraint of type (3e) for id = {id_} "
+                    f"has the negative right-handside value {b_value}.",
+                    AtlasBuildingToolsWarning,
+                )
+            return True
+
+        return False
+
     a_ub = []
     b_ub = []
     variable_count = len(x_map) + len(deltas_map)
@@ -283,6 +333,7 @@ def create_aub_and_bub(
                         b_value -= x_result.at[desc_id, cell_type]
                 constraint[deltas_map[(region_name, cell_type)]] = -1.0
                 a_ub.append(constraint)  # Inequality (3c) from the pdf file
+                check_constraint_3c(b_value, region_name, id_)
                 b_ub.append(b_value)
 
                 constraint_minus = -constraint
@@ -301,7 +352,7 @@ def create_aub_and_bub(
                 constraint[x_map[(id_, cell_type)]] = 1.0
             else:
                 b_value -= x_result.at[id_, cell_type]
-        if b_value != 0.0 or np.any(constraint != 0.0):  # Do not add void constraints
+        if check_constraint_3e(constraint, b_value, region_name, id_):
             a_ub.append(constraint)  # Inequality (3e) from the pdf file
             b_ub.append(b_value)
 
@@ -338,7 +389,7 @@ def create_volumetric_densities(
     """
 
     densities = {cell_type: neuron_density.copy() for cell_type in cell_types}
-    for id_ in neuron_counts.index:
+    for id_ in tqdm(neuron_counts.index):
         mask = annotation == id_
         neuron_count = neuron_counts.at[id_, "cell_count"]
         for cell_type in cell_types:
@@ -388,6 +439,7 @@ def _compute_initial_cell_counts(
 
     L.info("Computing cell count estimates in every 3D region ...")
     region_counts = average_densities_to_cell_counts(average_densities, volumes)
+
     # Detect cell counts inconsistency between a region and its descendants when
     # estimates are deemed as certain.
     check_region_counts_consistency(region_counts, hierarchy_info)
@@ -426,19 +478,21 @@ def _check_variables_consistency(
             region labeled by an integer identifier in `neuron_count.index`.
 
     Raises:
-        AtlasBuildingToolsError if the following assumption is violated:
-        If cell count estimate of a region is known with certainty for a given cell type,
+        AtlasBuildingToolsError if on the the following assumptions is violated:
+        - if cell count estimate of a region is known with certainty for a given cell type,
         then the cell count of every descendant region is also known with certainty.
+        - a cell count estimate which is given for certain does not
     """
+    cell_count_tolerance = 1e-2  # absolute tolerance to rule out round-off errors
     for region_name, id_, id_set in zip(
         deltas.index, hierarchy_info.index, hierarchy_info["descendant_id_set"]
     ):
         for cell_type in cell_types:
-            if not np.isnan(deltas.loc[region_name, cell_type]):
+            if np.isfinite(deltas.loc[region_name, cell_type]):
                 for desc_id in id_set:
                     if np.isnan(x_result.loc[desc_id, cell_type]):
                         raise AtlasBuildingToolsError(
-                            f"Cell count estimate of region {region_name} for cell type "
+                            f"Cell count estimate of region named '{region_name}' for cell type "
                             f"{cell_type} was given for certain whereas the cell count of "
                             f"descendant id {desc_id} is not certain."
                         )
@@ -447,11 +501,51 @@ def _check_variables_consistency(
                 not np.isnan(x_result.loc[id_, cell_type])
                 and x_result.loc[id_, cell_type] > neuron_count
             ):
-                raise AtlasBuildingToolsError(
-                    f"Cell count estimate of atomic 3D region with id {id_} for cell type"
-                    f" {cell_type} is {x_result.loc[id_, cell_type]}, which exceeds the estimated "
-                    f"overall neuron count for this region, that is {neuron_count}."
-                )
+                if x_result.loc[id_, cell_type] <= neuron_count + cell_count_tolerance:
+                    x_result.loc[id_, cell_type] = neuron_count
+                else:
+                    raise AtlasBuildingToolsError(
+                        f"Cell count estimate of atomic 3D region with id {id_} for cell type"
+                        f" {cell_type} is {x_result.loc[id_, cell_type]}, which exceeds the "
+                        f"estimated overall neuron count for this region, that is {neuron_count}."
+                    )
+
+
+def _check_linprog_consistency(
+    a_ub: NDArray[float], b_ub: NDArray[float], bounds: NDArray[float]
+) -> None:
+    """
+    Check some basic expectations on the linear program providing the cell count estimates.
+
+    Checks are based the program description in Section 2 of
+    ``doc/source/bbpp82_628_linear_program.pdf``
+
+    Args:
+        a_ub: see :fun:`create_aub_and_bub` output description.
+        b_ub: see :fun:`create_aub_and_bub` output description.
+        bounds: see :fun:`create_bounds` output description.
+
+    Raises:
+        AtlasBuildingToolsError if some inconsistency with the description of
+        ``doc/source/bbpp82_628_linear_program.pdf`` is detected.
+    """
+    if not np.all(np.isfinite(a_ub)):
+        raise AtlasBuildingToolsError(
+            "Unexpected infinite values in the matrix A_ub encoding inequality constraints."
+        )
+    if not np.all(np.isfinite(b_ub)):
+        raise AtlasBuildingToolsError("Unexpected infinite values in b_ub.")
+    diff = set(np.unique(a_ub)) - {-1.0, 0.0, 1.0}
+    if diff:
+        raise AtlasBuildingToolsError(
+            f"Unexpected coefficient values the matrix A_ub "
+            f"encoding inequality constraints:  {diff}"
+        )
+    if len(bounds) > 0:  # `bounds` is empty if all values are given for certain.
+        if not np.all(bounds[:, 0] == 0.0):
+            raise AtlasBuildingToolsError("Unexpected non-zero lower bounds in b_ub.")
+        if not np.all(bounds[:, 1] >= 0.0):
+            raise AtlasBuildingToolsError("Unexpected negative upper bounds in b_ub.")
 
 
 def create_inhibitory_neuron_densities(  # pylint: disable=too-many-locals
@@ -517,9 +611,7 @@ def create_inhibitory_neuron_densities(  # pylint: disable=too-many-locals
         linear program cannot be solved.
     """
 
-    hierarchy_info = get_hierarchy_info(
-        RegionMap.from_dict(hierarchy), root="root", unique_names=False
-    )
+    hierarchy_info = get_hierarchy_info(RegionMap.from_dict(hierarchy), root="root")
     average_densities = resize_average_densities(average_densities, hierarchy_info)
 
     L.info("Initialization of the linear program: started")
@@ -541,34 +633,55 @@ def create_inhibitory_neuron_densities(  # pylint: disable=too-many-locals
         x_result, deltas, get_cell_types(region_counts), neuron_counts, hierarchy_info
     )
 
-    L.info("Setting variable bounds and other inequality constraints ...")
+    L.info("Setting variable bounds and further inequality constraints ...")
     bounds, x_map, deltas_map = create_bounds(x_result, deltas, neuron_counts)
-    a_ub, b_ub = create_aub_and_bub(x_result, region_counts, x_map, deltas_map, hierarchy_info)
     variable_count = len(x_map) + len(deltas_map)
+    assert set(x_map.values()) == set(range(len(x_map)))
+    assert set(deltas_map.values()) == set(range(len(x_map), variable_count))
 
-    L.info("Initialization of the linear program: finished")
+    a_ub, b_ub = create_aub_and_bub(x_result, region_counts, x_map, deltas_map, hierarchy_info)
+
+    assert variable_count == len(bounds)
+    assert variable_count == a_ub.shape[1]
+    _check_linprog_consistency(a_ub, b_ub, bounds)
+
+    L.info("Initialization of the linear program: finished.")
     if variable_count != 0:  # linprog raises a ValueError if c_row is empty
         c_row = np.zeros((variable_count,), dtype=float)
-        for (region_name, cell_type), row_index in deltas_map.items():
+        for (region_name, cell_type), index in deltas_map.items():
             std_name = cell_type + "_standard_deviation"
-            c_row[row_index] = 1.0 / region_counts.at[region_name, std_name]
-            assert not np.isnan(c_row[deltas_map[(region_name, cell_type)]])
+            c_row[index] = 1.0 / region_counts.at[region_name, std_name]
+            assert c_row[index] > 0.0
+
         L.info(
             "Solving linear program with %d variables and %d inequality constraints",
             variable_count,
             len(b_ub),
         )
-        result = linprog(c=c_row, A_ub=a_ub, b_ub=b_ub, bounds=replace_inf_with_none(bounds))
+        result = linprog(
+            c=c_row,
+            A_ub=a_ub,
+            b_ub=b_ub,
+            bounds=replace_inf_with_none(bounds),
+            method="highs",
+        )
         if not result.success:
             raise AtlasBuildingToolsError(
                 "The linear program minimizing the distances to cell count estimates couldn't "
                 "be solved."
             )
 
+        # inhibitory neuron count estimates x_{i, m} and delta_{r, m} values are non-negative
+        assert np.all(result.x >= 0.0)
+        # inhibitory neuron count estimates x_{i, m} don't exceed prescribed bounds
+        # (over all neuron counts)
+        assert np.all(result.x <= bounds[:, 1])
+
+        L.info("Mapping linear program output back to cell count variables ...")
         for (id_, cell_type), row_index in x_map.items():
             x_result.at[id_, cell_type] = result.x[row_index]
 
-    L.info("Creating volumetric densities out of optimized cell counts ...")
+    L.info("Creating volumetric densities out of cell count estimates ...")
 
     return create_volumetric_densities(
         x_result, annotation, neuron_density, neuron_counts, get_cell_types(region_counts)

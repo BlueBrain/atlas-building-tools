@@ -14,7 +14,7 @@ quite similar across its subregions.
 
 For each cell type, there are hence three linear fittings.
 To estimate the average density of a cell type T of a brain region R, we select the linear mapping
-obtained for T and the group R belongs to.
+obtained for T and the group R it belongs to.
 """
 
 import logging
@@ -96,7 +96,7 @@ def create_dataframe_from_known_densities(
             result.at[region_name, cell_type.lower() + "_standard_deviation"] = np.mean(
                 average_densities[cell_type_mask]["standard_deviation"]
             )
-    result.sort_index(inplace=True, axis=1)
+    result.sort_index(inplace=True, axis=1)  # sort columns in lexico-graphical order
 
     return result
 
@@ -140,12 +140,13 @@ def fill_in_homogenous_regions(
     """
 
     hierarchy_info = hierarchy_info.copy()
+    hierarchy_info["id"] = hierarchy_info.index
     hierarchy_info.set_index("brain_region", inplace=True)
     inhibitory_mask = homogenous_regions["cell_type"] == "inhibitory"
 
     for region_name in homogenous_regions[inhibitory_mask]["brain_region"]:
         desc_id_set = hierarchy_info.at[region_name, "descendant_id_set"]
-        id_mask = [(id_set & desc_id_set) == id_set for id_set in hierarchy_info["id_set"]]
+        id_mask = [id_ in desc_id_set for id_ in hierarchy_info["id"]]
         for child_region_name in hierarchy_info[id_mask].index:
             region_mask = np.isin(
                 annotation, list(hierarchy_info.at[child_region_name, "descendant_id_set"])
@@ -163,7 +164,7 @@ def fill_in_homogenous_regions(
 
     for region_name in homogenous_regions[excitatory_mask]["brain_region"]:
         desc_id_set = hierarchy_info.at[region_name, "descendant_id_set"]
-        id_mask = [(id_set & desc_id_set) == id_set for id_set in hierarchy_info["id_set"]]
+        id_mask = [id_ in desc_id_set for id_ in hierarchy_info["id"]]
         for child_region_name in hierarchy_info[id_mask].index:
             densities.at[child_region_name, "inhibitory_neuron"] = 0.0
             densities.at[child_region_name, "inhibitory_neuron_standard_deviation"] = 0.0
@@ -188,7 +189,7 @@ def compute_average_intensity(
     Returns:
         the average intensity over `volume_mask`, restricted to the specified `slices` if
         any. If the restricted subvolume is empty (e.g., the volume does not intersect any slice),
-        the returned value is ``np.nan```.
+        the returned value is 0.0.
     """
 
     if slices is None:
@@ -201,7 +202,7 @@ def compute_average_intensity(
     if np.any(restricted_mask):
         return np.mean(intensity[restricted_mask])
 
-    return np.nan
+    return 0.0
 
 
 def compute_average_intensities(
@@ -419,7 +420,7 @@ def compute_fitting_coefficients(
                     clouds[group_name][cell_type]["ydata"].append(density)
                     clouds[group_name][cell_type]["sigma"].append(standard_deviation)
 
-        L.info("Computing regression coefficients %d cell types ...", len(cell_types))
+        L.info("Computing regression coefficients for %d cell types ...", len(cell_types))
         for cell_type in tqdm(cell_types):
             cloud = clouds[group_name][cell_type]
             result[group_name][cell_type] = linear_fitting_xy(
