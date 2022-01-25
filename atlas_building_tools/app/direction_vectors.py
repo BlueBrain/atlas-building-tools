@@ -254,7 +254,7 @@ def interpolate(  # pylint: disable=too-many-arguments,too-many-locals
     # Check nrrd metadata consistency
     assert_meta_properties(voxel_data)
 
-    with open(metadata_path, "r") as file_:
+    with open(metadata_path, "r", encoding="utf-8") as file_:
         metadata = json.load(file_)
 
     if restrict_to_layer and "layers" not in metadata.keys():

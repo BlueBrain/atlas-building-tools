@@ -24,4 +24,4 @@ max-args=7
 # List of classes names for which member attributes should not be checked
 # (useful for classes with attributes dynamically set). This supports can work
 # with qualified names.
-ignored-classes=open3d
+ignored-classes=open3d, pandas

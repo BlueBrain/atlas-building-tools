@@ -35,9 +35,7 @@ def warn_on_nan_vectors(
     nans = np.mean(nan_mask)
     if nans > 0.0:
         warnings.warn(
-            "(NaN, NaN, NaN) direction vectors in {proportion:.3%} of the {name} voxels".format(
-                proportion=float(nans), name=region_name
-            ),
+            f"(NaN, NaN, NaN) direction vectors in {float(nans):.3%} of the {region_name} voxels",
             UserWarning,
         )
         if region_name.lower() == "isocortex":

@@ -263,7 +263,7 @@ def compute_average_soma_radius(
             radius: float = _compute_spot_radius(spot, greyscale, delta)
             if not np.isnan(radius):
                 rgb = tuple(png[tuple(spot)])
-                hexa_color_code = "#%02x%02x%02x" % rgb[:3]
+                hexa_color_code = f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
                 # The svg-to-png conversion has created unregistered shades on region boundaries.
                 # These new colors without entries in the color map represent < 2 percents
                 # of the colored pixels. We just skip them if they happen to be spot centers.
@@ -294,7 +294,7 @@ def svg_to_png(
             conversion.
     """
     svg_str = ""
-    with open(svg_filename, "r") as file_:
+    with open(svg_filename, "r", encoding="utf-8") as file_:
         svg_str = file_.read()
         if remove_strokes:
             for regexp in [
@@ -310,7 +310,8 @@ def svg_to_png(
     if output_name is None:
         output_name = str(svg_filename).replace(".svg", ".png")
 
-    svg2png(bytestring=bytes(svg_str, "UTF-8"), write_to=open(str(output_name), "wb"))
+    with open(str(output_name), "wb") as out_file:
+        svg2png(bytestring=bytes(svg_str, "UTF-8"), write_to=out_file)
 
 
 def extract_color_map(svg_filename: Union[str, "Path"]) -> Dict[str, int]:

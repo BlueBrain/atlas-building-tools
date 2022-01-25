@@ -137,7 +137,8 @@ def create_from_profile(
 
     L.info("Collecting density profiles ...")
 
-    config = yaml.load(open(mtypes_config_path), Loader=yaml.FullLoader)
+    with open(mtypes_config_path, "r", encoding="utf-8") as input_file:
+        config = yaml.load(input_file, Loader=yaml.FullLoader)
 
     density_profile_collection = DensityProfileCollection.load(
         config["mtypeToProfileMapPath"],
@@ -146,7 +147,7 @@ def create_from_profile(
     )
 
     L.info("Density profile collection successfully instantiated.")
-    with open(metadata_path, "r") as file_:
+    with open(metadata_path, "r", encoding="utf-8") as file_:
         metadata = json.load(file_)
     region_map = RegionMap.load_json(hierarchy_path)
 
@@ -311,8 +312,11 @@ def create_from_probability_map(
     """
 
     L.info("Loading configuration file ...")
-    config = yaml.load(open(mtypes_config_path), Loader=yaml.FullLoader)
-    _check_config_sanity(config)
+    with open(mtypes_config_path, "r", encoding="utf-8") as input_file:
+        config = yaml.load(input_file, Loader=yaml.FullLoader)
+        _check_config_sanity(config)
+
+    # pylint: disable=no-member
 
     L.info("Loading probability mapping ...")
     probability_map = pd.read_csv(config["probabilityMapPath"])
@@ -326,7 +330,7 @@ def create_from_probability_map(
     check_probability_map_sanity(probability_map)
 
     L.info("Loading brain region metadata ...")
-    with open(metadata_path, "r") as file_:
+    with open(metadata_path, "r", encoding="utf-8") as file_:
         metadata = json.load(file_)
         assert_metadata_content(metadata)
 
@@ -433,7 +437,7 @@ def create_from_composition(
     region_map = RegionMap.load_json(hierarchy_path)
 
     L.info("Loading metadata json file ...")
-    with open(metadata_path, "r") as jsonfile:
+    with open(metadata_path, "r", encoding="utf-8") as jsonfile:
         metadata = json.load(jsonfile)
 
     L.info("Loading excitatory neuron densities ...")
@@ -505,7 +509,7 @@ def _load_neuronal_mtype_composition(filename: str) -> pd.DataFrame:
     Notes:
         The densities are expressed in number of cells per mm^3
     """
-    with open(filename, "r") as stream:
+    with open(filename, "r", encoding="utf-8") as stream:
         composition = yaml.safe_load(stream)["neurons"]
 
     composition_dict: Dict[str, List] = {"density": [], "layer": [], "mtype": []}

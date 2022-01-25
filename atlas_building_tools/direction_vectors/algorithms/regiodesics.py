@@ -57,10 +57,8 @@ def find_regiodesics_exec_or_raise(executable_name: str) -> str:
     executable_path = find_executable(executable_name)
     if not executable_path:
         msg = (
-            "Regiodesics's {} was not found in this system.\n"
-            "On BB5, you can load Regiodesics with the command 'module load regiodesics'.".format(
-                executable_name
-            )
+            f"Regiodesics's {executable_name} was not found in this system.\n"
+            "On BB5, you can load Regiodesics with the command 'module load regiodesics'."
         )
         raise FileExistsError(msg)
     return executable_path

@@ -56,7 +56,7 @@ def _create_layered_atlas(
     """
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
     region_map = voxcell.RegionMap.load_json(hierarchy_path)
-    with open(metadata_path, "r") as file_:
+    with open(metadata_path, "r", encoding="utf-8") as file_:
         metadata = json.load(file_)
 
     assert_metadata_content(metadata)
@@ -117,7 +117,7 @@ def _placement_hints(  # pylint: disable=too-many-locals
         "before interpolation": problems["before interpolation"]["report"],
         "after interpolation": problems["after interpolation"]["report"],
     }
-    with open(Path(output_dir, "distance_report.json"), mode="w+") as file_:
+    with open(Path(output_dir, "distance_report.json"), mode="w+", encoding="utf-8") as file_:
         json.dump(distance_report, file_, indent=1, separators=(",", ": "))
 
     save_placement_hints(

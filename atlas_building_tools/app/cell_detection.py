@@ -155,7 +155,7 @@ def extract_color_map(
     color_map = {}
     for filepath in filepaths:
         color_map.update(cell_detection.extract_color_map(filepath))
-    with open(output_path, "w") as out:
+    with open(output_path, "w", encoding="utf-8") as out:
         json.dump(color_map, out, indent=1, separators=(",", ": "))
 
 
@@ -200,10 +200,10 @@ def compute_average_soma_radius(
     # apart from the extension.
     filepaths = [Path.resolve(f) for f in Path(input_dir).glob("*.jpg")]
 
-    with open(color_map_path, "r") as file_:
+    with open(color_map_path, "r", encoding="utf-8") as file_:
         color_map = json.load(file_)
         soma_radius_dict = cell_detection.compute_average_soma_radius(
             color_map, filepaths, delta=16, max_radius=10, intensity_threshold=0.1
         )
-        with open(output_path, "w+") as out:
+        with open(output_path, "w+", encoding="utf-8") as out:
             json.dump(soma_radius_dict, out, indent=1, separators=(",", ": "))

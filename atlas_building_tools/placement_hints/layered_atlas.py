@@ -174,10 +174,9 @@ class MeshBasedLayeredAtlas(AbstractLayeredAtlas):
         """
         layers_values = np.unique(layered_volume)
         layers_values = layers_values[layers_values > 0]
-        assert len(layers_values) == len(
-            self.metadata["layers"]["names"]
-        ), "{} layer indices, {} layer strings".format(
-            len(layers_values), len(self.metadata["layers"]["names"])
+        assert len(layers_values) == len(self.metadata["layers"]["names"]), (
+            f"{len(layers_values)} layer indices, "
+            f"{len(self.metadata['layers']['names'])} layer strings"
         )
         L.info(
             "Creating a watertight mesh for each of the %d layers of %s ...",

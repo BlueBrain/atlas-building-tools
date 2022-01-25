@@ -85,7 +85,7 @@ def save_placement_hints(
         # distances wrt to direction vectors of all voxels to the top of layer i (these are
         # non-negative values for voxels lying inside layer_i).
         placement_hints = np.stack((bottom, top), axis=-1) + y[..., np.newaxis]
-        layer_placement_hints_path = str(Path(output_dir, "[PH]{}.nrrd".format(name)))
+        layer_placement_hints_path = str(Path(output_dir, f"[PH]{name}.nrrd"))
         voxel_data.with_data(placement_hints).save_nrrd(layer_placement_hints_path)
 
 

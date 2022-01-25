@@ -32,7 +32,7 @@ def load_region_map(region_map: Union[str, dict, RegionMap]) -> RegionMap:
     elif isinstance(region_map, RegionMap):
         return region_map
     else:
-        raise TypeError("Cannot convert {} to RegionMap".format(type(region_map)))
+        raise TypeError(f"Cannot convert {type(region_map)} to RegionMap")
     return region_map
 
 

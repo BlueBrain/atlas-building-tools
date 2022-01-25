@@ -63,9 +63,8 @@ def interpolate(
     """
     if interpolator not in INTERPOLATION_ALGORITHMS:
         raise AtlasBuildingToolsError(
-            "Unknown interpolator. `interpolator` must be set with one of the following {}".format(
-                INTERPOLATION_ALGORITHMS.keys()
-            )
+            f"Unknown interpolator {interpolator}. `interpolator` must be set with one of the"
+            f"following: {INTERPOLATION_ALGORITHMS.keys()}"
         )
 
     interpolator_ = INTERPOLATION_ALGORITHMS[interpolator]

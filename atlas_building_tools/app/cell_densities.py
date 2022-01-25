@@ -176,7 +176,7 @@ def cell_density(annotation_path, hierarchy_path, nissl_path, output_path, soma_
 
     region_map = RegionMap.load_json(hierarchy_path)
     if soma_radii is not None:
-        with open(soma_radii, "r") as file_:
+        with open(soma_radii, "r", encoding="utf-8") as file_:
             soma_radii = json.load(file_)
 
     overall_cell_density = compute_cell_density(
@@ -313,7 +313,7 @@ def glia_cell_densities(
 
     L.info("Loading hierarchy ...")
     region_map = RegionMap.load_json(hierarchy_path)
-    with open(glia_proportions_path, "r") as file_:
+    with open(glia_proportions_path, "r", encoding="utf-8") as file_:
         glia_proportions = json.load(file_)
 
     glia_densities = {
@@ -799,7 +799,8 @@ def fit_average_densities(
     L.info("Loading hierarchy ...")
     region_map = RegionMap.load_json(hierarchy_path)
     L.info("Loading gene config ...")
-    config = yaml.load(open(gene_config_path), Loader=yaml.FullLoader)
+    with open(gene_config_path, "r", encoding="utf-8") as input_file:
+        config = yaml.load(input_file, Loader=yaml.FullLoader)
 
     gene_voxeldata = {
         gene: VoxelData.load_nrrd(path) for (gene, path) in config["inputGeneVolumePath"].items()
@@ -809,10 +810,10 @@ def fit_average_densities(
     voxel_data += list(gene_voxeldata.values())
     assert_properties(voxel_data)
 
-    with open(config["realignedSlicesPath"], "r") as file_:
+    with open(config["realignedSlicesPath"], "r", encoding="utf-8") as file_:
         slices = json.load(file_)
 
-    with open(config["cellDensityStandardDeviationsPath"], "r") as file_:
+    with open(config["cellDensityStandardDeviationsPath"], "r", encoding="utf-8") as file_:
         cell_density_stddev = json.load(file_)
         cell_density_stddev = {
             # Use the AIBS name attribute as key (this is a unique identifier in 1.json)
@@ -851,7 +852,7 @@ def fit_average_densities(
     fitted_densities_df.to_csv(fitted_densities_output_path, index=False)
     if fitting_maps_output_path is not None:
         L.info("Saving fitting maps to file %s ...", fitting_maps_output_path)
-        with open(fitting_maps_output_path, mode="w+") as file_:
+        with open(fitting_maps_output_path, mode="w+", encoding="utf-8") as file_:
             json.dump(fitting_maps, file_, indent=1, separators=(",", ": "))
 
 
@@ -930,7 +931,7 @@ def inhibitory_neuron_densities(
     if np.any(neuron_density.raw < 0.0):
         raise AtlasBuildingToolsError(f"Negative density value found in {neuron_density_path}.")
     L.info("Loading hierarchy ...")
-    with open(hierarchy_path, "r") as file_:
+    with open(hierarchy_path, "r", encoding="utf-8") as file_:
         hierarchy = json.load(file_)
         if "msg" in hierarchy:
             L.warning("Top-most object contains 'msg'; assuming AIBS JSON layout")

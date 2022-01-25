@@ -58,13 +58,13 @@ def split_isocortex_layer_23(
     """
     L.info("Loading files ...")
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
-    with open(hierarchy_path, "r") as h_file:
+    with open(hierarchy_path, "r", encoding="utf-8") as h_file:
         hierarchy = json.load(h_file)
     direction_vectors = voxcell.VoxelData.load_nrrd(direction_vectors_path)
     # Splits and updates in place hierarchy and annotations
     L.info("Splitting layer 2/3 in layer 2 and layer 3 ...")
     isocortex_layer_23.split(hierarchy, annotation, direction_vectors.raw)
     L.info("Saving modified hierarchy and annotation files ...")
-    with open(output_hierarchy_path, "w") as out:
+    with open(output_hierarchy_path, "w", encoding="utf-8") as out:
         json.dump(hierarchy, out, indent=1, separators=(",", ": "))
     annotation.save_nrrd(output_annotation_path)

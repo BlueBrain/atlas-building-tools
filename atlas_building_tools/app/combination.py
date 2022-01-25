@@ -146,7 +146,9 @@ def combine_markers(annotation_path, hierarchy_path, config):
     """
     annotation = voxcell.VoxelData.load_nrrd(annotation_path)
     hierarchy = voxcell.RegionMap.load_json(hierarchy_path)
-    config = yaml.load(open(config), Loader=yaml.FullLoader)
+
+    with open(config, "r", encoding="utf-8") as input_file:
+        config = yaml.load(input_file, Loader=yaml.FullLoader)
     glia_celltype_densities = pd.DataFrame(config["cellDensity"])
     combination_data = pd.DataFrame(config["combination"])
     volumes = pd.DataFrame(
@@ -170,5 +172,5 @@ def combine_markers(annotation_path, hierarchy_path, config):
     )
 
     proportions = dict(glia_intensities.proportion.astype(str))
-    with open(config["outputCellTypeProportionsPath"], "w") as out:
+    with open(config["outputCellTypeProportionsPath"], "w", encoding="utf-8") as out:
         json.dump(proportions, out, indent=1, separators=(",", ": "))

@@ -75,10 +75,8 @@ def distances_to_mesh_wrt_dir(
     if locations.shape[0] > 0:  # Non empty intersections
         dist[ray_ids] = sign * np.linalg.norm(locations - origins[ray_ids], axis=1)
         wrong_side[ray_ids] = is_obtuse_angle(directions[ray_ids], mesh.face_normals[triangle_ids])
-        # pylint: disable=logging-unsupported-format
-        L.info(
-            "Proportion of intersecting rays: {:.3%}".format(ray_ids.shape[0] / number_of_voxels)
-        )
+        # pylint: disable=logging-unsupported-format, logging-fstring-interpolation
+        L.info(f"Proportion of intersecting rays: {ray_ids.shape[0] / number_of_voxels:.3%}")
     return dist, wrong_side
 
 
@@ -220,8 +218,10 @@ def distances_from_voxels_to_meshes_wrt_dir(
     if np.any(invalid_direction_vectors_mask):
         proportion = float(np.mean(invalid_direction_vectors_mask[layers_volume > 0]))
         warnings.warn(
-            "NaN direction vectors assigned to {:.5%} of the voxels."
-            " Consider interpolating invalid vectors beforehand.".format(proportion),
+            (
+                f"NaN direction vectors assigned to {proportion:.5%} of the voxels."
+                " Consider interpolating invalid vectors beforehand."
+            ),
             UserWarning,
         )
     valid_mask = ~invalid_direction_vectors_mask

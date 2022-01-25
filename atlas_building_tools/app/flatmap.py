@@ -143,7 +143,7 @@ def streamlines_flatmap(
     assert_meta_properties([annotation, direction_vectors])
 
     region_map = voxcell.RegionMap.load_json(hierarchy_path)
-    with open(metadata_path, "r") as file_:
+    with open(metadata_path, "r", encoding="utf-8") as file_:
         metadata = json.load(file_)
 
     L.info("Labelling the layers of the input volume ...")

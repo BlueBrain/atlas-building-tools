@@ -103,7 +103,7 @@ def direction_vectors_for_hemispheres(
         Outside the `inside` volume, the returned direction vectors have np.nan coordinates.
     """
     if algorithm not in ALGORITHMS:
-        raise ValueError("algorithm must be one of {}".format(ALGORITHMS.keys()))
+        raise ValueError(f"algorithm must be one of {ALGORITHMS.keys()}")
 
     set_opposite_hemisphere_as = (
         hemisphere_options["set_opposite_hemisphere_as"] if hemisphere_options is not None else None
@@ -112,7 +112,7 @@ def direction_vectors_for_hemispheres(
         raise (
             ValueError(
                 'Argument "set_opposite_hemisphere_as" should be None, "source" or'
-                ' "target". Got {}'.format(set_opposite_hemisphere_as)
+                f' "target". Got {set_opposite_hemisphere_as}'
             )
         )
     hemisphere_masks = [landscape["inside"]]

@@ -77,7 +77,7 @@ class VolumetricDensityHelper:
         self.cell_type = cell_type
         self.cell_subtypes = cell_subtypes
         self.cell_types = [cell_type] + cell_subtypes
-        self.volumetric_densities: Dict[str, NDArray[float]] = dict()
+        self.volumetric_densities: Dict[str, NDArray[float]] = {}
 
     def initialize_volumetric_densities(self) -> None:
         """
@@ -178,8 +178,7 @@ class VolumetricDensityHelper:
                 # [cell_count + deviation, subsum - subsum_deviation]
                 cell_count += ratio * deviation
 
-        if cell_count > neuron_count:
-            cell_count = neuron_count
+        cell_count = min(cell_count, neuron_count)
 
         # If cell counts were inconsistent, we still preserve proportions
         # of the cell subtypes of `self.cell_type`.

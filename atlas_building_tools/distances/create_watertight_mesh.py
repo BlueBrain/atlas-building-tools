@@ -47,7 +47,7 @@ def _write_numpy_array_to_img_file(img_array: NDArray[bool], filename: str) -> N
     os.remove(filename + ".nhdr")
     # Create a one-line header file for ultraVolume2Mesh containing only the shape of the 3D array.
     header = filename + ".hdr"
-    with open(header, "w") as file_:
+    with open(header, "w", encoding="utf-8") as file_:
         file_.write(" ".join([str(d) for d in img_array.shape]))
 
 
@@ -106,9 +106,9 @@ def ultra_volume_2_mesh(
 
     if Path(volume_path).suffix:
         raise ValueError(
-            "[ultra_volume_2_mesh] "
-            "The provided option 'volume_path' {} has a non-empty file extension. "
-            "The program ultraVolume2mesh expects a filepath without extension.".format(volume_path)
+            "[ultra_vmlume_2_mesh] "
+            f"The provided option 'volume_path' {volume_path} has a non-empty file extension. "
+            "The program ultraVolume2mesh expects a filepath without extension."
         )
     subprocess.check_output(
         [
@@ -219,9 +219,7 @@ def create_watertight_trimesh(
         output_filepath_unopt = output_filepath_opt.replace("_optimized", "")
         for filepath in [output_filepath_unopt, output_filepath_opt]:
             if not Path(filepath).exists():
-                raise AtlasBuildingToolsError(
-                    "Ultraliser failed to generate the mesh {}".format(filepath)
-                )
+                raise AtlasBuildingToolsError(f"Ultraliser failed to generate the mesh {filepath}")
         unoptimized_mesh = trimesh.load_mesh(output_filepath_unopt)
         optimized_mesh = trimesh.load_mesh(output_filepath_opt)
 

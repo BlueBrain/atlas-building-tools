@@ -18,25 +18,18 @@ setup(
     python_requires=">=3.6.0",
     install_requires=[
         "click>=7.0",
-        "cgal_pybind>=0.1.1",
+        "cgal_pybind>=0.1.4",  # python3.9/3.10 wheels for >=0.1.4
         "cached-property>=1.5.2",
-        "networkx>=2.4",
         "nptyping>=1.0.1",
-        # In numba>0.48.0, numba.utils does not exist anymore and this causes numba to
-        # be left unused by numpy-quaternion (warning), see
-        # https://bbpteam.epfl.ch/project/issues/browse/NSETM-1463
-        "numba==0.48.0",
         "numpy>=1.15.0",
-        # numpy-quaternion version is capped because of an issue similar to
-        # https://stackoverflow.com/questions/20518632/importerror-numpy-core-multiarray-failed-to-import
-        "numpy-quaternion<=2019.12.11.22.25.52",
+        "numpy-quaternion[numba]>=2021.11.4.15.26.3",
         "openpyxl>=3.0.3",
         "pandas>=1.0.3",
         "Pillow>=7.1.2",
-        "poisson-recon-pybind>=0.1.0",
+        "poisson-recon-pybind>=0.1.2",  # python3.9/3.10 wheels for >=0.1.2
         "pynrrd>=0.4.0",
         "PyYAML>=5.3.1",
-        "rtree>=0.8.3",
+        "rtree>=0.8.3",  # soft dep required for trimesh to allow indexing
         # Since version 1.6.0, scipy.optimize.linprog has fast, new methods for large, sparse problems
         # from the HiGHS library. We use the "highs" method in the densities module.
         "scipy>=1.6.0",
