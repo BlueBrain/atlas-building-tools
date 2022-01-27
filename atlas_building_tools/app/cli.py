@@ -5,14 +5,14 @@ import logging
 import click
 
 from atlas_direction_vectors.app import direction_vectors, orientation_field
+from atlas_splitter.app import layer_splitter
+from atlas_placement_hints.app import placement_hints
 
 from atlas_building_tools.app import (
     cell_densities,
     combination,
     flatmap,
     mtype_densities,
-    placement_hints,
-    region_splitter,
 )
 from atlas_building_tools.version import VERSION
 
@@ -37,7 +37,7 @@ def cli():
         "flatmap": flatmap.app,
         "orientation-field": orientation_field.cmd,
         "placement-hints": placement_hints.app,
-        "region-splitter": region_splitter.app,
+        "region-splitter": layer_splitter.app,
     }
     help_str = "The main CLI entry point."
     if cairosvg:
