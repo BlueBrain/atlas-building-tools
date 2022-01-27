@@ -17,12 +17,14 @@ setup(
     license="BBP-internal-confidential",
     python_requires=">=3.6.0",
     install_requires=[
+        #"atlas-splitter>=0.1.0",
+        "atlas-direction-vectors==0.1.0.dev0",
+
         "click>=7.0",
         "cgal_pybind>=0.1.4",  # python3.9/3.10 wheels for >=0.1.4
         "cached-property>=1.5.2",
         "nptyping>=1.0.1",
         "numpy>=1.15.0",
-        "numpy-quaternion[numba]>=2021.11.4.15.26.3",
         "openpyxl>=3.0.3",
         "pandas>=1.0.3",
         "Pillow>=7.1.2",

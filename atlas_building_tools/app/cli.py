@@ -4,13 +4,13 @@ import logging
 
 import click
 
+from atlas_direction_vectors.app import direction_vectors, orientation_field
+
 from atlas_building_tools.app import (
     cell_densities,
     combination,
-    direction_vectors,
     flatmap,
     mtype_densities,
-    orientation_field,
     placement_hints,
     region_splitter,
 )

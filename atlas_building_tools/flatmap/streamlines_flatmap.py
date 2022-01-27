@@ -11,7 +11,7 @@ from nptyping import NDArray
 
 from atlas_building_tools.flatmap.utils import reconstruct_surface_mesh
 from atlas_building_tools.utils import compute_boundary
-from atlas_building_tools.vector_field import interpolate
+from atlas_direction_vectors.vector_field import interpolate
 
 if TYPE_CHECKING:  # pragma: no cover
     from voxcell import VoxelData  # type: ignore

@@ -1,5 +1,3 @@
 include:
   - project: nse/ci
-    ref: add_py39_to_pipelines
     file: /ci/pipelines/nse.atlas-building-tools.yml
-

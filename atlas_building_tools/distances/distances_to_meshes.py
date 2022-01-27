@@ -12,7 +12,8 @@ import trimesh  # type: ignore
 from nptyping import NDArray  # type: ignore
 from scipy.interpolate import NearestNDInterpolator  # type: ignore
 
-from atlas_building_tools.direction_vectors.algorithms.utils import normalized
+from atlas_commons.utils import normalized
+
 from atlas_building_tools.distances.utils import memory_efficient_intersection
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
 from atlas_building_tools.utils import is_obtuse_angle, split_into_halves
