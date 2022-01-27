@@ -7,12 +7,14 @@ import click
 from atlas_direction_vectors.app import direction_vectors, orientation_field
 from atlas_splitter.app import layer_splitter
 from atlas_placement_hints.app import placement_hints
-
-from atlas_building_tools.app import (
+from atlas_densities.app import (
     cell_densities,
     combination,
-    flatmap,
     mtype_densities,
+)
+
+from atlas_building_tools.app import (
+    flatmap,
 )
 from atlas_building_tools.version import VERSION
 

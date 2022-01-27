@@ -19,6 +19,8 @@ setup(
     install_requires=[
         "atlas-direction-vectors==0.1.0.dev0",
         "atlas-splitter>=0.1.0",
+        "atlas-placement-hints>=0.1.0.dev0",
+        "atlas-densities>=0.1.0.dev0",
 
         "click>=7.0",
         "cgal_pybind>=0.1.4",  # python3.9/3.10 wheels for >=0.1.4
