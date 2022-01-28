@@ -17,7 +17,7 @@ setup(
     license="BBP-internal-confidential",
     python_requires=">=3.6.0",
     install_requires=[
-        "atlas-direction-vectors==0.1.0.dev0",
+        "atlas-direction-vectors==0.1.1.dev0",
         "atlas-splitter>=0.1.0",
         "atlas-placement-hints>=0.1.0.dev0",
         "atlas-densities>=0.1.0.dev0",
