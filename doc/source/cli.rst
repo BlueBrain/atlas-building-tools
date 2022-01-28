@@ -11,13 +11,6 @@ To check which commands are available, run::
 .. toctree::
    :hidden:
 
-   combination
-   region_splitter
-   direction_vectors
-   orientation_field
-   placement_hints
-   cell_densities
-   mtype_densities
    cell_detection
    flatmap
 
