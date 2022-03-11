@@ -4,10 +4,10 @@ import itertools
 import warnings
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import numpy as np
 import numpy.testing as npt
-from mock import patch
 from PIL import Image  # type: ignore
 
 import atlas_building_tools.cell_detection as tested

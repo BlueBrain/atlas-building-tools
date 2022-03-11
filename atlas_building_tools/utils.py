@@ -1,18 +1,15 @@
 """Generic Atlas files tools"""
+from __future__ import annotations
 
 from typing import Dict, Tuple, Union
 
 import numpy as np  # type: ignore
-from nptyping import NDArray  # type: ignore
+from atlas_commons.typing import BoolArray, NDArray, NumericArray
 from scipy.ndimage.morphology import generate_binary_structure  # type: ignore
 from scipy.signal import correlate  # type: ignore
 from voxcell import RegionMap  # type: ignore
 
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
-
-# pylint: disable=invalid-name
-FloatArray = Union[NDArray[float], NDArray[np.float16], NDArray[np.float32], NDArray[np.float64]]
-NumericArray = Union[NDArray[bool], NDArray[int], NDArray[float]]
 
 
 def load_region_map(region_map: Union[str, dict, RegionMap]) -> RegionMap:
@@ -38,7 +35,7 @@ def load_region_map(region_map: Union[str, dict, RegionMap]) -> RegionMap:
 
 def query_region_mask(
     region: dict, annotation: NDArray[int], region_map: Union[str, dict, "RegionMap"]
-) -> NDArray[bool]:
+) -> BoolArray:
     """
     Create a mask for the region defined by `query`.
 
@@ -67,7 +64,7 @@ def query_region_mask(
 
 def get_region_mask(
     acronym: str, annotation: NDArray[int], region_map: Union[str, dict, "RegionMap"]
-) -> NDArray[bool]:
+) -> BoolArray:
     """
     Create a mask for the region defined by `acronym`.
 

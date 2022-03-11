@@ -1,6 +1,8 @@
 """
 Functions to flatten a laminar brain region by contracting along streamlines.
 """
+from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING
 
@@ -8,12 +10,12 @@ import cgal_pybind
 import numpy as np  # type: ignore
 import trimesh
 from atlas_direction_vectors.vector_field import interpolate
-from nptyping import NDArray
 
 from atlas_building_tools.flatmap.utils import reconstruct_surface_mesh
 from atlas_building_tools.utils import compute_boundary
 
 if TYPE_CHECKING:  # pragma: no cover
+    from atlas_commons.typing import BoolArray, NDArray  # type: ignore
     from voxcell import VoxelData  # type: ignore
 
 L = logging.getLogger(__name__)
@@ -21,7 +23,7 @@ L = logging.getLogger(__name__)
 
 def compute_streamlines_intersections(
     layers: NDArray[np.uint8],
-    direction_vectors: "VoxelData",
+    direction_vectors: VoxelData,
     first_layer: np.uint8,
     second_layer: np.uint8,
 ):
@@ -70,9 +72,9 @@ def compute_streamlines_intersections(
 
 
 def find_closest_vertices(
-    volume_mask: NDArray[bool],
+    volume_mask: BoolArray,
     voxel_to_point_map: NDArray[np.float32],
-    boundary_mesh: "trimesh.Trimesh",
+    boundary_mesh: trimesh.Trimesh,
 ) -> NDArray[int]:
     """
     Compute for each voxel in `volume_mask` the closest vertex in `boundary_mesh`.
@@ -107,9 +109,9 @@ def find_closest_vertices(
 
 
 def compute_voxel_to_pixel_map(
-    volume_mask: NDArray[bool],
+    volume_mask: BoolArray,
     voxel_to_vertex_index_map: NDArray[int],
-    boundary_mesh: "trimesh.Trimesh",
+    boundary_mesh: trimesh.Trimesh,
     resolution: int = 500,
 ):
     """
@@ -172,7 +174,7 @@ def compute_voxel_to_pixel_map(
 
 def compute_flatmap(
     layers: NDArray[np.uint8],
-    direction_vectors: "VoxelData",
+    direction_vectors: VoxelData,
     first_layer: int,
     second_layer: int,
     resolution: int = 500,

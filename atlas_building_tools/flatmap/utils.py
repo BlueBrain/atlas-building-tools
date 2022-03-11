@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import trimesh
-from nptyping import NDArray
+from atlas_commons.typing import BoolArray  # type: ignore
 from poisson_recon_pybind import Vector3dVector, create_poisson_surface
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -15,7 +15,7 @@ if TYPE_CHECKING:  # pragma: no cover
 L = logging.getLogger(__name__)
 
 
-def reconstruct_surface_mesh(volume: NDArray[bool], normals: "VoxelData") -> trimesh.Trimesh:
+def reconstruct_surface_mesh(volume: BoolArray, normals: "VoxelData") -> trimesh.Trimesh:
     """
     Reconstruct a 3D surface mesh from a 3D binary image.
 

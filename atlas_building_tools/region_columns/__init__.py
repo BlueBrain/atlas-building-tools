@@ -10,7 +10,7 @@ of the circuit is simulated.
 from typing import Optional
 
 import numpy as np
-from nptyping import NDArray
+from atlas_commons.typing import FloatArray  # type: ignore
 from voxcell import VoxelData
 
 
@@ -23,9 +23,7 @@ def _indices(voxeldata, positions):
     return tuple(indices[..., ax] for ax in range(indices.shape[-1]))
 
 
-def get_column(
-    center: NDArray[float], direction: NDArray[float], radius: float, source_mask: VoxelData
-):
+def get_column(center: FloatArray, direction: FloatArray, radius: float, source_mask: VoxelData):
     """
     Create a mask for a cylindrical subset of `source_mask`.
 
@@ -87,10 +85,10 @@ def get_central_column(
 
 
 def _get_positions_in_column(
-    seed_position: NDArray[float],
-    unit_vector: NDArray[float],
+    seed_position: FloatArray,
+    unit_vector: FloatArray,
     radius: float,
-    positions: NDArray[float],
+    positions: FloatArray,
 ):
     """
     Returns a boolean mask of shape `positions.shape[0]` indicating which positions are inside the

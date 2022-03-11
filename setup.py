@@ -17,34 +17,28 @@ setup(
     license="BBP-internal-confidential",
     python_requires=">=3.6.0",
     install_requires=[
-        "atlas-direction-vectors==0.1.1.dev0",
-        "atlas-splitter>=0.1.0",
-        "atlas-placement-hints>=0.1.0.dev0",
-        "atlas-densities>=0.1.0.dev0",
-        "click>=7.0",
-        "cgal_pybind>=0.1.4",  # python3.9/3.10 wheels for >=0.1.4
-        "cached-property>=1.5.2",
-        "nptyping>=1.0.1",
-        "numpy>=1.15.0",
-        "openpyxl>=3.0.3",
-        "pandas>=1.0.3",
-        "Pillow>=7.1.2",
+        "atlas-direction-vectors>=0.1.1",
+        "atlas-splitter>=0.1.1",
+        "atlas-placement-hints>=0.1.1",
+        "atlas-densities>=0.1.1",
+        "cgal_pybind>=0.1.4",
         "poisson-recon-pybind>=0.1.2",  # python3.9/3.10 wheels for >=0.1.2
-        "pynrrd>=0.4.0",
-        "PyYAML>=5.3.1",
+        "voxcell>=3.0.0",
+        "click>=7.0",
+        "numpy>=1.15.0",
         "rtree>=0.8.3",  # soft dep required for trimesh to allow indexing
         # Since version 1.6.0, scipy.optimize.linprog has fast, new methods for large, sparse problems
         # from the HiGHS library. We use the "highs" method in the densities module.
         "scipy>=1.6.0",
-        "scikit-image>=0.17.2",
-        "tqdm>=4.44.1",
         "trimesh>=2.38.10",
-        "voxcell>=3.0.0",
-        "xlrd>=1.0.0",
     ],
     extras_require={
-        "cell-detection": "cairosvg>=2.4.2",
-        "tests": ["pytest>=4.4.0", "mock>=2.0.0", "cairosvg>=2.4.2"],
+        "cell-detection": [
+            "cairosvg>=2.4.2",
+            "scikit-image>=0.17.2",
+            "Pillow>=7.1.2",
+        ],
+        "tests": ["pytest>=4.4.0", "cairosvg>=2.4.2"],
     },
     packages=find_packages(),
     include_package_data=True,
@@ -54,5 +48,6 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
 )

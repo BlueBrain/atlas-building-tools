@@ -12,6 +12,8 @@ radius is determined experimentally.
 The mapping which assigns a soma center to an AIBS brain region is computed by means of companion
 svg files which annotate each greyscale image.
 """
+from __future__ import annotations
+
 import logging
 import re
 import warnings
@@ -21,7 +23,6 @@ from xml.dom import minidom  # type: ignore
 
 import numpy as np  # type: ignore
 from cairosvg import svg2png  # type: ignore
-from nptyping import NDArray  # type: ignore
 from PIL import Image  # type: ignore
 from scipy.ndimage import filters  # type: ignore
 from scipy.optimize import curve_fit  # type: ignore
@@ -30,6 +31,8 @@ from skimage import morphology  # type: ignore
 if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
 
+    from atlas_commons.typing import BoolArray, FloatArray, NDArray
+
 
 L = logging.getLogger(__name__)
 logging.captureWarnings(True)
@@ -37,7 +40,7 @@ logging.captureWarnings(True)
 FITTING_PARAMETERS = [10.0, 200.0, 0.0, 0.4]  # determined experimentally
 
 
-def remove_disk(coord: NDArray[int], radius: int, image: NDArray[float]) -> None:
+def remove_disk(coord: NDArray[int], radius: int, image: FloatArray) -> None:
     """
     Remove a disk of radius `radius` centered at `coord` from the input 2D `image`.
 
@@ -59,7 +62,7 @@ def remove_disk(coord: NDArray[int], radius: int, image: NDArray[float]) -> None
     image[bottom[0] : top[0], bottom[1] : top[1]][disk_mask] = 0
 
 
-def find_spots(image: NDArray[float], radius: int, epsilon: float = 0.1) -> NDArray[int]:
+def find_spots(image: FloatArray, radius: int, epsilon: float = 0.1) -> NDArray[int]:
     """
     Find all the light spots of radius <= `radius` and whose intensity exceeds `epsilon`.
 
@@ -91,7 +94,7 @@ def find_spots(image: NDArray[float], radius: int, epsilon: float = 0.1) -> NDAr
     return np.array(spots)
 
 
-def intensity_curve_fitting(curve: NDArray[float], delta: int) -> float:
+def intensity_curve_fitting(curve: FloatArray, delta: int) -> float:
     """
     Fit a bell-shaped curve to a function reaching its maximum at `delta`.
 
@@ -133,7 +136,7 @@ def intensity_curve_fitting(curve: NDArray[float], delta: int) -> float:
     return np.nan
 
 
-def _compute_spot_radius(spot: NDArray[int], greyscale: NDArray[float], delta: int) -> float:
+def _compute_spot_radius(spot: NDArray[int], greyscale: FloatArray, delta: int) -> float:
     """
     Compute the radius of a light spot based on intensity curve fitting.
 
@@ -176,7 +179,7 @@ def _jpg_to_greyscale(
     png: Image,
     gaussian_filter_stddev: float = 1.5,
     intensity_threshold: float = 0.1,
-) -> NDArray[float]:
+) -> FloatArray:
     """
     Convert a jpg image to a greyscale 2D array.
 
