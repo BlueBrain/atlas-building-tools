@@ -1,6 +1,10 @@
 Changelog
 =========
 
+Version 0.1.10
+--------------
+- add an NRRD merge cli utility [`NSETM-1934`]
+
 Version 0.1.9
 -------------
 - Densities optimization: fixes linear program initialization which was corrupted by wrong indexing of data frame [`NSETM-1722`_]

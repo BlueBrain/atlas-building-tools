@@ -12,6 +12,7 @@ setup(
     author_email="bbp-ou-nse@groupes.epfl.ch",
     version=VERSION,
     description="Library containing tools for building atlases",
+    long_description="Library containing tools for building atlases",
     url="https://bbpgitlab.epfl.ch/nse/atlas-building-tools",
     download_url="git@bbpgitlab.epfl.ch:nse/atlas-building-tools.git",
     license="BBP-internal-confidential",

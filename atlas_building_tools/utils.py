@@ -1,15 +1,18 @@
 """Generic Atlas files tools"""
 from __future__ import annotations
 
-from typing import Dict, Tuple, Union
+import logging
+from typing import Dict, List, Tuple, Union
 
 import numpy as np  # type: ignore
 from atlas_commons.typing import BoolArray, NDArray, NumericArray
 from scipy.ndimage.morphology import generate_binary_structure  # type: ignore
 from scipy.signal import correlate  # type: ignore
-from voxcell import RegionMap  # type: ignore
+from voxcell import RegionMap, VoxelData  # type: ignore
 
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
+
+L = logging.getLogger(__name__)
 
 
 def load_region_map(region_map: Union[str, dict, RegionMap]) -> RegionMap:
@@ -295,3 +298,69 @@ def get_layer_masks(
     layers = create_layered_volume(annotated_volume, region_map, metadata)
 
     return {name: layers == i for (i, name) in enumerate(metadata["layers"]["names"], 1)}
+
+
+def _merge_nrrd(source: "VoxelData", target: "VoxelData", sentinel) -> "VoxelData":
+    """Merge voxels in `source` to `target`, ignoring those with `sentinel` in the last dimension.
+
+    Note: source and target are unmodified
+
+    If the sentinel occupies all the values in the last dimension, the voxel is ignored.
+    Ex: If a voxel has the value (0, 0, 1) it would not be ignored if the sentinel is 0
+    """
+    if not np.allclose(source.shape, target.shape):
+        raise ValueError(f"Different shapes: {source.shape} != {target.shape}")
+
+    if not np.allclose(source.offset, target.offset):
+        raise ValueError(f"Different offsets: {source.offset} != {target.offset}")
+
+    if not np.allclose(source.voxel_dimensions, target.voxel_dimensions):
+        raise ValueError(
+            f"Different voxel dimensions: {source.voxel_dimensions} != "
+            f"{target.voxel_dimensions}"
+        )
+
+    if source.payload_shape != target.payload_shape:
+        raise ValueError(
+            f"Different payload sizes: {source.payload_shape} != {target.payload_shape}"
+        )
+
+    if np.isnan(sentinel):
+        mask = np.isnan(source.raw)
+    else:
+        mask = source.raw == sentinel
+
+    mask = np.invert(mask.all(axis=-1))
+    ret = target.raw.copy()
+    ret[mask] = source.raw[mask]
+
+    return target.with_data(ret)
+
+
+def merge_nrrd(input_paths: List[str], sentinel: str) -> "VoxelData":
+    """Merge multiple NRRD files together
+
+    Args:
+        input_paths: paths of nrrd files to be merged.
+        Ones that come later override contents of earlier files
+        They should all have the same offset, voxel size, and total shape.
+        sentinel: Value for voxels that aren't to be copied (ie: 'nan', or 0)
+
+    Returns:
+        VoxelData
+    """
+    if len(input_paths) == 0:
+        raise ValueError("Must have at least one file to merge")
+
+    ret = VoxelData.load_nrrd(input_paths[0])
+
+    sentinel = ret.raw.dtype.type(sentinel)
+
+    for path in input_paths[1:]:
+        source = VoxelData.load_nrrd(path)
+        try:
+            ret = _merge_nrrd(source, ret, sentinel)
+        except ValueError as exc:
+            raise ValueError(f"For file {path}: {exc}") from exc
+
+    return ret

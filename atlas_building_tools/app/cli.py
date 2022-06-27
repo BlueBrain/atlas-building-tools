@@ -8,7 +8,7 @@ from atlas_direction_vectors.app import direction_vectors, orientation_field
 from atlas_placement_hints.app import placement_hints
 from atlas_splitter.app import layer_splitter
 
-from atlas_building_tools.app import flatmap
+from atlas_building_tools.app import flatmap, nrrd
 from atlas_building_tools.version import VERSION
 
 L = logging.getLogger(__name__)
@@ -26,10 +26,11 @@ def cli():
     logging.basicConfig(level=logging.INFO)
     group = {
         "cell-densities": cell_densities.app,
-        "mtype-densities": mtype_densities.app,
         "combination": combination.app,
         "direction-vectors": direction_vectors.app,
         "flatmap": flatmap.app,
+        "mtype-densities": mtype_densities.app,
+        "nrrd": nrrd.app,
         "orientation-field": orientation_field.cmd,
         "placement-hints": placement_hints.app,
         "region-splitter": layer_splitter.app,

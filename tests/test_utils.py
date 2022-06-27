@@ -6,7 +6,7 @@ TEST_PATH = Path(Path(__file__).parent)
 import numpy as np
 import numpy.testing as npt
 import pytest
-from voxcell import RegionMap
+from voxcell import RegionMap, VoxelData
 
 import atlas_building_tools.utils as tested
 from atlas_building_tools.exceptions import AtlasBuildingToolsError
@@ -291,3 +291,100 @@ def test_assert_metadata_content(region_map, annotated_volume):
         metadata = get_metadata("Isocortex")
         del metadata["layers"]["queries"]
         tested.assert_metadata_content(metadata)
+
+
+def test_merge_nrrd(tmp_path):
+    voxel_dimensions = (10.0, 10.0, 10.0)
+    offset = (10.0, 10.0, 10.0)
+
+    zeros = np.zeros((3, 3, 3, 1))
+    ones = np.ones((3, 3, 3, 1))
+
+    zeros_path = tmp_path / "zeros_path.nrrd"
+    ones_path = tmp_path / "ones_path.nrrd"
+
+    VoxelData(zeros, voxel_dimensions, offset).save_nrrd(str(zeros_path))
+    VoxelData(ones, voxel_dimensions, offset).save_nrrd(str(ones_path))
+
+    # zero overwritten
+    ret = tested.merge_nrrd([ones_path, zeros_path], sentinel=0)
+    npt.assert_array_equal(ret.raw, ones)
+    ret = tested.merge_nrrd([zeros_path, ones_path], sentinel=0)
+    npt.assert_array_equal(ret.raw, ones)
+
+    # one overwritten
+    ret = tested.merge_nrrd([zeros_path, ones_path], sentinel=1)
+    npt.assert_array_equal(ret.raw, zeros)
+    ret = tested.merge_nrrd([ones_path, zeros_path], sentinel=1)
+    npt.assert_array_equal(ret.raw, zeros)
+
+    # order matters, last overwrites first
+    ret = tested.merge_nrrd([zeros_path, ones_path], sentinel=10)
+    npt.assert_array_equal(ret.raw, ones)
+    ret = tested.merge_nrrd([ones_path, zeros_path], sentinel=10)
+    npt.assert_array_equal(ret.raw, zeros)
+
+    # order matters, last overwrites first, with nans
+    ret = tested.merge_nrrd([ones_path, zeros_path], sentinel="nan")
+    npt.assert_array_equal(ret.raw, zeros)
+    ret = tested.merge_nrrd([zeros_path, ones_path], sentinel="nan")
+    npt.assert_array_equal(ret.raw, ones)
+
+
+def test__merge_nrrd_last_dim_sentinel():
+    voxel_dimensions = (
+        10.0,
+        10.0,
+        10.0,
+    )
+    offset = (
+        10.0,
+        10.0,
+        10.0,
+    )
+
+    ones = VoxelData(np.ones((3, 3, 3, 2)), voxel_dimensions, offset)
+    almost_zeros = np.zeros((3, 3, 3, 2))
+    almost_zeros[:2, :2, :1, 0] = 1
+    almost_zeros = VoxelData(almost_zeros, voxel_dimensions, offset)
+
+    ret = tested._merge_nrrd(almost_zeros, ones, sentinel=0)
+
+    expected = np.ones((3, 3, 3, 2))
+    expected[:2, :2, :1, :] = (1, 0)
+    npt.assert_array_equal(ret.raw, expected)
+
+    # and now w/ nan's
+    almost_nans = np.full((3, 3, 3, 2), fill_value=np.nan)
+    almost_nans[:2, :2, :2, :2] = ((1, np.nan), (np.nan, 2))
+    almost_nans = VoxelData(almost_nans, voxel_dimensions, offset)
+
+    ret = tested._merge_nrrd(almost_nans, ones, sentinel=np.nan)
+
+    expected = np.ones((3, 3, 3, 2))
+    expected[:2, :2, :2, :2] = ((1, np.nan), (np.nan, 2))
+    npt.assert_array_equal(ret.raw, expected)
+
+
+def test_merge_nrrd_larger_payload():
+    voxel_dimensions = (10.0, 10.0, 10.0)
+    offset = (10.0, 10.0, 10.0)
+
+    shape = (5, 5, 5, 3)
+
+    a = np.full(shape, fill_value=np.nan)
+    a[1:4, 1:4, 1:4, :] = 1.0  # 3 * 3 * 3 * 3 values
+
+    b = np.full(shape, fill_value=np.nan)
+    b[:2, :2, :2, :] = 2.0  # 2 * 2 * 2 * 3 values
+
+    a = VoxelData(a, voxel_dimensions, offset)
+    b = VoxelData(b, voxel_dimensions, offset)
+
+    ret = tested._merge_nrrd(b, a, sentinel=np.nan)
+    assert np.count_nonzero(ret.raw == 1) == 3 * 3 * 3 * 3 - 3
+    assert np.count_nonzero(ret.raw == 2) == 2 * 2 * 2 * 3
+
+    ret = tested._merge_nrrd(a, b, sentinel=np.nan)
+    assert np.count_nonzero(ret.raw == 1) == 3 * 3 * 3 * 3
+    assert np.count_nonzero(ret.raw == 2) == 2 * 2 * 2 * 3 - 3
