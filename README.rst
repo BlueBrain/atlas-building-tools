@@ -22,6 +22,33 @@ The tools allow to:
 
 Tools can be used through a command line interface.
 
+Currently, atlas-building-tools is mainly a wrapper, for backwards compatibility, around:
+
+* https://github.com/BlueBrain/atlas-densities
+* https://github.com/BlueBrain/atlas-direction-vectors
+* https://github.com/BlueBrain/atlas-placement-hints
+* https://github.com/BlueBrain/atlas-splitter
+
+Usage
+=====
+
+It is highly recommended that one uses the BB5 supercomputer to run the sofware.
+
+Thus, one can run the following command:
+
+.. code-block:: bash
+
+    module load unstable py-atlas-building-tools
+
+Check the version of the installed program with::
+
+    atlas-building-tools --version
+
+Check which commands are available with::
+
+    atlas-building-tools --help
+
+
 Installation
 ============
 
@@ -31,22 +58,9 @@ This python project depends on:
 * the BBP C++ toolkits Regiodesics_ and Ultraliser_
 * the BBP python-C++ bindings cgal-pybind_
 
-To install `atlas-buidling-tools` on BB5, run the following command:
-
-.. code-block:: bash
-
-    module load unstable py-atlas-building-tools
-
-Check the version of the installed programm with::
-
-    atlas-building-tools --version
-
-Check which commands are available with::
-
-    atlas-building-tools --help
-
 The remaining installation instructions are only relevant if you want to install `atlas-buidling-tools` on BB5
 with its latest sources. Prior to running
+
 
 .. code-block:: bash
 
@@ -67,13 +81,12 @@ To load Regiodesics on the BB5 cluster, run the following command:
 
     module load regiodesics/0.1.2
 
-For an installation of Regiodesics from the sources, install cmake (version >= 3.5 required),
-boost and OpenSceneGraph_ first.
+For an installation of Regiodesics from the sources, install cmake (version >= 3.5 required), boost and OpenSceneGraph_ first.
 The installation of Regiodesics is as follows.
 
 .. code-block:: bash
 
-    git clone https://$USER@bbpcode.epfl.ch/code/a/viz/Regiodesics
+    git clone https://bbpgitlab.epfl.ch/nse/archive/regiodesics
     cd Regiodesics
     git submodule update --init
     mkdir build
@@ -100,8 +113,8 @@ For an installation of Ultraliser from the sources, install cmake (version >= 3.
 
 .. code-block:: bash
 
-    git clone https://$USER@bbpcode.epfl.ch/code/a/viz/Ultraliser
-    cd Ultraliser
+    git clone https://github.com/BlueBrain/ultraliser
+    cd ultraliser
     mkdir build
     cd build
     cmake ..
@@ -183,8 +196,8 @@ These formatting operations will help you pass the linting check `testenv:lint` 
 .. _`placement-algorithm`: https://bbpteam.epfl.ch/documentation/projects/placement-algorithm/latest/index.html
 .. _PoissonRecon: https://github.com/mkazhdan/PoissonRecon
 .. _`poisson-recon-pybind`: https://bbpgitlab.epfl.ch/nse/poisson-recon-pybind
-.. _Regiodesics: https://bbpcode.epfl.ch/browse/code/viz/Regiodesics/tree/
+.. _Regiodesics: https://bbpgitlab.epfl.ch/nse/archive/regiodesics
 .. _Rtree: https://pypi.org/project/Rtree/
-.. _Ultraliser: https://bbpcode.epfl.ch/browse/code/viz/Ultraliser/tree/
-.. _white-matter-projections: https://bbpcode.epfl.ch/browse/code/nse/white-matter-projections/tree/
+.. _Ultraliser: https://github.com/BlueBrain/ultraliser
+.. _white-matter-projections: https://bbpgitlab.epfl.ch/nse/white-matter-projections
 .. _`creation of a circuit`: https://bbpteam.epfl.ch/documentation/projects/circuit-build/latest/tutorial.html

@@ -61,7 +61,7 @@ def log_args(logger, handler_path=None):
 
 
 # Atlas files consistency checks
-# Copied from https://bbpcode.epfl.ch/code/#/admin/projects/nse/atlas-analysis,
+# Copied from https://bbpgitlab.epfl.ch/nse/atlas-analysis,
 # see atlas.py and utils.py.
 
 
