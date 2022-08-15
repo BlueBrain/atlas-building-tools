@@ -66,7 +66,7 @@ with its latest sources. Prior to running
 
     git clone git@bbpgitlab.epfl.ch:nse/atlas-building-tools.git
     cd atlas-building-tools
-    pip install -e .
+    pip install -i https://bbpteam.epfl.ch/repository/devpi/simple/ -e .
 
 you need to install the dependencies listed below.
 
