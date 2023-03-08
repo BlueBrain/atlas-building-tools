@@ -2,6 +2,10 @@
 
 import logging
 
+import atlas_densities
+import atlas_direction_vectors
+import atlas_placement_hints
+import atlas_splitter
 import click
 from atlas_densities.app import cell_densities, combination, mtype_densities
 from atlas_direction_vectors.app import direction_vectors, orientation_field
@@ -42,5 +46,13 @@ def cli():
         help_str += "\n\nNote: the cell-detection CLI is disabled since cairosvg was not found."
 
     app = click.Group("atlas_building_tools", group, help=help_str)
-    app = click.version_option(VERSION)(app)
+
+    version_message = (
+        f"atlas-building-tools: {VERSION}\n"
+        f"    atlas_densities: {atlas_densities.__version__}\n"
+        f"    atlas_direction_vectors: {atlas_direction_vectors.__version__}\n"
+        f"    atlas_placement_hints: {atlas_placement_hints.__version__}\n"
+        f"    atlas_splitter: {atlas_splitter.__version__}"
+    )
+    app = click.version_option(message=version_message)(app)
     app()
