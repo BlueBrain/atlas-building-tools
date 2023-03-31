@@ -1,10 +1,16 @@
 #!/usr/bin/env python
+import importlib.util
+from pathlib import Path
 
-import imp
+from setuptools import find_namespace_packages, setup
 
-from setuptools import find_packages, setup
-
-VERSION = imp.load_source("", "atlas_building_tools/version.py").__version__
+spec = importlib.util.spec_from_file_location(
+    "atlas_building_tools.version",
+    "atlas_building_tools/version.py",
+)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+VERSION = module.__version__
 
 setup(
     name="atlas-building-tools",
@@ -16,7 +22,7 @@ setup(
     url="https://bbpgitlab.epfl.ch/nse/atlas-building-tools",
     download_url="git@bbpgitlab.epfl.ch:nse/atlas-building-tools.git",
     license="BBP-internal-confidential",
-    python_requires=">=3.6.0",
+    python_requires=">=3.7",
     install_requires=[
         "atlas-direction-vectors>=0.1.1",
         "atlas-splitter>=0.1.1",
@@ -41,7 +47,7 @@ setup(
         ],
         "tests": ["pytest>=4.4.0", "cairosvg>=2.4.2"],
     },
-    packages=find_packages(),
+    packages=find_namespace_packages(include=["atlas_building_tools*"]),
     include_package_data=True,
     entry_points={"console_scripts": ["atlas-building-tools=atlas_building_tools.app.cli:cli"]},
     classifiers=[
@@ -50,5 +56,6 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
 )
