@@ -29,26 +29,6 @@ Currently, atlas-building-tools is mainly a wrapper, for backwards compatibility
 * https://github.com/BlueBrain/atlas-placement-hints
 * https://github.com/BlueBrain/atlas-splitter
 
-Usage
-=====
-
-It is highly recommended that one uses the BB5 supercomputer to run the sofware.
-
-Thus, one can run the following command:
-
-.. code-block:: bash
-
-    module load unstable py-atlas-building-tools
-
-Check the version of the installed program with::
-
-    atlas-building-tools --version
-
-Check which commands are available with::
-
-    atlas-building-tools --help
-
-
 Installation
 ============
 
@@ -178,8 +158,14 @@ Run the following commands before submitting your code for review:
 These formatting operations will help you pass the linting check `testenv:lint` defined in
 `tox.ini`.
 
+Acknowledgements
+================
 
+The development of this software was supported by funding to the Blue Brain Project, a research center of the École polytechnique fédérale de Lausanne (EPFL), from the Swiss government’s ETH Board of the Swiss Federal Institutes of Technology.
 
+For license see LICENSE.txt.
+
+Copyright © 2020-2024 Blue Brain Project/EPFL
 
 
 .. _`Allen Institute for Brain Science (AIBS)`: https://alleninstitute.org/what-we-do/brain-science/
